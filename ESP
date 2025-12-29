@@ -1,0 +1,204 @@
+--==============================================================================
+--                         COREX GUI V1.7 - ESP MODULE
+--==============================================================================
+
+local CoreX = _G.CoreXShared
+if not CoreX then error("CoreX core not loaded!") return end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+local Colors = CoreX.Colors
+local Actions = CoreX.Actions
+local toggleStates = CoreX.toggleStates
+local toggleSetters = CoreX.toggleSetters
+local scriptEnabled = CoreX.scriptEnabled
+
+-- ESP State
+Actions._wastelanderESPEnabled = false
+Actions._aegisESPEnabled = false
+Actions._espShowNames = false
+Actions._espShowDistance = false
+Actions._espShowHealth = false
+Actions._espTransparency = 0.9
+Actions._espHighlights = {}
+Actions._espBillboards = {}
+
+-- Helper functions
+local function getChar() return player.Character end
+local function getHRP() local c = getChar() return c and c:FindFirstChild("HumanoidRootPart") end
+
+local WASTELANDER_TEAMS = {["subject"] = true, ["sewer dweller"] = true, ["wastelander"] = true}
+
+local function isWastelander(plr)
+	if not plr or not plr.Team then return false end
+	local t = plr.Team.Name:lower()
+	return WASTELANDER_TEAMS[t] or t:find("subject") or t:find("sewer") or t:find("wastelander")
+end
+
+local function isAegis(plr)
+	if not plr or not plr.Team then return false end
+	return not isWastelander(plr)
+end
+
+-- ESP Functions
+local function forceRemoveAllESP()
+	for key, h in pairs(Actions._espHighlights) do pcall(function() if h and h.Parent then h:Destroy() end end) end
+	Actions._espHighlights = {}
+	for key, b in pairs(Actions._espBillboards) do pcall(function() if b and b.Parent then b:Destroy() end end) end
+	Actions._espBillboards = {}
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Character then
+			for _, child in ipairs(plr.Character:GetDescendants()) do
+				if child.Name == "CoreXESP" or child.Name == "CoreXESPInfo" then pcall(function() child:Destroy() end) end
+			end
+		end
+	end
+end
+
+local function createESPForPlayer(plr, char, highlightColor)
+	local highlightKey = plr.Name .. "_highlight"
+	if Actions._espHighlights[highlightKey] then pcall(function() Actions._espHighlights[highlightKey]:Destroy() end) Actions._espHighlights[highlightKey] = nil end
+	for _, child in ipairs(char:GetChildren()) do
+		if child.Name == "CoreXESP" and child:IsA("Highlight") then pcall(function() child:Destroy() end) end
+	end
+	local h = Instance.new("Highlight")
+	h.Name = "CoreXESP"
+	h.FillColor = highlightColor
+	h.OutlineColor = highlightColor
+	h.FillTransparency = Actions._espTransparency
+	h.OutlineTransparency = math.max(0, Actions._espTransparency - 0.2)
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	h.Adornee = char
+	h.Parent = char
+	Actions._espHighlights[highlightKey] = h
+end
+
+local function updateESPBillboard(plr, char, highlightColor)
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local myHrp = getHRP()
+	local key = plr.Name .. "_billboard"
+	if Actions._espBillboards[key] then pcall(function() Actions._espBillboards[key]:Destroy() end) Actions._espBillboards[key] = nil end
+	for _, child in ipairs(head:GetChildren()) do
+		if child.Name == "CoreXESPInfo" then pcall(function() child:Destroy() end) end
+	end
+	if not Actions._espShowNames and not Actions._espShowDistance and not Actions._espShowHealth then return end
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "CoreXESPInfo"
+	billboard.Size = UDim2.new(0, 150, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Adornee = head
+	billboard.Parent = head
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Name = "Info"
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.TextSize = 14
+	textLabel.TextColor3 = highlightColor
+	textLabel.TextStrokeTransparency = 0
+	textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+	textLabel.Parent = billboard
+	Actions._espBillboards[key] = billboard
+	local lines = {}
+	if Actions._espShowNames then table.insert(lines, plr.Name) end
+	if Actions._espShowDistance and myHrp and hrp then table.insert(lines, "[" .. math.floor((myHrp.Position - hrp.Position).Magnitude) .. "m]") end
+	if Actions._espShowHealth and hum then table.insert(lines, math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)) end
+	textLabel.Text = table.concat(lines, " ")
+end
+
+local function removeESPForPlayer(plr)
+	local highlightKey = plr.Name .. "_highlight"
+	local billboardKey = plr.Name .. "_billboard"
+	if Actions._espHighlights[highlightKey] then pcall(function() Actions._espHighlights[highlightKey]:Destroy() end) Actions._espHighlights[highlightKey] = nil end
+	if Actions._espBillboards[billboardKey] then pcall(function() Actions._espBillboards[billboardKey]:Destroy() end) Actions._espBillboards[billboardKey] = nil end
+	if plr.Character then
+		for _, child in ipairs(plr.Character:GetDescendants()) do
+			if child.Name == "CoreXESP" or child.Name == "CoreXESPInfo" then pcall(function() child:Destroy() end) end
+		end
+	end
+end
+
+local function updateAllESP()
+	if not CoreX.scriptEnabled then return end
+	local espActive = Actions._wastelanderESPEnabled or Actions._aegisESPEnabled
+	if not espActive then forceRemoveAllESP() return end
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character then
+			local char = plr.Character
+			local shouldHighlight = false
+			local highlightColor = Colors.Wastelander
+			if Actions._wastelanderESPEnabled and isWastelander(plr) then shouldHighlight = true highlightColor = Colors.Wastelander end
+			if Actions._aegisESPEnabled and isAegis(plr) then shouldHighlight = true highlightColor = Colors.Aegis end
+			if shouldHighlight then createESPForPlayer(plr, char, highlightColor) updateESPBillboard(plr, char, highlightColor)
+			else removeESPForPlayer(plr) end
+		end
+	end
+end
+
+-- Start ESP update loop
+task.spawn(function()
+	while CoreX.scriptEnabled do
+		task.wait(1)
+		if not CoreX.scriptEnabled then break end
+		updateAllESP()
+	end
+end)
+
+-- Character added connections
+table.insert(CoreX.Conns, Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function()
+		task.wait(1)
+		updateAllESP()
+	end)
+end))
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	if plr ~= player then
+		table.insert(CoreX.Conns, plr.CharacterAdded:Connect(function()
+			task.wait(1)
+			updateAllESP()
+		end))
+	end
+end
+
+-- Action handlers
+function Actions.WastelanderESP(on)
+	Actions._wastelanderESPEnabled = on
+	if not on and not Actions._aegisESPEnabled then forceRemoveAllESP() else updateAllESP() end
+end
+
+function Actions.AegisESP(on)
+	Actions._aegisESPEnabled = on
+	if not on and not Actions._wastelanderESPEnabled then forceRemoveAllESP() else updateAllESP() end
+end
+
+function Actions.ESPNames(on) Actions._espShowNames = on updateAllESP() end
+function Actions.ESPDistance(on) Actions._espShowDistance = on updateAllESP() end
+function Actions.ESPHealth(on) Actions._espShowHealth = on updateAllESP() end
+function Actions.ESPTransparency(v) Actions._espTransparency = math.clamp(tonumber(v) or 0.9, 0, 1) updateAllESP() end
+
+-- Register with GUI system (call this function to build the page)
+if CoreX.RegisterPageBuilder then
+	CoreX.RegisterPageBuilder("ESP", function(page, createHeader, createToggle, createSmallToggle, createSliderOnly)
+		-- BUILD ESP PAGE
+		createHeader(page, "Wastelander ESP", Colors.Wastelander)
+		createToggle(page, "WastelanderESP", "Enable Wastelander ESP", Colors.Wastelander)
+		createHeader(page, "Aegis ESP", Colors.Aegis)
+		createToggle(page, "AegisESP", "Enable Aegis ESP", Colors.Aegis)
+		createHeader(page, "ESP Options", Colors.NeonPurple) -- Changed to purple
+		createSmallToggle(page, "ESPNames", "Show Names", Colors.NeonPurple) -- Changed to purple
+		createSmallToggle(page, "ESPDistance", "Show Distance", Colors.NeonPurple) -- Changed to purple
+		createSmallToggle(page, "ESPHealth", "Show Health", Colors.NeonPurple) -- Changed to purple
+		createSliderOnly(page, "ESPTransparency", "Transparency", 0, 1, 0.9, Colors.ESP)
+	end)
+end
+
+print("✓ ESP Module Loaded")
+
+return true

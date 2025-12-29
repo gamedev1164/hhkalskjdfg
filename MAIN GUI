@@ -386,7 +386,7 @@ CloseButton.ZIndex = 3
 CloseButton.Parent = TitleBar
 Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
 
--- Bottom Bar
+-- Bottom Bar (EMPTY - Discord removed)
 local BottomBar = Instance.new("Frame")
 BottomBar.Name = "BottomBar"
 BottomBar.Size = UDim2.new(1, 0, 0, CoreX.BOTTOM_HEIGHT)
@@ -404,46 +404,6 @@ BottomFix.BackgroundColor3 = CoreX.Colors.BackgroundDark
 BottomFix.BorderSizePixel = 0
 BottomFix.ZIndex = 2
 BottomFix.Parent = BottomBar
-
-local DiscordButton = Instance.new("TextButton")
-DiscordButton.Size = UDim2.new(0, 220, 1, 0)
-DiscordButton.Position = UDim2.new(1, -230, 0, 0)
-DiscordButton.BackgroundTransparency = 1
-DiscordButton.Text = "Click to copy discord.gg/jqnxqc7cnj →"
-DiscordButton.TextColor3 = CoreX.Colors.Discord
-DiscordButton.TextSize = 13
-DiscordButton.Font = Enum.Font.GothamBold
-DiscordButton.TextXAlignment = Enum.TextXAlignment.Right
-DiscordButton.ZIndex = 3
-DiscordButton.Parent = BottomBar
-
-DiscordButton.MouseButton1Click:Connect(function()
-	local link = "discord.gg/jqnxqc7cnj"
-	if setclipboard then 
-		setclipboard(link) 
-	elseif toclipboard then 
-		toclipboard(link) 
-	elseif syn and syn.write_clipboard then 
-		syn.write_clipboard(link) 
-	end
-end)
-
--- Discord text animation
-task.spawn(function()
-	while CoreX.scriptEnabled do
-		for i = 0, 1, 0.05 do 
-			if not CoreX.scriptEnabled then break end 
-			DiscordButton.TextTransparency = i * 0.4 
-			task.wait(0.05) 
-		end
-		for i = 1, 0, -0.05 do 
-			if not CoreX.scriptEnabled then break end 
-			DiscordButton.TextTransparency = i * 0.4 
-			task.wait(0.05) 
-		end
-		task.wait(1)
-	end
-end)
 
 -- Main Area
 local MainArea = Instance.new("Frame")
@@ -594,10 +554,10 @@ local tabConfigs = {
 }
 
 for i, cfg in ipairs(tabConfigs) do
-if cfg.spacer then
+	if cfg.spacer then
 		local sp = Instance.new("Frame")
 		sp.Name = "Spacer"
-		sp.LayoutOrder = i  -- Use index from ipairs
+		sp.LayoutOrder = i
 		sp.Size = UDim2.new(1, -6, 0, 12)
 		sp.BackgroundTransparency = 1
 		sp.BorderSizePixel = 0
@@ -614,7 +574,7 @@ if cfg.spacer then
 		line.Parent = sp
 	else
 		local btn = createTabBtn(cfg.key, cfg.text, cfg.color)
-		btn.LayoutOrder = i  -- Use index from ipairs
+		btn.LayoutOrder = i
 		btn.MouseButton1Click:Connect(function() setActiveTab(cfg.key) end)
 		btn.MouseEnter:Connect(function() 
 			if not pages[cfg.key].Visible then 

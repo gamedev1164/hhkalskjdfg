@@ -135,15 +135,15 @@ end
 
 -- Module URLs
 local MODULES = {
-	Movement = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/MOVMENT",
-	ESP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/ESP",
-	Hitbox = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/HITBOX",
-	PlayerTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/TP%20TO%20PLAYER",
-	ResourcesTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/TP%20TO%20RESOURCE",
-	WorldTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/TP%20TO%20WORLD",
-	SpectatePlayer = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/SPECTATE%20PLAYER",
-	Trolling = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/TROLLING",
-	World = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/WORLD",
+	Movement = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/2_MOVMENT",
+	ESP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/2_ESP",
+	Hitbox = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/2_HITBOX",
+	PlayerTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/3_TP%20TO%20PLAYER",
+	ResourcesTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/3_TP%20TO%20RESOURCE",
+	WorldTP = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/3_TP%20TO%20WORLD",
+	SpectatePlayer = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/4_SPECTATE%20PLAYER",
+	Trolling = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/4_TROLLING",
+	World = "https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/5_WORLD",
 }
 
 -- Helper functions

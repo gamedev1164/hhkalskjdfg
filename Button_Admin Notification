@@ -1,0 +1,345 @@
+local a=game:GetService"Players"
+local b=game:GetService"RunService"
+local c=game:GetService"TweenService"
+
+local d=a.LocalPlayer
+local e=d:WaitForChild"PlayerGui"
+
+local f={
+"Chairman",
+"Table Of Military Leadership",
+"Unit Commander",
+"Unit Captain",
+"Veteran Officer",
+"Warrant Officer",
+"Officer",
+"Administered Specialist",
+"Administered Field Agent",
+"Specialist",
+}
+
+local g={
+["Administered Field Agent"]={
+3309970495,226117655,689247279,1975838348,105892068,463669642,861989591
+},Specialist=
+{37883732,509426887,561064343,1385018628},
+["Administered Specialist"]={937564141,7335374299,2761696222,192254622,139320432},Officer=
+{3469222247,755966848,728586602,334713155,817589023},
+["Warrant Officer"]={2522740248,3276554424,176149128,2213826264,189393},
+["Veteran Officer"]={1677921525,62954014,1818230195,1695017283,727677637},
+["Unit Captain"]={1938907604,1509777239,409397743,293671581,100016418},
+["Unit Commander"]={82964247,355588359,923213464},
+["Table Of Military Leadership"]={1419426348,631228062,23030407,100474014,671292893,923214624,112026803},Chairman=
+{17319802},
+}
+
+local h={
+["Administered Field Agent"]="AFA",Specialist=
+"SPC",
+["Administered Specialist"]="ASP",Officer=
+"OFC",
+["Warrant Officer"]="WO",
+["Veteran Officer"]="VO",
+["Unit Captain"]="UCPT",
+["Unit Commander"]="UCMD",
+["Table Of Military Leadership"]="TML",Chairman=
+"CHAIR",
+}
+
+local i={
+Color3.fromRGB(255,50,50),
+Color3.fromRGB(255,85,0),
+Color3.fromRGB(255,140,0),
+Color3.fromRGB(255,200,0),
+Color3.fromRGB(255,255,0),
+Color3.fromRGB(150,255,50),
+Color3.fromRGB(50,255,120),
+Color3.fromRGB(50,200,255),
+Color3.fromRGB(80,140,255),
+Color3.fromRGB(120,120,255),
+}
+
+local j={}
+local k={}
+
+for l,m in pairs(g)do
+for n,o in ipairs(m)do
+j[o]=l
+end
+end
+
+for l,m in ipairs(f)do
+k[m]=l
+end
+
+local l=Instance.new"ScreenGui"
+l.Name="AdminNotifier"
+l.ResetOnSpawn=false
+l.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+l.Parent=e
+
+local m=Instance.new"Frame"
+m.Name="Main"
+m.AnchorPoint=Vector2.new(1,0)
+m.Position=UDim2.new(1,-15,0,60)
+m.Size=UDim2.new(0,280,0,50)
+m.BackgroundColor3=Color3.fromRGB(18,18,22)
+m.BackgroundTransparency=0.08
+m.BorderSizePixel=0
+m.Parent=l
+
+local n=Instance.new"UICorner"
+n.CornerRadius=UDim.new(0,10)
+n.Parent=m
+
+local o=Instance.new"UIStroke"
+o.Color=Color3.fromRGB(255,255,255)
+o.Transparency=0.88
+o.Thickness=1.5
+o.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+o.Parent=m
+
+local p=Instance.new"UIGradient"
+p.Color=ColorSequence.new{
+ColorSequenceKeypoint.new(0,Color3.fromRGB(40,40,52)),
+ColorSequenceKeypoint.new(1,Color3.fromRGB(22,22,30))
+}
+p.Rotation=135
+p.Parent=m
+
+local q=Instance.new"UIStroke"
+q.Color=Color3.fromRGB(255,60,60)
+q.Transparency=1
+q.Thickness=3
+q.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+q.Parent=m
+
+local r=Instance.new"Frame"
+r.Position=UDim2.new(0,12,0,10)
+r.Size=UDim2.new(1,-24,0,30)
+r.BackgroundTransparency=1
+r.Parent=m
+
+local s=Instance.new"Frame"
+s.Position=UDim2.new(0,0,0,3)
+s.Size=UDim2.new(0,6,0,6)
+s.BackgroundColor3=Color3.fromRGB(100,100,110)
+s.BorderSizePixel=0
+s.Parent=r
+
+local t=Instance.new"UICorner"
+t.CornerRadius=UDim.new(1,0)
+t.Parent=s
+
+local u=Instance.new"TextLabel"
+u.Position=UDim2.new(0,14,0,0)
+u.Size=UDim2.new(1,-14,0,15)
+u.BackgroundTransparency=1
+u.Font=Enum.Font.GothamBold
+u.Text="ADMIN TRACKER"
+u.TextColor3=Color3.fromRGB(250,250,255)
+u.TextSize=12
+u.TextXAlignment=Enum.TextXAlignment.Left
+u.Parent=r
+
+local v=Instance.new"TextLabel"
+v.Position=UDim2.new(0,14,0,15)
+v.Size=UDim2.new(1,-14,0,12)
+v.BackgroundTransparency=1
+v.Font=Enum.Font.Gotham
+v.Text="0 admins detected"
+v.TextColor3=Color3.fromRGB(150,150,165)
+v.TextSize=9
+v.TextXAlignment=Enum.TextXAlignment.Left
+v.Parent=r
+
+local w=Instance.new"Frame"
+w.Position=UDim2.new(0,12,0,45)
+w.Size=UDim2.new(1,-24,0,1)
+w.BackgroundColor3=Color3.fromRGB(255,255,255)
+w.BackgroundTransparency=0.9
+w.BorderSizePixel=0
+w.Parent=m
+
+local x=Instance.new"Frame"
+x.Name="List"
+x.Position=UDim2.new(0,12,0,52)
+x.Size=UDim2.new(1,-24,1,-56)
+x.BackgroundTransparency=1
+x.ClipsDescendants=false
+x.Parent=m
+
+local y=Instance.new"UIListLayout"
+y.Padding=UDim.new(0,5)
+y.SortOrder=Enum.SortOrder.LayoutOrder
+y.Parent=x
+
+local z=false
+local A
+
+local function stopFlash()
+z=false
+if A then
+A:Disconnect()
+A=nil
+end
+
+c:Create(q,TweenInfo.new(0.4),{
+Transparency=1
+}):Play()
+
+c:Create(s,TweenInfo.new(0.4),{
+BackgroundColor3=Color3.fromRGB(100,100,110)
+}):Play()
+end
+
+local function startFlash()
+if z then return end
+z=true
+
+c:Create(s,TweenInfo.new(0.3),{
+BackgroundColor3=Color3.fromRGB(255,80,80)
+}):Play()
+
+local B=0
+A=b.RenderStepped:Connect(function(C)
+B=B+C*6
+local D=(math.sin(B)+1)/2
+local E=60+(195*D)
+q.Color=Color3.fromRGB(255,E,E)
+q.Transparency=0.2+(0.6*D)
+end)
+end
+
+local function createAdminRow(B,C,D)
+local E=k[C]or 10
+local F=i[E]or Color3.fromRGB(255,255,255)
+
+local G=Instance.new"Frame"
+G.Name="AdminRow"
+G.Size=UDim2.new(1,0,0,22)
+G.BackgroundColor3=Color3.fromRGB(30,30,38)
+G.BackgroundTransparency=0.6
+G.BorderSizePixel=0
+G.LayoutOrder=D
+
+local H=Instance.new"UICorner"
+H.CornerRadius=UDim.new(0,6)
+H.Parent=G
+
+local I=Instance.new"UIStroke"
+I.Color=F
+I.Transparency=0.75
+I.Thickness=1
+I.Parent=G
+
+local J=Instance.new"Frame"
+J.Position=UDim2.new(0,6,0.5,0)
+J.AnchorPoint=Vector2.new(0,0.5)
+J.Size=UDim2.new(0,48,0,16)
+J.BackgroundColor3=F
+J.BackgroundTransparency=0.88
+J.BorderSizePixel=0
+J.Parent=G
+
+local K=Instance.new"UICorner"
+K.CornerRadius=UDim.new(0,4)
+K.Parent=J
+
+local L=Instance.new"UIStroke"
+L.Color=F
+L.Transparency=0.4
+L.Thickness=1
+L.Parent=J
+
+local M=Instance.new"TextLabel"
+M.Size=UDim2.new(1,0,1,0)
+M.BackgroundTransparency=1
+M.Font=Enum.Font.GothamBold
+M.Text=h[C]or"???"
+M.TextColor3=F
+M.TextSize=9
+M.Parent=J
+
+local N=Instance.new"TextLabel"
+N.Position=UDim2.new(0,60,0,0)
+N.Size=UDim2.new(1,-66,1,0)
+N.BackgroundTransparency=1
+N.Font=Enum.Font.GothamMedium
+N.Text="@"..B.Name
+N.TextColor3=F
+N.TextSize=11
+N.TextXAlignment=Enum.TextXAlignment.Left
+N.TextTruncate=Enum.TextTruncate.AtEnd
+N.Parent=G
+
+G.BackgroundTransparency=1
+c:Create(G,TweenInfo.new(0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
+BackgroundTransparency=0.6
+}):Play()
+
+return G
+end
+
+local function updateAdminList()
+for B,C in ipairs(x:GetChildren())do
+if not C:IsA"UIListLayout"then
+C:Destroy()
+end
+end
+
+local B={}
+for C,D in ipairs(a:GetPlayers())do
+local E=j[D.UserId]
+if E then
+table.insert(B,{
+player=D,
+rank=E,
+index=k[E]or 999
+})
+end
+end
+
+table.sort(B,function(C,D)
+return C.index<D.index
+end)
+
+local C=#B
+v.Text=C==0 and"No admins detected"or
+(C==1 and"1 admin online"or C.." admins online")
+
+if C==0 then
+c:Create(m,TweenInfo.new(0.35,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
+Size=UDim2.new(0,280,0,50)
+}):Play()
+stopFlash()
+else
+for D,E in ipairs(B)do
+local F=createAdminRow(E.player,E.rank,D)
+F.Parent=x
+end
+
+local D=52+(C*22)+((C-1)*5)+8
+c:Create(m,TweenInfo.new(0.35,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
+Size=UDim2.new(0,280,0,D)
+}):Play()
+
+startFlash()
+end
+end
+
+updateAdminList()
+
+a.PlayerAdded:Connect(function()
+task.wait(0.1)
+updateAdminList()
+end)
+
+a.PlayerRemoving:Connect(updateAdminList)
+
+task.spawn(function()
+while l.Parent do
+task.wait(2)
+updateAdminList()
+end
+end)

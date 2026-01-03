@@ -41,7 +41,7 @@ local x="Diamond"
 local y=0.01
 local z=2.5
 
-local A=5
+local A=20
 local B=0.75
 local C=0.10
 local D=4
@@ -1041,6 +1041,5 @@ task.wait(1)
 holdE(false)
 end)
 
-task.wait(2)
+task.wait(0.5)
 startAll()
-print"Loaded Script"

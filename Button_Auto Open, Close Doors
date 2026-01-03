@@ -1,90 +1,149 @@
 local a=game:GetService"Players"
 local b=game:GetService"VirtualInputManager"
 game:GetService"UserInputService"
+
 local c=a.LocalPlayer
+
 local d=25
 local e=2
-local f=workspace:WaitForChild"CoreGameplaySystems":WaitForChild"ScrapSystems":WaitForChild"MapElements"
+
+local f=workspace
+:WaitForChild"CoreGameplaySystems"
+:WaitForChild"ScrapSystems"
+:WaitForChild"MapElements"
+
 local g=6
 local h=0.2
-local i=3.0
-local j=3
+local i=1.5
+local j=6
+
 local k=CFrame.new(-160,4,-788)
 local l=1
 local m=1
+
 local n=Vector2.new(0,1040)
 local o="Keypad Cracker"
 local p=10
 local q=0.25
+
 local r=CFrame.new(312,23,-572)
 local s=CFrame.new(-242,13,-838)
 local t=1
 local u=1
 local v=1
-local w=workspace:WaitForChild"CoreGameplaySystems":WaitForChild"OreSystems"
+
+local w=workspace
+:WaitForChild"CoreGameplaySystems"
+:WaitForChild"OreSystems"
+
 local x="Diamond"
+
 local y=0.01
 local z=2.5
-local A=15
+
+local A=5
 local B=0.75
 local C=0.10
 local D=4
-local E=3
-local F="Resource"
-local G=CFrame.new(-127,5,-759)
-local H=8
-local I=0.05
-local J=false
-local K="idle"
-local L=0
-local M={}
-local N=0
-local O={}
-local P=false
+
+local E=CFrame.new(-121,5,-790)
+local F=3
+
+local G="Resource"
+
+local H=CFrame.new(-127,5,-759)
+
+local I=8
+local J=0.05
+
+local K=false
+local L="idle"
+local M=0
+
+local N={}
+local O=0
+local P={}
+
 local Q=false
 local R=false
-local S
-local T=false
-local U
+
+local S=false
+local T
+
+local U=false
+
 local V
-local function getChar()return c.Character or c.CharacterAdded:Wait()end
-local function getHRP()return getChar():WaitForChild"HumanoidRootPart"end
-local function getHumanoid()return getChar():FindFirstChildOfClass"Humanoid"end
-local function holdE(W)b:SendKeyEvent(W,Enum.KeyCode.E,false,game)end
-local function holdEFor(W)holdE(true)task.wait(W)holdE(false)end
-local function teleportTo(W)getHRP().CFrame=W end
-local function clickGuiObject(W)
-if not W or not W:IsDescendantOf(game)then return false end
-if W:IsA"GuiObject"and W.Visible==false then return false end
-local X,Y=pcall(function()return W.AbsolutePosition end)
-local Z,_=pcall(function()return W.AbsoluteSize end)
-if not X or not Z then return false end
-if _.X<=0 or _.Y<=0 then return false end
-local aa=Y.X+_.X/2
-local ab=Y.Y+_.Y/2
-b:SendMouseButtonEvent(aa,ab,0,true,game,0)
+local W
+
+local function getChar()
+return c.Character or c.CharacterAdded:Wait()
+end
+
+local function getHRP()
+return getChar():WaitForChild"HumanoidRootPart"
+end
+
+local function getHumanoid()
+return getChar():FindFirstChildOfClass"Humanoid"
+end
+
+local function holdE(X)
+b:SendKeyEvent(X,Enum.KeyCode.E,false,game)
+end
+
+local function holdEFor(X)
+holdE(true)
+task.wait(X)
+holdE(false)
+end
+
+local function teleportTo(X)
+getHRP().CFrame=X
+end
+
+local function clickGuiObject(X)
+if not X or not X:IsDescendantOf(game)then return false end
+if X:IsA"GuiObject"and X.Visible==false then return false end
+
+local Y,Z=pcall(function()return X.AbsolutePosition end)
+local _,aa=pcall(function()return X.AbsoluteSize end)
+if not Y or not _ then return false end
+if aa.X<=0 or aa.Y<=0 then return false end
+
+local ab=Z.X+aa.X/2
+local ac=Z.Y+aa.Y/2
+
+b:SendMouseButtonEvent(ab,ac,0,true,game,0)
 task.wait(0.02)
-b:SendMouseButtonEvent(aa,ab,0,false,game,0)
+b:SendMouseButtonEvent(ab,ac,0,false,game,0)
 return true
 end
+
 local function getDefaultStore()
 local aa=c:FindFirstChild"PlayerGui"
 if not aa then return nil end
 return aa:FindFirstChild"DefaultStore"
 end
+
 local function closeDefaultStoreGUI()
 local aa=getDefaultStore()
-if aa then pcall(function()aa.Enabled=false end)end
+if aa then
+pcall(function()
+aa.Enabled=false
+end)
 end
+end
+
 local function getScrollingHolster()
 local aa=getDefaultStore()
 if not aa then return nil end
 local ab=aa:FindFirstChild"Container"
 if not ab then return nil end
-local W=ab:FindFirstChild"Frame"
-if not W then return nil end
-return W:FindFirstChild"ScrollingHolster"
+local ac=ab:FindFirstChild"Frame"
+if not ac then return nil end
+return ac:FindFirstChild"ScrollingHolster"
 end
+
 local function setShopCanvasPosition(aa)
 local ab=getScrollingHolster()
 if ab and ab:IsA"ScrollingFrame"then
@@ -93,10 +152,12 @@ return true
 end
 return false
 end
+
 local function findItemTitleLabel_ByName(aa)
 local ab=getScrollingHolster()
 if not ab then return nil end
-for W,X in ipairs(ab:GetChildren())do
+
+for ac,X in ipairs(ab:GetChildren())do
 local Y=X:FindFirstChild"Text"
 if Y then
 local Z=Y:FindFirstChild"Title"
@@ -109,17 +170,20 @@ end
 end
 return nil
 end
+
 local function clickConfirmButtonsIfAny()
 local aa=getDefaultStore()
 if not aa then return end
+
 local ab={"buy","purchase","confirm","yes","accept"}
-for W,X in ipairs(aa:GetDescendants())do
+for ac,X in ipairs(aa:GetDescendants())do
 if X:IsA"TextButton"or X:IsA"ImageButton"then
 local Y=string.lower(X.Name or"")
 local Z=""
 if X:IsA"TextButton"then Z=string.lower(X.Text or"")end
-for _,ac in ipairs(ab)do
-if string.find(Y,ac,1,true)or(Z~=""and string.find(Z,ac,1,true))then
+
+for _,ad in ipairs(ab)do
+if string.find(Y,ad,1,true)or(Z~=""and string.find(Z,ad,1,true))then
 clickGuiObject(X)
 task.wait(0.05)
 end
@@ -127,6 +191,7 @@ end
 end
 end
 end
+
 local function hasPickaxe()
 local aa=c:FindFirstChild"Backpack"
 local ab=c.Character
@@ -140,6 +205,7 @@ if ac and ac:IsA"Tool"then return true end
 end
 return false
 end
+
 local function hasKeypadCracker()
 local aa=c:FindFirstChild"Backpack"
 local ab=c.Character
@@ -153,32 +219,39 @@ if ac and ac:IsA"Tool"then return true end
 end
 return false
 end
+
 local function isPickaxeEquipped()
 local aa=c.Character
 if not aa then return false end
 local ab=aa:FindFirstChild"Pickaxe"
 return(ab and ab:IsA"Tool")and true or false
 end
+
 local function ensurePickaxeEquipped()
 local aa=getHumanoid()
 if not aa then return false end
 if isPickaxeEquipped()then return true end
+
 local ab=c:FindFirstChild"Backpack"
 if ab then
 local ac=ab:FindFirstChild"Pickaxe"
 if ac and ac:IsA"Tool"then
-pcall(function()aa:EquipTool(ac)end)
+pcall(function()
+aa:EquipTool(ac)
+end)
 return true
 end
 end
 return false
 end
+
 local function startAutoEquipPickaxeThreadOnce()
-if P then return end
-P=true
+if Q then return end
+Q=true
+
 task.spawn(function()
 while true do
-if J and K=="mine"then
+if K and L=="mine"then
 if hasPickaxe()and not isPickaxeEquipped()then
 ensurePickaxeEquipped()
 end
@@ -187,15 +260,19 @@ task.wait(0.5)
 end
 end)
 end
+
 local function countResourceToolsInBackpack()
 local aa=c:FindFirstChild"Backpack"
 if not aa then return 0 end
 local ab=0
-for ac,W in ipairs(aa:GetChildren())do
-if W:IsA"Tool"and W.Name==F then ab+=1 end
+for ac,ad in ipairs(aa:GetChildren())do
+if ad:IsA"Tool"and ad.Name==G then
+ab+=1
+end
 end
 return ab
 end
+
 local function getPromptWorldPos(aa)
 if not aa or not aa.Parent then return nil end
 if aa.Parent:IsA"Attachment"then
@@ -209,19 +286,24 @@ local ac=aa.Parent:FindFirstChildWhichIsA("BasePart",true)
 return ac and ac.Position or nil
 end
 end
+
 local function isBadTeleportPos(aa)
 if not aa then return true end
-if aa.Magnitude<I then return true end
+if aa.Magnitude<J then return true end
+
 local ab=getHRP().Position
-local ac=(aa.Magnitude<=H)
-local W=(ab.Magnitude<=H)
-if ac and not W then return true end
+local ac=(aa.Magnitude<=I)
+local ad=(ab.Magnitude<=I)
+if ac and not ad then
+return true
+end
 return false
 end
+
 local function getNearestEnabledScrapPrompt()
 local aa=getHRP().Position
 local ab,ac=(math.huge)
-for W,X in ipairs(f:GetDescendants())do
+for ad,X in ipairs(f:GetDescendants())do
 if X:IsA"ProximityPrompt"and X.Enabled then
 local Y=getPromptWorldPos(X)
 if Y and not isBadTeleportPos(Y)then
@@ -235,12 +317,16 @@ end
 end
 return ac
 end
+
 local function teleportAbovePrompt(aa)
 local ab=getPromptWorldPos(aa)
-if not ab or isBadTeleportPos(ab)then return false end
+if not ab or isBadTeleportPos(ab)then
+return false
+end
 getHRP().CFrame=CFrame.new(ab.X,ab.Y+g,ab.Z)
 return true
 end
+
 local function waitPromptRemovedOrDisabled(aa,ab)
 local ac=os.clock()
 while os.clock()-ac<ab do
@@ -250,6 +336,7 @@ task.wait(0.05)
 end
 return false
 end
+
 local function teleportToShopAndBuyPickaxe()
 getHRP().CFrame=k
 task.wait(l)
@@ -257,121 +344,146 @@ holdE(true)
 task.wait(m)
 holdE(false)
 task.wait(0.25)
+
 local aa=getScrollingHolster()
 if aa then
 setShopCanvasPosition(Vector2.new(0,520))
 task.wait(0.1)
+
 for ab=1,p do
-if not J then return false end
+if not K then return false end
 if hasPickaxe()then
 closeDefaultStoreGUI()
 return true
 end
+
 local ac=findItemTitleLabel_ByName"Pickaxe"
 if ac then
 clickGuiObject(ac)
 task.wait(0.1)
 clickConfirmButtonsIfAny()
 end
+
 task.wait(q)
 end
 end
+
 closeDefaultStoreGUI()
 return hasPickaxe()
 end
+
 local function sellAndBuyKeypadCracker()
-K="sell"
+L="sell"
+
 teleportTo(r)
 task.wait(t)
-if not J then return end
+
+if not K then return end
+
 teleportTo(s)
 task.wait(u)
-if not J then return end
+
+if not K then return end
+
 holdEFor(v)
-task.wait(1.0)
-if not J then return end
+task.wait(0.5)
+
+if not K then return end
+
 if hasKeypadCracker()then
 closeDefaultStoreGUI()
-K="mine"
+L="mine"
 return
 end
+
 local aa=getScrollingHolster()
-if not aa then
-holdEFor(v)
-task.wait(1.0)
-aa=getScrollingHolster()
-end
 if aa then
 setShopCanvasPosition(n)
-task.wait(0.3)
+task.wait(0.1)
+
 for ab=1,p do
-if not J then return end
-if hasKeypadCracker()then break end
+if not K then return end
+if hasKeypadCracker()then
+break
+end
+
 local ac=findItemTitleLabel_ByName(o)
 if ac then
 clickGuiObject(ac)
-task.wait(0.2)
+task.wait(0.1)
 clickConfirmButtonsIfAny()
 end
+
 task.wait(q)
 end
 end
+
 local ab=os.clock()
-while J and not hasKeypadCracker()and(os.clock()-ab)<5 do
+while K and not hasKeypadCracker()and(os.clock()-ab)<5 do
 task.wait(0.1)
 end
+
 for ac=1,5 do
 closeDefaultStoreGUI()
 task.wait(0.1)
 end
-K="mine"
+
+L="mine"
 end
+
 local function resourceIsMined(aa)
 if not aa or not aa:IsDescendantOf(game)then return true end
-if aa:IsA"BasePart"then return aa.Transparency>=0.95 end
+if aa:IsA"BasePart"then
+return aa.Transparency>=1
+end
 if aa:IsA"Model"then
-local ab=false
-for ac,W in ipairs(aa:GetDescendants())do
-if W:IsA"BasePart"and W.Transparency<0.95 then
-ab=true
-break
+for ab,ac in ipairs(aa:GetDescendants())do
+if ac:IsA"BasePart"and ac.Transparency<1 then
+return false
 end
 end
-return not ab
+return true
 end
 return false
 end
+
 local function getPromptFromResource(aa)
 local ab=aa:FindFirstChild("ProximityAttachment",true)
 if not ab or not ab:IsA"Attachment"then return nil end
 local ac=ab:FindFirstChildOfClass"ProximityPrompt"
-if ac and ac.Enabled then return ac end
+if ac and ac.Enabled then
+return ac
+end
 return nil
 end
+
 local function teleportToResourceTop(aa)
 local ab=getHRP()
 local ac
-local W
+local ad
+
 if aa:IsA"Model"then
 local X,Y=aa:GetBoundingBox()
 ac=X.Position
-W=Y.Y
+ad=Y.Y
 elseif aa:IsA"BasePart"then
 ac=aa.Position
-W=aa.Size.Y
+ad=aa.Size.Y
 else
 return
 end
-local X=ac.Y+(W/2)
+
+local X=ac.Y+(ad/2)
 ab.CFrame=CFrame.new(ac.X,X+z,ac.Z)
 end
+
 local function startTeleportLock(aa)
 local ab=true
 task.spawn(function()
 while ab do
-if not J then break end
+if not K then break end
 if not aa or not aa:IsDescendantOf(game)then break end
-if K~="mine"then
+if L~="mine"then
 task.wait(0.1)
 else
 teleportToResourceTop(aa)
@@ -381,6 +493,7 @@ end
 end)
 return function()ab=false end
 end
+
 local function scanDiamondModels()
 local aa={}
 for ab,ac in ipairs(w:GetDescendants())do
@@ -390,324 +503,544 @@ end
 end
 return aa
 end
+
 local function getUnminedResourcesFromModel(aa)
 local ab={}
 local ac=aa:FindFirstChild"Resources"
 if not ac then return ab end
-for W,X in ipairs(ac:GetChildren())do
+
+for ad,X in ipairs(ac:GetChildren())do
 if X.Name=="Resource"then
 if not resourceIsMined(X)then
-local Y=O[X]
+local Y=P[X]
 if not Y or os.clock()>=Y then
 table.insert(ab,X)
 end
 end
 end
 end
+
 return ab
 end
+
 local function waitForPromptAfterTeleport(aa,ab)
 local ac=os.clock()
 while os.clock()-ac<ab do
-if not J then return nil end
+if not K then return nil end
 if not aa or not aa:IsDescendantOf(game)then return nil end
 if resourceIsMined(aa)then return nil end
-if K~="mine"then
+
+if L~="mine"then
 task.wait(0.1)
 else
-local W=getPromptFromResource(aa)
-if W then return W end
+local ad=getPromptFromResource(aa)
+if ad then return ad end
 task.wait(0.05)
 end
 end
 return nil
 end
+
 local function pickNextResourceToMine()
-if#M==0 then
-M=scanDiamondModels()
-N=0
-if#M==0 then return nil end
+if#N==0 then
+N=scanDiamondModels()
+O=0
+if#N==0 then return nil end
 end
-for aa=1,#M do
-N+=1
-if N>#M then N=1 end
-local ab=M[N]
+
+for aa=1,#N do
+O+=1
+if O>#N then O=1 end
+
+local ab=N[O]
 if ab and ab:IsDescendantOf(game)then
 local ac=getUnminedResourcesFromModel(ab)
-if#ac>0 then return ac[1]end
+if#ac>0 then
+return ac[1]
 end
 end
+end
+
 return nil
 end
-V=function()
-J=false
-K="idle"
-S=nil
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+W=function()
+K=false
+L="idle"
+T=nil
 holdE(false)
-pcall(function()teleportTo(G)end)
+
+pcall(function()
+teleportTo(H)
+end)
 end
+
 local function startSafetyThreadOnce()
-if Q then return end
-Q=true
+if R then return end
+R=true
+
 task.spawn(function()
 while true do
-if J then
-if hasKeypadCracker()and not T then
-V()
+if K then
+if hasKeypadCracker()and not U then
+W()
 task.wait(0.5)
+
 local aa=c:FindFirstChild"Backpack"
 if aa then
 local ab=aa:FindFirstChild(o)
 if ab and ab:IsA"Tool"then
 local ac=getHumanoid()
 if ac then
-pcall(function()ac:EquipTool(ab)end)
+pcall(function()
+ac:EquipTool(ab)
+end)
 task.wait(0.5)
 end
 end
 end
+
 pcall(function()
 local ab=game:GetService"RunService"
 local ac=game:GetService"Workspace"
-local W=c
+
+local ad=c
+
 local X={DoorTall=true,DoorWide=true}
+
 local Y=1.25
 local Z=3.0
 local _=2.0
-local ad=0
 local ae=0
-local af=0.5
-local ag=1.0
-local ah=Vector3.new(50,54,155)
-local ai=true
-local aj={}
+local af=0
+
+local ag=0.5
+local ah=1.0
+
+local ai=Vector3.new(-17,53,231)
+
+local aj=true
 local ak={}
 local al={}
-local function isHitboxPart(am)
-if not am:IsA"BasePart"then return false end
-local an=(am.Name or""):lower()
-return(an=="hitbox")or(an:find"hitbox"~=nil)
+local am={}
+local an
+
+local function isHitboxPart(ao)
+if not ao:IsA"BasePart"then return false end
+local ap=(ao.Name or""):lower()
+return(ap=="hitbox")or(ap:find"hitbox"~=nil)
 end
-local function getRightArmPart(am)
-return am:FindFirstChild"RightHand"or am:FindFirstChild"RightLowerArm"or am:FindFirstChild"RightUpperArm"or am:FindFirstChild"Right Arm"
+
+local function getRightArmPart(ao)
+return ao:FindFirstChild"RightHand"
+or ao:FindFirstChild"RightLowerArm"
+or ao:FindFirstChild"RightUpperArm"
+or ao:FindFirstChild"Right Arm"
 end
-local function getHRP(am)return am and am:FindFirstChild"HumanoidRootPart"end
-local function teleportToStart(am)
-local an=getHRP(am)
-if an then an.CFrame=CFrame.new(ah+Vector3.new(0,3,0))end
+
+local function getHRP(ao)
+return ao and ao:FindFirstChild"HumanoidRootPart"
 end
+
+local function teleportToStart(ao)
+local ap=getHRP(ao)
+if ap then
+ap.CFrame=CFrame.new(ai+Vector3.new(0,3,0))
+end
+end
+
 local function makePartsTransparent()
-for am,an in ipairs(ac:GetDescendants())do
-if an:IsA"BasePart"then
-local ao=an.Name
-if ao=="Part"or ao=="Wedge"then
-pcall(function()an.Transparency=0.7 end)
+for ao,ap in ipairs(ac:GetDescendants())do
+if ap:IsA"BasePart"then
+local aq=ap.Name
+if aq=="Part"or aq=="Wedge"then
+pcall(function()
+ap.Transparency=0.7
+end)
 end
 end
 end
 end
-local function rememberOriginal(am)
-if al[am]then return end
-al[am]={CFrame=am.CFrame,Anchored=am.Anchored,CanCollide=am.CanCollide,Transparency=am.Transparency,Size=am.Size}
+
+local function rememberOriginal(ao)
+if am[ao]then return end
+am[ao]={
+CFrame=ao.CFrame,
+Anchored=ao.Anchored,
+CanCollide=ao.CanCollide,
+Transparency=ao.Transparency,
+Size=ao.Size,
+}
 end
+
 local function restoreAllHitboxes()
-for am,an in pairs(al)do
-if am and am.Parent then
-pcall(function()am.CFrame=an.CFrame am.Anchored=an.Anchored am.CanCollide=an.CanCollide am.Transparency=an.Transparency am.Size=an.Size end)
+for ao,ap in pairs(am)do
+if ao and ao.Parent then
+pcall(function()
+ao.CFrame=ap.CFrame
+ao.Anchored=ap.Anchored
+ao.CanCollide=ap.CanCollide
+ao.Transparency=ap.Transparency
+ao.Size=ap.Size
+end)
 end
 end
-table.clear(al)
+table.clear(am)
 end
-local function computeArmTipCF(am)return am.CFrame*CFrame.new(ae,ad,-(am.Size.Z*0.5+_))end
+
+local function computeArmTipCF(ao)
+return ao.CFrame*CFrame.new(af,ae,-(ao.Size.Z*0.5+_))
+end
+
 local function scanDoors()
-table.clear(aj)
 table.clear(ak)
-for am,an in ipairs(ac:GetDescendants())do
-if an:IsA"Model"and X[an.Name]then
-for ao,ap in ipairs(an:GetDescendants())do
-if isHitboxPart(ap)then table.insert(aj,ap)
-elseif ap:IsA"ClickDetector"then table.insert(ak,ap)end
+table.clear(al)
+
+for ao,ap in ipairs(ac:GetDescendants())do
+if ap:IsA"Model"and X[ap.Name]then
+for aq,ar in ipairs(ap:GetDescendants())do
+if isHitboxPart(ar)then
+table.insert(ak,ar)
+elseif ar:IsA"ClickDetector"then
+table.insert(al,ar)
 end
 end
 end
 end
+end
+
 local function fireAllClickDetectors()
 if typeof(fireclickdetector)~="function"then return end
-for am,an in ipairs(ak)do
-if an and an.Parent then pcall(function()fireclickdetector(an)end)end
+for ao,ap in ipairs(al)do
+if ap and ap.Parent then
+pcall(function()fireclickdetector(ap)end)
 end
 end
+end
+
 local function startAuto()
-local am=W.Character or W.CharacterAdded:Wait()
+local ao=ad.Character or ad.CharacterAdded:Wait()
 task.wait(0.1)
-teleportToStart(am)
+
+teleportToStart(ao)
+
 task.wait(3)
+
 makePartsTransparent()
+
 scanDoors()
+
 task.spawn(function()
-while ai do
-task.wait(ag)
-if not ai then break end
+while aj do
+task.wait(ah)
+if not aj then break end
 scanDoors()
 end
 end)
+
 task.spawn(function()
-while ai do
-task.wait(af)
-if not ai then break end
+while aj do
+task.wait(ag)
+if not aj then break end
 fireAllClickDetectors()
 end
 end)
-ab.RenderStepped:Connect(function()
-if not ai then return end
-local an=W.Character
-if not an then return end
-local ao=getRightArmPart(an)
-if not ao then return end
-local ap=computeArmTipCF(ao)
-local aq=math.sin(os.clock()*Z)*Y
-local ar=ap*CFrame.new(0,0,-aq)
-for as,at in ipairs(aj)do
-if at and at.Parent then
-rememberOriginal(at)
-at.Anchored=true
-at.CanCollide=false
-at.CFrame=ar
+
+an=ab.RenderStepped:Connect(function()
+if not aj then return end
+local ap=ad.Character
+if not ap then return end
+
+local aq=getRightArmPart(ap)
+if not aq then return end
+
+local ar=computeArmTipCF(aq)
+local as=math.sin(os.clock()*Z)*Y
+local at=ar*CFrame.new(0,0,-as)
+
+for au,av in ipairs(ak)do
+if av and av.Parent then
+rememberOriginal(av)
+av.Anchored=true
+av.CanCollide=false
+av.CFrame=at
 end
 end
 end)
 end
-W.CharacterAdded:Connect(function(am)task.wait(0.2)teleportToStart(am)end)
+
+ad.CharacterAdded:Connect(function(ao)
+task.wait(0.2)
+teleportToStart(ao)
+end)
+
 restoreAllHitboxes()
 startAuto()
 end)
-T=true
+
+U=true
 break
 end
 end
+
 task.wait(0.2)
 end
 end)
 end
-U=function()
-if R then return end
-R=true
+
+V=function()
+if S then return end
+S=true
+
 local aa=0
-while J do
-if K~="mine"then task.wait(0.1)continue end
-if countResourceToolsInBackpack()>=e then sellAndBuyKeypadCracker()task.wait(0.5)continue end
+while K and L=="mine"do
+if countResourceToolsInBackpack()>=e then
+sellAndBuyKeypadCracker()
+task.wait(0.5)
+continue
+end
+
 if os.clock()-aa>D then
-M=scanDiamondModels()
-N=0
+N=scanDiamondModels()
+O=0
 aa=os.clock()
 end
-if not ensurePickaxeEquipped()then task.wait(0.15)continue end
+
+if not ensurePickaxeEquipped()then
+task.wait(0.15)
+continue
+end
+
 local ab=pickNextResourceToMine()
-if not ab then M=scanDiamondModels()N=0 task.wait(0.25)continue end
-S=ab
+if not ab then
+task.wait(0.25)
+continue
+end
+
+T=ab
+
 local ac=startTeleportLock(ab)
+
 local ad=waitForPromptAfterTeleport(ab,B)
-if not ad then ac()O[ab]=os.clock()+1.0 task.wait(0.05)continue end
+if not ad then
+ac()
+P[ab]=os.clock()+1.0
+task.wait(0.05)
+continue
+end
+
 local ae=os.clock()
 local af=false
-while J and K=="mine"do
-if resourceIsMined(ab)then af=true break end
-if os.clock()-ae>=A then break end
+
+while K and L=="mine"do
+if resourceIsMined(ab)then
+af=true
+break
+end
+if os.clock()-ae>=A then
+break
+end
+
 local ag=getPromptFromResource(ab)
 if ag then
-local ah=pcall(function()fireproximityprompt(ag,ag.HoldDuration)end)
+local ah=pcall(function()
+fireproximityprompt(ag,ag.HoldDuration)
+end)
 if not ah then
 local ai=(typeof(ag.HoldDuration)=="number"and ag.HoldDuration>0)and ag.HoldDuration or 1
-holdE(true)task.wait(ai)holdE(false)
+holdE(true)
+task.wait(ai)
+holdE(false)
 end
 end
+
 task.wait(C)
 end
+
 ac()
 holdE(false)
-if not J then break end
-if ab and ab:IsDescendantOf(game)then
-if af then O[ab]=math.huge task.wait(0.1)
-else O[ab]=os.clock()+E end
+
+if not K or L~="mine"then
+task.wait(0.05)
+continue
 end
+
+if ab and ab:IsDescendantOf(game)then
+if af then
+getHRP().CFrame=E
+task.wait(0.05)
+else
+P[ab]=os.clock()+F
+end
+end
+
 task.wait(0.05)
 end
-R=false
+
+S=false
 end
+
 local aa={"Money","Cash","Coins","Gold","GoldCoins","Currency","Credits"}
+
 local function findMoneyValue()
 local ab=c:FindFirstChild"leaderstats"
 if ab then
 for ac,ad in ipairs(aa)do
 local ae=ab:FindFirstChild(ad)
-if ae and(ae:IsA"IntValue"or ae:IsA"NumberValue")then return ae end
+if ae and(ae:IsA"IntValue"or ae:IsA"NumberValue")then
+return ae
 end
 end
+end
+
 local ac=c:FindFirstChild"stats"
 if ac then
 for ad,ae in ipairs(aa)do
 local af=ac:FindFirstChild(ae)
-if af and(af:IsA"IntValue"or af:IsA"NumberValue")then return af end
+if af and(af:IsA"IntValue"or af:IsA"NumberValue")then
+return af
 end
 end
+end
+
 for ad,ae in ipairs(c:GetDescendants())do
 if ae and(ae:IsA"IntValue"or ae:IsA"NumberValue")then
 for af,ag in ipairs(aa)do
-if ae.Name==ag then return ae end
+if ae.Name==ag then
+return ae
 end
 end
 end
+end
+
 return nil
 end
+
 local function startAll()
-if J then return end
-J=true
-K="idle"
-S=nil
+if K then return end
+K=true
+L="idle"
+T=nil
 holdE(false)
+
 startAutoEquipPickaxeThreadOnce()
 startSafetyThreadOnce()
-L=0
-O={}
-M={}
-N=0
-if hasPickaxe()then ensurePickaxeEquipped()K="mine"task.spawn(U)return end
-K="scrap"
+
+M=0
+P={}
+N={}
+O=0
+
+if hasPickaxe()then
+ensurePickaxeEquipped()
+L="mine"
+task.spawn(V)
+return
+end
+
+L="scrap"
+
 task.spawn(function()
-while J and K=="scrap"do
-if os.clock()<L then task.wait(0.15)continue end
+while K and L=="scrap"do
+if os.clock()<M then
+task.wait(0.15)
+continue
+end
+
 local ab=getNearestEnabledScrapPrompt()
-if not ab then task.wait(0.15)continue end
+if not ab then
+task.wait(0.15)
+continue
+end
+
 local ac=teleportAbovePrompt(ab)
-if not ac then task.wait(0.1)continue end
+if not ac then
+task.wait(0.1)
+continue
+end
+
 task.wait(h)
-local ad=pcall(function()fireproximityprompt(ab,ab.HoldDuration)end)
-if not ad then holdE(true)task.wait(math.max(ab.HoldDuration or 1,1))holdE(false)end
+
+local ad=pcall(function()
+fireproximityprompt(ab,ab.HoldDuration)
+end)
+
+if not ad then
+holdE(true)
+task.wait(math.max(ab.HoldDuration or 1,1))
+holdE(false)
+end
+
 local ae=waitPromptRemovedOrDisabled(ab,i)
-if not ae then L=os.clock()+j end
+if not ae then
+M=os.clock()+j
+end
+
 task.wait(0.05)
 end
 end)
+
 task.spawn(function()
-while J do
-if K~="mine"and hasPickaxe()then ensurePickaxeEquipped()closeDefaultStoreGUI()K="mine"task.spawn(U)return end
-local ab=findMoneyValue()
-if K=="scrap"and ab and ab.Value>=d then
-K="shop"
-teleportToShopAndBuyPickaxe()
-while J and K=="shop"and not hasPickaxe()do task.wait(0.2)end
-if not J then return end
+while K do
+if L~="mine"and hasPickaxe()then
+ensurePickaxeEquipped()
 closeDefaultStoreGUI()
-while J and K=="shop"and not ensurePickaxeEquipped()do task.wait(0.1)end
-if not J then return end
-K="mine"
-task.spawn(U)
+L="mine"
+task.spawn(V)
 return
 end
+
+local ab=findMoneyValue()
+if L=="scrap"and ab and ab.Value>=d then
+L="shop"
+teleportToShopAndBuyPickaxe()
+
+while K and L=="shop"and not hasPickaxe()do
+task.wait(0.2)
+end
+if not K then return end
+
+closeDefaultStoreGUI()
+
+while K and L=="shop"and not ensurePickaxeEquipped()do
+task.wait(0.1)
+end
+if not K then return end
+
+L="mine"
+task.spawn(V)
+return
+end
+
 task.wait(0.2)
 end
 end)
 end
-c.CharacterAdded:Connect(function()task.wait(1)holdE(false)end)
-task.wait(0.5)
+
+c.CharacterAdded:Connect(function()
+task.wait(1)
+holdE(false)
+end)
+
+task.wait(2)
 startAll()
+print"Loaded Script"

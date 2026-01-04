@@ -137,12 +137,14 @@ local function CreatePlayerButton(parent, player, layoutOrder)
     local playerColor = GetPlayerColor(player)
     
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0.33, -4, 0, 35)
+    Button.Size = UDim2.new(1, 0, 1, 0) -- Grid will control actual size
     Button.BackgroundColor3 = isAdmin and playerColor or Colors.PlayerButton
     Button.BackgroundTransparency = isAdmin and 0.85 or 0.3
     Button.BorderSizePixel = 0
     Button.LayoutOrder = layoutOrder
     Button.Text = ""
+    Button.AutoButtonColor = false
+    Button.ZIndex = 2
     Button.Parent = parent
     
     local Corner = Instance.new("UICorner")
@@ -169,6 +171,7 @@ local function CreatePlayerButton(parent, player, layoutOrder)
     NameLabel.Text = player.Name
     NameLabel.TextXAlignment = Enum.TextXAlignment.Left
     NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    NameLabel.ZIndex = 3
     NameLabel.Parent = Button
     
     -- Rank badge (if admin)
@@ -179,6 +182,7 @@ local function CreatePlayerButton(parent, player, layoutOrder)
         RankBadge.BackgroundColor3 = playerColor
         RankBadge.BackgroundTransparency = 0.85
         RankBadge.BorderSizePixel = 0
+        RankBadge.ZIndex = 3
         RankBadge.Parent = Button
         
         local BadgeCorner = Instance.new("UICorner")
@@ -198,11 +202,13 @@ local function CreatePlayerButton(parent, player, layoutOrder)
         RankLabel.TextSize = 7
         RankLabel.TextColor3 = playerColor
         RankLabel.Text = rankAbbrev
+        RankLabel.ZIndex = 4
         RankLabel.Parent = RankBadge
     end
     
     -- Click to teleport
     Button.MouseButton1Click:Connect(function()
+        print("[Aegis Teleport] Teleporting to:", player.Name)
         TeleportToPlayer(player)
     end)
     
@@ -230,6 +236,9 @@ local PlayerButtons = {}
 local UpdateConnection
 
 local function UpdatePlayerList()
+    local scrollFrame = ParentContainer._ScrollFrame
+    if not scrollFrame then return end
+    
     -- Clear existing buttons
     for _, button in pairs(PlayerButtons) do
         button:Destroy()
@@ -266,32 +275,57 @@ local function UpdatePlayerList()
     
     -- Create buttons
     for i, player in ipairs(playerList) do
-        local button = CreatePlayerButton(ParentContainer, player, i)
+        local button = CreatePlayerButton(scrollFrame, player, i)
         PlayerButtons[player] = button
     end
 end
 
 local function BuildGUI()
+    -- Make parent scrollable
+    ParentContainer.ClipsDescendants = true
+    
+    -- Create ScrollingFrame for player list
+    local ScrollFrame = Instance.new("ScrollingFrame")
+    ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    ScrollFrame.BackgroundTransparency = 1
+    ScrollFrame.BorderSizePixel = 0
+    ScrollFrame.ScrollBarThickness = 3
+    ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 135)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ScrollFrame.Active = true
+    ScrollFrame.ZIndex = 1
+    ScrollFrame.Parent = ParentContainer
+    
     -- Grid layout for 3 columns
     local GridLayout = Instance.new("UIGridLayout")
-    GridLayout.CellSize = UDim2.new(0.33, -4, 0, 35)
-    GridLayout.CellPadding = UDim2.new(0, 6, 0, 6)
+    GridLayout.CellSize = UDim2.new(0.333, -6, 0, 35)
+    GridLayout.CellPadding = UDim2.new(0, 4, 0, 4)
     GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    GridLayout.Parent = ParentContainer
+    GridLayout.FillDirection = Enum.FillDirection.Horizontal
+    GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    GridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    GridLayout.Parent = ScrollFrame
     
     local Padding = Instance.new("UIPadding")
-    Padding.PaddingTop = UDim.new(0, 6)
-    Padding.PaddingLeft = UDim.new(0, 3)
-    Padding.PaddingRight = UDim.new(0, 3)
-    Padding.Parent = ParentContainer
+    Padding.PaddingTop = UDim.new(0, 4)
+    Padding.PaddingLeft = UDim.new(0, 4)
+    Padding.PaddingRight = UDim.new(0, 4)
+    Padding.PaddingBottom = UDim.new(0, 4)
+    Padding.Parent = ScrollFrame
+    
+    -- Store ScrollFrame reference for updates
+    ParentContainer._ScrollFrame = ScrollFrame
     
     -- Initial update
     UpdatePlayerList()
     
-    -- Update every 2 seconds
-    UpdateConnection = RunService.Heartbeat:Connect(function()
-        task.wait(2)
-        UpdatePlayerList()
+    -- Update every 5 seconds
+    task.spawn(function()
+        while ParentContainer and ParentContainer.Parent do
+            task.wait(5)
+            UpdatePlayerList()
+        end
     end)
 end
 
@@ -303,15 +337,15 @@ BuildGUI()
 
 -- Register cleanup function
 local function Cleanup()
-    if UpdateConnection then
-        UpdateConnection:Disconnect()
-        UpdateConnection = nil
-    end
-    
     for _, button in pairs(PlayerButtons) do
         button:Destroy()
     end
     PlayerButtons = {}
+    
+    if ParentContainer._ScrollFrame then
+        ParentContainer._ScrollFrame:Destroy()
+        ParentContainer._ScrollFrame = nil
+    end
     
     print("[Aegis Teleport] Cleaned up successfully!")
 end

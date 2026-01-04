@@ -1,10 +1,8 @@
--- Aegis Teleport Module - With GUI Controls and Admin Detection
+-- Aegis Teleport Module - 3 Columns with Admin Detection
 -- Designed to work inside CoreX GUI
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -18,22 +16,13 @@ end
 
 -- Admin Rank System
 local RANK_ORDER = {
-    "Chairman",
-    "Table Of Military Leadership",
-    "Unit Commander",
-    "Unit Captain",
-    "Veteran Officer",
-    "Warrant Officer",
-    "Officer",
-    "Administered Specialist",
-    "Administered Field Agent",
-    "Specialist",
+    "Chairman", "Table Of Military Leadership", "Unit Commander", "Unit Captain",
+    "Veteran Officer", "Warrant Officer", "Officer", "Administered Specialist",
+    "Administered Field Agent", "Specialist",
 }
 
 local RANKS = {
-    ["Administered Field Agent"] = {
-        3309970495, 226117655, 689247279, 1975838348, 105892068, 463669642, 861989591
-    },
+    ["Administered Field Agent"] = {3309970495, 226117655, 689247279, 1975838348, 105892068, 463669642, 861989591},
     ["Specialist"] = {37883732, 509426887, 561064343, 1385018628},
     ["Administered Specialist"] = {937564141, 7335374299, 2761696222, 192254622, 139320432},
     ["Officer"] = {3469222247, 755966848, 728586602, 334713155, 817589023},
@@ -46,71 +35,46 @@ local RANKS = {
 }
 
 local RANK_ABBREV = {
-    ["Administered Field Agent"] = "AFA",
-    ["Specialist"] = "SPC",
-    ["Administered Specialist"] = "ASP",
-    ["Officer"] = "OFC",
-    ["Warrant Officer"] = "WO",
-    ["Veteran Officer"] = "VO",
-    ["Unit Captain"] = "UCPT",
-    ["Unit Commander"] = "UCMD",
-    ["Table Of Military Leadership"] = "TML",
-    ["Chairman"] = "CHAIR",
+    ["Administered Field Agent"] = "AFA", ["Specialist"] = "SPC",
+    ["Administered Specialist"] = "ASP", ["Officer"] = "OFC",
+    ["Warrant Officer"] = "WO", ["Veteran Officer"] = "VO",
+    ["Unit Captain"] = "UCPT", ["Unit Commander"] = "UCMD",
+    ["Table Of Military Leadership"] = "TML", ["Chairman"] = "CHAIR",
 }
 
 local RANK_COLORS = {
-    Color3.fromRGB(255, 50, 50),      -- Chairman
-    Color3.fromRGB(255, 85, 0),       -- TML
-    Color3.fromRGB(255, 140, 0),      -- Unit Commander
-    Color3.fromRGB(255, 200, 0),      -- Unit Captain
-    Color3.fromRGB(255, 255, 0),      -- Veteran Officer
-    Color3.fromRGB(150, 255, 50),     -- Warrant Officer
-    Color3.fromRGB(50, 255, 120),     -- Officer
-    Color3.fromRGB(50, 200, 255),     -- Administered Specialist
-    Color3.fromRGB(80, 140, 255),     -- Administered Field Agent
-    Color3.fromRGB(120, 120, 255),    -- Specialist
+    Color3.fromRGB(255, 50, 50), Color3.fromRGB(255, 85, 0), Color3.fromRGB(255, 140, 0),
+    Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 255, 0), Color3.fromRGB(150, 255, 50),
+    Color3.fromRGB(50, 255, 120), Color3.fromRGB(50, 200, 255), Color3.fromRGB(80, 140, 255),
+    Color3.fromRGB(120, 120, 255),
+}
+
+-- Aegis Teams (blue highlighted in screenshot)
+local AEGIS_TEAMS = {
+    ["AEGIS Corporation"] = true, ["Conference"] = true, ["Experiment1"] = true, ["Experiment2"] = true,
+    ["Insurrectionist"] = true, ["Interrogation"] = true, ["Interview1"] = true, ["Interview2"] = true,
+    ["Lesson1"] = true, ["Lesson2"] = true, ["Patrol1"] = true, ["Patrol2"] = true, ["Patrol3"] = true,
+    ["Patrol4"] = true, ["Rally"] = true, ["The Chairman"] = true, ["Training"] = true, ["Tryout"] = true,
+    ["Voided"] = true,
 }
 
 -- Build lookup tables
-local userIdToRank = {}
-local rankToIndex = {}
-
+local userIdToRank, rankToIndex = {}, {}
 for rank, userIds in pairs(RANKS) do
-    for _, userId in ipairs(userIds) do
-        userIdToRank[userId] = rank
-    end
+    for _, userId in ipairs(userIds) do userIdToRank[userId] = rank end
 end
+for index, rank in ipairs(RANK_ORDER) do rankToIndex[rank] = index end
 
-for index, rank in ipairs(RANK_ORDER) do
-    rankToIndex[rank] = index
-end
-
--- CoreX Style Colors
+-- Colors
 local Colors = {
-    Background = Color3.fromRGB(20, 20, 32),
-    Surface = Color3.fromRGB(24, 24, 36),
     SurfaceLight = Color3.fromRGB(35, 35, 42),
-    Primary = Color3.fromRGB(147, 51, 234),
+    SurfaceLighter = Color3.fromRGB(45, 45, 55),
     Text = Color3.fromRGB(255, 255, 255),
-    TextSecondary = Color3.fromRGB(180, 180, 200),
-    PlayerButton = Color3.fromRGB(45, 45, 55),
 }
 
---[[
-    TELEPORT FUNCTIONS
---]]
-
-local function TeleportToPlayer(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
-    
-    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local myChar = LocalPlayer.Character
-    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    
-    if targetHRP and myHRP then
-        -- Teleport on top of player
-        myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 5, 0)
-    end
+-- Helper Functions
+local function IsAegisTeam(player)
+    return player.Team and AEGIS_TEAMS[player.Team.Name] == true
 end
 
 local function GetPlayerRank(player)
@@ -121,218 +85,158 @@ local function GetPlayerColor(player)
     local rank = GetPlayerRank(player)
     if rank then
         local rankIndex = rankToIndex[rank]
-        return RANK_COLORS[rankIndex] or Colors.Primary
+        return RANK_COLORS[rankIndex]
     end
     return Colors.Text
 end
 
---[[
-    GUI COMPONENTS
---]]
-
-local function CreatePlayerButton(parent, player, layoutOrder)
-    local isAdmin = GetPlayerRank(player) ~= nil
-    local rank = GetPlayerRank(player)
-    local rankAbbrev = rank and RANK_ABBREV[rank] or nil
-    local playerColor = GetPlayerColor(player)
-    
-    -- Button frame (size controlled by UIGridLayout)
-    local Button = Instance.new("TextButton")
-    Button.BackgroundColor3 = isAdmin and playerColor or Colors.PlayerButton
-    Button.BackgroundTransparency = isAdmin and 0.85 or 0.3
-    Button.BorderSizePixel = 0
-    Button.LayoutOrder = layoutOrder
-    Button.Text = ""
-    Button.AutoButtonColor = false
-    Button.ZIndex = 2
-    Button.Parent = parent
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 6)
-    Corner.Parent = Button
-    
-    -- Admin stroke
-    if isAdmin then
-        local Stroke = Instance.new("UIStroke")
-        Stroke.Color = playerColor
-        Stroke.Transparency = 0.5
-        Stroke.Thickness = 1.5
-        Stroke.Parent = Button
-    end
-    
-    -- Player name
-    local NameLabel = Instance.new("TextLabel")
-    NameLabel.Size = UDim2.new(1, -8, 0, 14)
-    NameLabel.Position = UDim2.new(0, 4, 0, rankAbbrev and 4 or 11)
-    NameLabel.BackgroundTransparency = 1
-    NameLabel.Font = Enum.Font.GothamBold
-    NameLabel.TextSize = 9
-    NameLabel.TextColor3 = isAdmin and playerColor or Colors.Text
-    NameLabel.Text = player.Name
-    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-    NameLabel.ZIndex = 3
-    NameLabel.Parent = Button
-    
-    -- Rank badge (if admin)
-    if rankAbbrev then
-        local RankBadge = Instance.new("Frame")
-        RankBadge.Size = UDim2.new(0, 36, 0, 12)
-        RankBadge.Position = UDim2.new(0, 4, 0, 19)
-        RankBadge.BackgroundColor3 = playerColor
-        RankBadge.BackgroundTransparency = 0.85
-        RankBadge.BorderSizePixel = 0
-        RankBadge.ZIndex = 3
-        RankBadge.Parent = Button
-        
-        local BadgeCorner = Instance.new("UICorner")
-        BadgeCorner.CornerRadius = UDim.new(0, 3)
-        BadgeCorner.Parent = RankBadge
-        
-        local BadgeStroke = Instance.new("UIStroke")
-        BadgeStroke.Color = playerColor
-        BadgeStroke.Transparency = 0.3
-        BadgeStroke.Thickness = 1
-        BadgeStroke.Parent = RankBadge
-        
-        local RankLabel = Instance.new("TextLabel")
-        RankLabel.Size = UDim2.new(1, 0, 1, 0)
-        RankLabel.BackgroundTransparency = 1
-        RankLabel.Font = Enum.Font.GothamBold
-        RankLabel.TextSize = 7
-        RankLabel.TextColor3 = playerColor
-        RankLabel.Text = rankAbbrev
-        RankLabel.ZIndex = 4
-        RankLabel.Parent = RankBadge
-    end
-    
-    -- Click to teleport
-    Button.MouseButton1Click:Connect(function()
-        print("[Aegis Teleport] Teleporting to:", player.Name)
-        TeleportToPlayer(player)
-    end)
-    
-    -- Hover effect
-    Button.MouseEnter:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.15), {
-            BackgroundTransparency = isAdmin and 0.7 or 0.15
-        }):Play()
-    end)
-    
-    Button.MouseLeave:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.15), {
-            BackgroundTransparency = isAdmin and 0.85 or 0.3
-        }):Play()
-    end)
-    
-    return Button
-end
-
---[[
-    BUILD GUI
---]]
-
-local PlayerButtons = {}
-local UpdateConnection
-
-local function UpdatePlayerList()
-    -- Clear existing buttons
-    for _, button in pairs(PlayerButtons) do
-        button:Destroy()
-    end
-    PlayerButtons = {}
-    
-    -- Get all players except LocalPlayer
-    local playerList = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            table.insert(playerList, player)
-        end
-    end
-    
-    -- Sort: Admins first (by rank), then regular players alphabetically
-    table.sort(playerList, function(a, b)
-        local aRank = GetPlayerRank(a)
-        local bRank = GetPlayerRank(b)
-        
-        if aRank and bRank then
-            -- Both admins - sort by rank
-            return (rankToIndex[aRank] or 999) < (rankToIndex[bRank] or 999)
-        elseif aRank then
-            -- A is admin, B is not
-            return true
-        elseif bRank then
-            -- B is admin, A is not
-            return false
-        else
-            -- Both regular - sort alphabetically
-            return a.Name < b.Name
-        end
-    end)
-    
-    -- Create buttons
-    for i, player in ipairs(playerList) do
-        local button = CreatePlayerButton(ParentContainer, player, i)
-        PlayerButtons[player] = button
+local function TeleportToPlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myChar = LocalPlayer.Character
+    local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if targetHRP and myHRP then
+        myHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 3, 0)
+        print("[Aegis Teleport] Teleported to:", targetPlayer.Name)
     end
 end
 
+-- Build GUI
 local function BuildGUI()
-    -- Grid layout for 3 columns - directly on ParentContainer
+    -- Grid container
+    local GridContainer = Instance.new("Frame")
+    GridContainer.Size = UDim2.new(1, 0, 1, 0)
+    GridContainer.BackgroundTransparency = 1
+    GridContainer.ZIndex = 5
+    GridContainer.Parent = ParentContainer
+    
     local GridLayout = Instance.new("UIGridLayout")
-    GridLayout.CellSize = UDim2.new(0.32, 0, 0, 35) -- 32% width, 35px height
-    GridLayout.CellPadding = UDim2.new(0, 6, 0, 6) -- 6px gap between cells
-    GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    GridLayout.FillDirection = Enum.FillDirection.Horizontal -- Fill left to right first
-    GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    GridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    GridLayout.Parent = ParentContainer
+    GridLayout.CellSize = UDim2.new(0.32, 0, 0, 28) -- 3 columns: 32% width, 28px height
+    GridLayout.CellPadding = UDim2.new(0, 6, 0, 6)
+    GridLayout.SortOrder = Enum.SortOrder.Name
+    GridLayout.FillDirection = Enum.FillDirection.Horizontal
+    GridLayout.Parent = GridContainer
     
     local Padding = Instance.new("UIPadding")
     Padding.PaddingTop = UDim.new(0, 6)
     Padding.PaddingLeft = UDim.new(0, 6)
     Padding.PaddingRight = UDim.new(0, 6)
     Padding.PaddingBottom = UDim.new(0, 6)
-    Padding.Parent = ParentContainer
+    Padding.Parent = GridContainer
+    
+    -- Update player buttons
+    local function UpdatePlayerButtons()
+        -- Clear existing buttons
+        for _, child in ipairs(GridContainer:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+        
+        -- Get all Aegis players
+        local aegisPlayers = {}
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and IsAegisTeam(plr) then
+                table.insert(aegisPlayers, plr)
+            end
+        end
+        
+        -- Sort: Admins first (by rank), then alphabetically
+        table.sort(aegisPlayers, function(a, b)
+            local aRank, bRank = GetPlayerRank(a), GetPlayerRank(b)
+            if aRank and bRank then
+                return (rankToIndex[aRank] or 999) < (rankToIndex[bRank] or 999)
+            elseif aRank then return true
+            elseif bRank then return false
+            else return a.Name < b.Name end
+        end)
+        
+        -- Create buttons
+        for _, plr in ipairs(aegisPlayers) do
+            local isAdmin = GetPlayerRank(plr) ~= nil
+            local rank = GetPlayerRank(plr)
+            local rankAbbrev = rank and RANK_ABBREV[rank]
+            local playerColor = GetPlayerColor(plr)
+            
+            local btn = Instance.new("TextButton")
+            btn.Name = plr.Name
+            btn.BackgroundColor3 = isAdmin and playerColor or Colors.SurfaceLight
+            btn.BackgroundTransparency = isAdmin and 0.85 or 0
+            btn.BorderSizePixel = 0
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 10
+            btn.TextColor3 = isAdmin and playerColor or Colors.Text
+            btn.Text = rankAbbrev and (plr.Name .. " [" .. rankAbbrev .. "]") or plr.Name
+            btn.TextTruncate = Enum.TextTruncate.AtEnd
+            btn.ZIndex = 6
+            btn.Parent = GridContainer
+            
+            local Corner = Instance.new("UICorner")
+            Corner.CornerRadius = UDim.new(0, 6)
+            Corner.Parent = btn
+            
+            -- Admin stroke
+            if isAdmin then
+                local Stroke = Instance.new("UIStroke")
+                Stroke.Color = playerColor
+                Stroke.Transparency = 0.5
+                Stroke.Thickness = 1.5
+                Stroke.Parent = btn
+            end
+            
+            -- Click handler
+            btn.MouseButton1Click:Connect(function() TeleportToPlayer(plr) end)
+            
+            -- Hover effects
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.15), {
+                    BackgroundTransparency = isAdmin and 0.7 or 0,
+                    BackgroundColor3 = isAdmin and playerColor or Colors.SurfaceLighter
+                }):Play()
+            end)
+            
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.15), {
+                    BackgroundTransparency = isAdmin and 0.85 or 0,
+                    BackgroundColor3 = isAdmin and playerColor or Colors.SurfaceLight
+                }):Play()
+            end)
+        end
+    end
     
     -- Initial update
-    UpdatePlayerList()
+    UpdatePlayerButtons()
     
-    -- Update every 5 seconds
+    -- Auto-update every 5 seconds
     task.spawn(function()
         while ParentContainer and ParentContainer.Parent do
             task.wait(5)
-            UpdatePlayerList()
+            UpdatePlayerButtons()
         end
     end)
+    
+    -- Update on player changes
+    Players.PlayerAdded:Connect(function(plr)
+        plr.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            UpdatePlayerButtons()
+        end)
+    end)
+    
+    Players.PlayerRemoving:Connect(UpdatePlayerButtons)
 end
 
---[[
-    INITIALIZE
---]]
-
+-- Initialize
 BuildGUI()
 
--- Register cleanup function
+-- Cleanup
 local function Cleanup()
-    for _, button in pairs(PlayerButtons) do
-        button:Destroy()
-    end
-    PlayerButtons = {}
-    
     print("[Aegis Teleport] Cleaned up successfully!")
 end
 
--- Register cleanup in global table
 if _G.AegisHub then
     _G.AegisHub.AegisTeleport_Cleanup = Cleanup
 end
 
-print("[Aegis Teleport] Loaded with GUI controls!")
-print("Click any player to teleport on top of them")
-print("Admins highlighted with rank badges!")
+print("[Aegis Teleport] Loaded - 3 columns!")
+print("Aegis players only - Admins show rank in [brackets]")
 
-return {
-    PlayerButtons = PlayerButtons,
-    Cleanup = Cleanup
-}
+return { Cleanup = Cleanup }

@@ -894,8 +894,21 @@ end
 -- ║             AEGIS OPTIONS - TELEPORT TAB                  ║
 -- ╚═══════════════════════════════════════════════════════════╝
 do
-    CreatePlaceholder(AegisSubTabs["Teleport"].Content, "Teleport Module",
-        "Insert your Teleport to Player loadstring here.")
+    -- Load Teleport script to create controls directly in the tab
+    local success, teleportModule = pcall(function()
+        local code = game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/1/Aegis%20Options%20Teleport")
+        print("[CoreX] Teleport code fetched, length:", #code)
+        return loadstring(code)()
+    end)
+    
+    if success and teleportModule then
+        print("[CoreX] Aegis Teleport loaded successfully!")
+    else
+        print("[CoreX] Teleport error:", tostring(teleportModule))
+        CreatePlaceholder(AegisSubTabs["Teleport"].Content, "Teleport Module - Failed to Load",
+            "Error: " .. tostring(teleportModule))
+        warn("[CoreX] Failed to load Aegis Teleport:", teleportModule)
+    end
 end
 
 -- ╔═══════════════════════════════════════════════════════════╗

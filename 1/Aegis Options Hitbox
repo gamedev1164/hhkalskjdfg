@@ -18,11 +18,14 @@ end
 
 -- Settings
 local Settings = {
+    Enabled = false, -- Start disabled
     Mode = "Full Body", -- "Head Only" or "Full Body"
     Size = 5,
-    Transparency = 0.5,
+    Transparency = 0.5, -- Body part transparency
     ShowHighlight = true,
-    HighlightColor = Color3.fromRGB(255, 80, 80) -- Red (different from ESP purple)
+    HighlightColor = Color3.fromRGB(255, 80, 80), -- Red (different from ESP purple)
+    HighlightTransparency = 0.8, -- Fill transparency for highlight
+    OutlineTransparency = 0 -- Outline transparency for highlight
 }
 
 -- Aegis Teams
@@ -119,6 +122,8 @@ local function ResetHitboxes()
 end
 
 local function UpdateHitboxes()
+    if not Settings.Enabled then return end
+    
     -- Get parts list based on mode
     local partsToExpand = Settings.Mode == "Head Only" and HeadOnlyParts or AllBodyParts
     
@@ -144,19 +149,23 @@ local function UpdateHitboxes()
                     part.Transparency = Settings.Transparency
                     part.CanCollide = false
                     
-                    -- Add highlight
+                    -- Add/Update highlight
                     if Settings.ShowHighlight then
                         local key = char.Name .. "_" .. partName
                         if not Highlights[key] or not Highlights[key].Parent then
                             local highlight = Instance.new("Highlight")
                             highlight.Adornee = part
                             highlight.FillColor = Settings.HighlightColor
-                            highlight.FillTransparency = 0.8
+                            highlight.FillTransparency = Settings.HighlightTransparency
                             highlight.OutlineColor = Settings.HighlightColor
-                            highlight.OutlineTransparency = 0
+                            highlight.OutlineTransparency = Settings.OutlineTransparency
                             highlight.DepthMode = Enum.HighlightDepthMode.Occluded
                             highlight.Parent = part
                             Highlights[key] = highlight
+                        else
+                            -- Update existing highlight transparencies
+                            Highlights[key].FillTransparency = Settings.HighlightTransparency
+                            Highlights[key].OutlineTransparency = Settings.OutlineTransparency
                         end
                     end
                 end
@@ -438,6 +447,16 @@ local function BuildGUI()
     Layout.SortOrder = Enum.SortOrder.LayoutOrder
     Layout.Parent = ScrollFrame
     
+    -- Enable Toggle
+    CreateToggle(ScrollFrame, "Enable Hitbox Expander", Settings.Enabled, function(value)
+        Settings.Enabled = value
+        if value then
+            StartUpdateLoop()
+        else
+            StopUpdateLoop()
+        end
+    end)
+    
     -- Mode Selector (Head Only / Full Body)
     CreateModeSelector(ScrollFrame, "Mode", {"Head Only", "Full Body"}, Settings.Mode, function(value)
         Settings.Mode = value
@@ -459,9 +478,37 @@ local function BuildGUI()
         Settings.Size = value
     end)
     
-    -- Transparency Slider
-    CreateSlider(ScrollFrame, "Transparency", 0, 100, Settings.Transparency * 100, function(value)
+    -- Body Part Transparency Slider
+    CreateSlider(ScrollFrame, "Part Trans", 0, 100, Settings.Transparency * 100, function(value)
         Settings.Transparency = value / 100
+        -- Update all existing parts
+        for part, _ in pairs(OriginalSizes) do
+            if part and part.Parent then
+                part.Transparency = Settings.Transparency
+            end
+        end
+    end)
+    
+    -- Highlight Fill Transparency Slider
+    CreateSlider(ScrollFrame, "Fill Trans", 0, 100, Settings.HighlightTransparency * 100, function(value)
+        Settings.HighlightTransparency = value / 100
+        -- Update all existing highlights
+        for _, highlight in pairs(Highlights) do
+            if highlight and highlight.Parent then
+                highlight.FillTransparency = Settings.HighlightTransparency
+            end
+        end
+    end)
+    
+    -- Highlight Outline Transparency Slider
+    CreateSlider(ScrollFrame, "Outline Trans", 0, 100, Settings.OutlineTransparency * 100, function(value)
+        Settings.OutlineTransparency = value / 100
+        -- Update all existing highlights
+        for _, highlight in pairs(Highlights) do
+            if highlight and highlight.Parent then
+                highlight.OutlineTransparency = Settings.OutlineTransparency
+            end
+        end
     end)
 end
 
@@ -470,9 +517,6 @@ end
 --]]
 
 BuildGUI()
-
--- Auto-start the hitbox expander
-StartUpdateLoop()
 
 -- Register cleanup function
 local function Cleanup()
@@ -495,7 +539,7 @@ end
 
 print("[Aegis Hitbox] Loaded with GUI controls!")
 print("Tracking 20 Aegis teams")
-print("Red highlights - Auto-enabled!")
+print("Red highlights - Toggle to enable!")
 print("Mode: " .. Settings.Mode)
 
 return {

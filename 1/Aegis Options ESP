@@ -1,27 +1,37 @@
--- Aegis ESP - Loadstring Version (No GUI)
--- Simple, clean ESP for Aegis teams only
+-- Aegis ESP Module - With GUI Controls
+-- Designed to work inside CoreX GUI
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Default Settings (modify these as needed)
-local SETTINGS = {
+-- Get parent container from CoreX
+local ParentContainer = _G.AegisHub and _G.AegisHub.AegisESP
+
+if not ParentContainer then
+    warn("CoreX GUI not found! Load the main GUI first.")
+    return
+end
+
+-- Settings
+local Settings = {
     ShowName = false,
     ShowDistance = false,
     ShowHealth = false,
     UseHighlight = false,
     TeamColor = Color3.fromRGB(147, 51, 234), -- Purple
     HighlightTransparency = 0.5,
-    TextColor = Color3.fromRGB(147, 51, 234), -- Purple
+    TextColor = Color3.fromRGB(147, 51, 234),
     MaxDistance = 5000
 }
 
--- Aegis Team Names
-local AEGIS_TEAMS = {
+-- Aegis Teams
+local AegisTeams = {
     ["AEGIS Corporation"] = true,
     ["Conference"] = true,
     ["Experiment1"] = true,
@@ -47,13 +57,25 @@ local AEGIS_TEAMS = {
 local ESPObjects = {}
 local UpdateConnection
 
--- Check if player is Aegis team
+-- CoreX Style Colors (matching the main GUI)
+local Colors = {
+    Background = Color3.fromRGB(20, 20, 32),
+    Surface = Color3.fromRGB(24, 24, 36),
+    SurfaceLight = Color3.fromRGB(35, 35, 42),
+    Primary = Color3.fromRGB(147, 51, 234),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextSecondary = Color3.fromRGB(180, 180, 200),
+}
+
+--[[
+    ESP FUNCTIONS
+--]]
+
 local function IsAegisTeam(player)
     if not player.Team then return false end
-    return AEGIS_TEAMS[player.Team.Name] == true
+    return AegisTeams[player.Team.Name] == true
 end
 
--- Create ESP for player
 local function CreateESP(player)
     if player == LocalPlayer then return end
     if not IsAegisTeam(player) then return end
@@ -67,7 +89,7 @@ local function CreateESP(player)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = SETTINGS.TextColor
+    textLabel.TextColor3 = Settings.TextColor
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextSize = 14
     textLabel.Font = Enum.Font.SourceSansBold
@@ -76,11 +98,11 @@ local function CreateESP(player)
     
     local highlight = Instance.new("Highlight")
     highlight.Name = "AegisHighlight"
-    highlight.FillColor = SETTINGS.TeamColor
-    highlight.OutlineColor = SETTINGS.TeamColor
-    highlight.FillTransparency = SETTINGS.HighlightTransparency
-    highlight.OutlineTransparency = SETTINGS.HighlightTransparency
-    highlight.Enabled = SETTINGS.UseHighlight
+    highlight.FillColor = Settings.TeamColor
+    highlight.OutlineColor = Settings.TeamColor
+    highlight.FillTransparency = Settings.HighlightTransparency
+    highlight.OutlineTransparency = Settings.HighlightTransparency
+    highlight.Enabled = Settings.UseHighlight
     
     ESPObjects[player] = {
         Player = player,
@@ -89,21 +111,15 @@ local function CreateESP(player)
         Highlight = highlight
     }
     
-    -- Attach to character when it exists
     local function AttachToCharacter()
         local char = player.Character
         if char then
             local head = char:FindFirstChild("Head")
-            local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-            
             if head then
                 billboard.Adornee = head
                 billboard.Parent = head
             end
-            
-            if humanoidRootPart then
-                highlight.Parent = char
-            end
+            highlight.Parent = char
         end
     end
     
@@ -114,7 +130,6 @@ local function CreateESP(player)
     player.CharacterAdded:Connect(AttachToCharacter)
 end
 
--- Update ESP text
 local function UpdateESP(espObj)
     if not espObj or not espObj.Player then return end
     
@@ -127,34 +142,31 @@ local function UpdateESP(espObj)
     
     if not rootPart then return end
     
-    -- Calculate distance
     local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart)
         and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
         or 0
     
-    -- Hide if too far
-    if distance > SETTINGS.MaxDistance then
+    if distance > Settings.MaxDistance then
         espObj.Billboard.Enabled = false
         espObj.Highlight.Enabled = false
         return
     end
     
     espObj.Billboard.Enabled = true
-    espObj.Highlight.Enabled = SETTINGS.UseHighlight
+    espObj.Highlight.Enabled = Settings.UseHighlight
     
-    -- Build text
     local text = ""
     
-    if SETTINGS.ShowName then
+    if Settings.ShowName then
         text = player.Name
     end
     
-    if SETTINGS.ShowDistance then
+    if Settings.ShowDistance then
         local distText = string.format("[%d]", math.floor(distance))
         text = text == "" and distText or (text .. "\n" .. distText)
     end
     
-    if SETTINGS.ShowHealth and humanoid then
+    if Settings.ShowHealth and humanoid then
         local healthText = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
         text = text == "" and healthText or (text .. "\n" .. healthText)
     end
@@ -162,7 +174,6 @@ local function UpdateESP(espObj)
     espObj.TextLabel.Text = text
 end
 
--- Remove ESP for player
 local function RemoveESP(player)
     local espObj = ESPObjects[player]
     if espObj then
@@ -172,7 +183,6 @@ local function RemoveESP(player)
     end
 end
 
--- Initialize ESP for all players
 local function InitializeESP()
     for _, player in ipairs(Players:GetPlayers()) do
         task.spawn(function()
@@ -197,8 +207,8 @@ local function InitializeESP()
     Players.PlayerRemoving:Connect(RemoveESP)
 end
 
--- Start update loop
 local function StartUpdateLoop()
+    if UpdateConnection then return end
     UpdateConnection = RunService.Heartbeat:Connect(function()
         for _, espObj in pairs(ESPObjects) do
             UpdateESP(espObj)
@@ -206,70 +216,252 @@ local function StartUpdateLoop()
     end)
 end
 
--- Cleanup function
-local function Cleanup()
-    if UpdateConnection then
-        UpdateConnection:Disconnect()
-        UpdateConnection = nil
+--[[
+    COREX-STYLE GUI COMPONENTS
+--]]
+
+local ROW_HEIGHT = 23
+local SLIDER_ROW_HEIGHT = 25
+local CORNER_SMALL = 5
+
+local function CreateToggle(parent, text, defaultValue, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+    row.BackgroundColor3 = Colors.SurfaceLight
+    row.BorderSizePixel = 0
+    row.Parent = parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, CORNER_SMALL)
+    Corner.Parent = row
+    
+    local box = Instance.new("Frame")
+    box.Size = UDim2.new(0, 14, 0, 14)
+    box.Position = UDim2.new(0, 6, 0.5, -7)
+    box.BackgroundColor3 = defaultValue and Colors.Primary or Color3.fromRGB(55, 55, 68)
+    box.BorderSizePixel = 0
+    box.Parent = row
+    
+    local BoxCorner = Instance.new("UICorner")
+    BoxCorner.CornerRadius = UDim.new(0, 4)
+    BoxCorner.Parent = box
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -28, 1, 0)
+    btn.Position = UDim2.new(0, 26, 0, 0)
+    btn.BackgroundTransparency = 1
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 9
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextColor3 = Colors.Text
+    btn.Text = text
+    btn.Parent = row
+    
+    local active = defaultValue
+    
+    local function set(on)
+        active = on
+        box.BackgroundColor3 = on and Colors.Primary or Color3.fromRGB(55, 55, 68)
+        callback(on)
     end
     
-    for player, _ in pairs(ESPObjects) do
-        RemoveESP(player)
-    end
+    btn.MouseButton1Click:Connect(function()
+        set(not active)
+    end)
+    
+    box.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            set(not active)
+        end
+    end)
+    
+    row.MouseEnter:Connect(function()
+        row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    end)
+    
+    row.MouseLeave:Connect(function()
+        row.BackgroundColor3 = Colors.SurfaceLight
+    end)
+    
+    return row
 end
 
--- Start ESP
+local function CreateSlider(parent, text, min, max, default, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, SLIDER_ROW_HEIGHT)
+    row.BackgroundColor3 = Colors.SurfaceLight
+    row.BorderSizePixel = 0
+    row.Parent = parent
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, CORNER_SMALL)
+    Corner.Parent = row
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 70, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 9
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextColor3 = Colors.Text
+    label.Text = text
+    label.Parent = row
+    
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(0, 80, 0, 8)
+    sliderFrame.Position = UDim2.new(0, 80, 0.5, -4)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(55, 55, 68)
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.Parent = row
+    
+    local SliderCorner = Instance.new("UICorner")
+    SliderCorner.CornerRadius = UDim.new(0, 4)
+    SliderCorner.Parent = sliderFrame
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.5, 0, 1, 0)
+    fill.BackgroundColor3 = Colors.Primary
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderFrame
+    
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(0, 4)
+    FillCorner.Parent = fill
+    
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 30, 1, 0)
+    valLabel.Position = UDim2.new(1, -35, 0, 0)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Font = Enum.Font.GothamBold
+    valLabel.TextSize = 9
+    valLabel.TextColor3 = Colors.Primary
+    valLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valLabel.Parent = row
+    
+    local current = default
+    local sliderDragging = false
+    
+    local function updateSlider()
+        local alpha = (current - min) / (max - min)
+        fill.Size = UDim2.new(math.clamp(alpha, 0, 1), 0, 1, 0)
+        valLabel.Text = max <= 1 and string.format("%.2f", current) or tostring(math.floor(current))
+    end
+    
+    local function setSliderFromX(x)
+        local alpha = math.clamp((x - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
+        current = min + (max - min) * alpha
+        updateSlider()
+        callback(current)
+    end
+    
+    sliderFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliderDragging = true
+            setSliderFromX(input.Position.X)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if sliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            setSliderFromX(input.Position.X)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliderDragging = false
+        end
+    end)
+    
+    row.MouseEnter:Connect(function()
+        row.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    end)
+    
+    row.MouseLeave:Connect(function()
+        row.BackgroundColor3 = Colors.SurfaceLight
+    end)
+    
+    updateSlider()
+    return row
+end
+
+--[[
+    BUILD GUI
+--]]
+
+local function BuildGUI()
+    -- Main scroll for controls
+    local ScrollFrame = Instance.new("ScrollingFrame")
+    ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    ScrollFrame.BackgroundTransparency = 1
+    ScrollFrame.BorderSizePixel = 0
+    ScrollFrame.ScrollBarThickness = 3
+    ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 135)
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ScrollFrame.Parent = ParentContainer
+    
+    local Layout = Instance.new("UIListLayout")
+    Layout.Padding = UDim.new(0, 4)
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Parent = ScrollFrame
+    
+    -- Highlight Toggle
+    CreateToggle(ScrollFrame, "Show Highlight", Settings.UseHighlight, function(value)
+        Settings.UseHighlight = value
+        for _, obj in pairs(ESPObjects) do
+            if obj.Highlight then
+                obj.Highlight.Enabled = value
+            end
+        end
+    end)
+    
+    -- Name Toggle
+    CreateToggle(ScrollFrame, "Show Name", Settings.ShowName, function(value)
+        Settings.ShowName = value
+    end)
+    
+    -- Distance Toggle
+    CreateToggle(ScrollFrame, "Show Distance", Settings.ShowDistance, function(value)
+        Settings.ShowDistance = value
+    end)
+    
+    -- Health Toggle
+    CreateToggle(ScrollFrame, "Show Health", Settings.ShowHealth, function(value)
+        Settings.ShowHealth = value
+    end)
+    
+    -- Transparency Slider
+    CreateSlider(ScrollFrame, "Transparency", 0, 100, Settings.HighlightTransparency * 100, function(value)
+        Settings.HighlightTransparency = value / 100
+        for _, obj in pairs(ESPObjects) do
+            if obj.Highlight then
+                obj.Highlight.FillTransparency = Settings.HighlightTransparency
+                obj.Highlight.OutlineTransparency = Settings.HighlightTransparency
+            end
+        end
+    end)
+    
+    -- Max Distance Slider
+    CreateSlider(ScrollFrame, "Max Distance", 100, 10000, Settings.MaxDistance, function(value)
+        Settings.MaxDistance = value
+    end)
+end
+
+--[[
+    INITIALIZE
+--]]
+
 InitializeESP()
 StartUpdateLoop()
+BuildGUI()
 
-print("[Aegis ESP] Loaded successfully!")
-print("Tracking 20 Aegis teams with purple highlights")
-
--- Global cleanup function
-_G.AegisESP_Cleanup = Cleanup
+print("[Aegis ESP] Loaded with GUI controls!")
+print("Tracking 20 Aegis teams")
+print("All features disabled by default - enable what you need!")
 
 return {
-    Cleanup = Cleanup,
-    SetColor = function(color)
-        SETTINGS.TeamColor = color
-        SETTINGS.TextColor = color
-        for _, obj in pairs(ESPObjects) do
-            if obj.Highlight then
-                obj.Highlight.FillColor = color
-                obj.Highlight.OutlineColor = color
-            end
-            if obj.TextLabel then
-                obj.TextLabel.TextColor3 = color
-            end
-        end
-    end,
-    SetTransparency = function(value)
-        SETTINGS.HighlightTransparency = value
-        for _, obj in pairs(ESPObjects) do
-            if obj.Highlight then
-                obj.Highlight.FillTransparency = value
-                obj.Highlight.OutlineTransparency = value
-            end
-        end
-    end,
-    ToggleHighlight = function(enabled)
-        SETTINGS.UseHighlight = enabled
-        for _, obj in pairs(ESPObjects) do
-            if obj.Highlight then
-                obj.Highlight.Enabled = enabled
-            end
-        end
-    end,
-    ToggleName = function(enabled)
-        SETTINGS.ShowName = enabled
-    end,
-    ToggleDistance = function(enabled)
-        SETTINGS.ShowDistance = enabled
-    end,
-    ToggleHealth = function(enabled)
-        SETTINGS.ShowHealth = enabled
-    end,
-    SetMaxDistance = function(dist)
-        SETTINGS.MaxDistance = dist
-    end
+    Settings = Settings,
+    ESPObjects = ESPObjects
 }

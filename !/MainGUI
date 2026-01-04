@@ -741,6 +741,72 @@ CurrentPage = "Aegis Options"
 
 --[[
     ═══════════════════════════════════════════════════════════
+    GLOBAL ACCESS (Setup BEFORE loadstrings!)
+    ═══════════════════════════════════════════════════════════
+--]]
+
+_G.AegisHub = {
+    -- Aegis Sub-Tabs
+    AegisESP = AegisSubTabs["ESP"].Content,
+    AegisHitbox = AegisSubTabs["Hitbox"].Content,
+    AegisTeleport = AegisSubTabs["Teleport"].Content,
+    AegisSpectate = AegisSubTabs["Spectate"].Content,
+    
+    -- Wastelander Sub-Tabs
+    WastelanderESP = WastelanderSubTabs["ESP"].Content,
+    WastelanderHitbox = WastelanderSubTabs["Hitbox"].Content,
+    WastelanderTeleport = WastelanderSubTabs["Teleport"].Content,
+    WastelanderSpectate = WastelanderSubTabs["Spectate"].Content,
+    
+    -- Main Pages
+    PlayerModPage = PlayerModPage,
+    WorldModPage = WorldModPage,
+    AutoCollectPage = AutoCollectPage,
+    TeleportsPage = TeleportsPage,
+    TrollingPage = TrollingPage,
+    UtilityPage = UtilityPage,
+    
+    -- GUI Elements
+    MainFrame = MainFrame,
+    ScreenGui = ScreenGui,
+    
+    -- Toggle Function (Minimize/Expand)
+    Toggle = function()
+        isMinimized = not isMinimized
+        
+        if isMinimized then
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = minimizedSize
+            }):Play()
+            Sidebar.Visible = false
+            ContentArea.Visible = false
+            Divider.Visible = false
+            TitleFix.Visible = false
+        else
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = originalSize
+            }):Play()
+            Sidebar.Visible = true
+            ContentArea.Visible = true
+            Divider.Visible = true
+            TitleFix.Visible = true
+        end
+    end,
+    
+    -- Close Function (Destroy GUI)
+    Close = function()
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0)
+        }):Play()
+        task.wait(0.3)
+        ScreenGui:Destroy()
+        _G.AegisHub = nil
+        print("[CoreX] GUI closed and destroyed")
+    end
+}
+
+--[[
+    ═══════════════════════════════════════════════════════════
     LOADSTRING INSERTION POINTS
     ═══════════════════════════════════════════════════════════
 --]]
@@ -941,71 +1007,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
---[[
-    ═══════════════════════════════════════════════════════════
-    GLOBAL ACCESS
-    ═══════════════════════════════════════════════════════════
---]]
-
-_G.AegisHub = {
-    -- Aegis Sub-Tabs
-    AegisESP = AegisSubTabs["ESP"].Content,
-    AegisHitbox = AegisSubTabs["Hitbox"].Content,
-    AegisTeleport = AegisSubTabs["Teleport"].Content,
-    AegisSpectate = AegisSubTabs["Spectate"].Content,
-    
-    -- Wastelander Sub-Tabs
-    WastelanderESP = WastelanderSubTabs["ESP"].Content,
-    WastelanderHitbox = WastelanderSubTabs["Hitbox"].Content,
-    WastelanderTeleport = WastelanderSubTabs["Teleport"].Content,
-    WastelanderSpectate = WastelanderSubTabs["Spectate"].Content,
-    
-    -- Main Pages
-    PlayerModPage = PlayerModPage,
-    WorldModPage = WorldModPage,
-    AutoCollectPage = AutoCollectPage,
-    TeleportsPage = TeleportsPage,
-    TrollingPage = TrollingPage,
-    UtilityPage = UtilityPage,
-    
-    -- GUI Elements
-    MainFrame = MainFrame,
-    ScreenGui = ScreenGui,
-    
-    -- Toggle Function (Minimize/Expand)
-    Toggle = function()
-        isMinimized = not isMinimized
-        
-        if isMinimized then
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = minimizedSize
-            }):Play()
-            Sidebar.Visible = false
-            ContentArea.Visible = false
-            Divider.Visible = false
-            TitleFix.Visible = false
-        else
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = originalSize
-            }):Play()
-            Sidebar.Visible = true
-            ContentArea.Visible = true
-            Divider.Visible = true
-            TitleFix.Visible = true
-        end
-    end,
-    
-    -- Close Function (Destroy GUI)
-    Close = function()
-        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 0, 0, 0)
-        }):Play()
-        task.wait(0.3)
-        ScreenGui:Destroy()
-        _G.AegisHub = nil
-        print("[CoreX] GUI closed and destroyed")
-    end
-}
 
 print("═══════════════════════════════════════════════════")
 print("COREX - LOADED SUCCESSFULLY")

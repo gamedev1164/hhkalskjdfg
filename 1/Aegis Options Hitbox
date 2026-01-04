@@ -24,8 +24,7 @@ local Settings = {
     Transparency = 0.5, -- Body part transparency
     ShowHighlight = true,
     HighlightColor = Color3.fromRGB(255, 80, 80), -- Red (different from ESP purple)
-    HighlightTransparency = 0.8, -- Fill transparency for highlight
-    OutlineTransparency = 0 -- Outline transparency for highlight
+    HighlightTransparency = 0.5 -- Both fill and outline transparency (combined)
 }
 
 -- Aegis Teams
@@ -158,14 +157,14 @@ local function UpdateHitboxes()
                             highlight.FillColor = Settings.HighlightColor
                             highlight.FillTransparency = Settings.HighlightTransparency
                             highlight.OutlineColor = Settings.HighlightColor
-                            highlight.OutlineTransparency = Settings.OutlineTransparency
+                            highlight.OutlineTransparency = Settings.HighlightTransparency
                             highlight.DepthMode = Enum.HighlightDepthMode.Occluded
                             highlight.Parent = part
                             Highlights[key] = highlight
                         else
-                            -- Update existing highlight transparencies
+                            -- Update existing highlight transparency (both fill and outline)
                             Highlights[key].FillTransparency = Settings.HighlightTransparency
-                            Highlights[key].OutlineTransparency = Settings.OutlineTransparency
+                            Highlights[key].OutlineTransparency = Settings.HighlightTransparency
                         end
                     end
                 end
@@ -458,7 +457,7 @@ local function BuildGUI()
     end)
     
     -- Mode Selector (Head Only / Full Body)
-    CreateModeSelector(ScrollFrame, "Mode", {"Head Only", "Full Body"}, Settings.Mode, function(value)
+    CreateModeSelector(ScrollFrame, "Expansion Mode", {"Head Only", "Full Body"}, Settings.Mode, function(value)
         Settings.Mode = value
         -- Clear existing highlights when switching modes
         ClearHighlights()
@@ -479,7 +478,7 @@ local function BuildGUI()
     end)
     
     -- Body Part Transparency Slider
-    CreateSlider(ScrollFrame, "Part Trans", 0, 100, Settings.Transparency * 100, function(value)
+    CreateSlider(ScrollFrame, "Part Transparency", 0, 100, Settings.Transparency * 100, function(value)
         Settings.Transparency = value / 100
         -- Update all existing parts
         for part, _ in pairs(OriginalSizes) do
@@ -489,24 +488,14 @@ local function BuildGUI()
         end
     end)
     
-    -- Highlight Fill Transparency Slider
-    CreateSlider(ScrollFrame, "Fill Trans", 0, 100, Settings.HighlightTransparency * 100, function(value)
+    -- Highlight Transparency Slider (controls both fill and outline)
+    CreateSlider(ScrollFrame, "Highlight Transparency", 0, 100, Settings.HighlightTransparency * 100, function(value)
         Settings.HighlightTransparency = value / 100
-        -- Update all existing highlights
+        -- Update all existing highlights (both fill and outline)
         for _, highlight in pairs(Highlights) do
             if highlight and highlight.Parent then
                 highlight.FillTransparency = Settings.HighlightTransparency
-            end
-        end
-    end)
-    
-    -- Highlight Outline Transparency Slider
-    CreateSlider(ScrollFrame, "Outline Trans", 0, 100, Settings.OutlineTransparency * 100, function(value)
-        Settings.OutlineTransparency = value / 100
-        -- Update all existing highlights
-        for _, highlight in pairs(Highlights) do
-            if highlight and highlight.Parent then
-                highlight.OutlineTransparency = Settings.OutlineTransparency
+                highlight.OutlineTransparency = Settings.HighlightTransparency
             end
         end
     end)

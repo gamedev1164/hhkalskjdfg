@@ -1,1 +1,207 @@
+-- MODULE 2: Resource Mining System
+-- This module handles resource collection from Fedorlite after pickaxe is obtained
 
+local Module2 = {}
+
+-- Services
+local Players = game:GetService("Players")
+
+-- Configuration
+Module2.Config = {
+    FEDORLITE_NAME = "Fedorlite",
+    RESOURCE_NAME = "Resource",
+    HOLD_DURATION = 0.5,
+    RETRY_DELAY = 0.1
+}
+
+-- Initialize player references
+function Module2:Init()
+    self.player = Players.LocalPlayer
+    self.character = self.player.Character or self.player.CharacterAdded:Wait()
+    self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+    
+    -- Handle character respawn
+    self.player.CharacterAdded:Connect(function(newCharacter)
+        self.character = newCharacter
+        self.humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    end)
+    
+    print("[Module 2] Initialized - Resource Mining System")
+end
+
+-- Check if player has pickaxe
+function Module2:HasPickaxe()
+    local backpack = self.player:WaitForChild("Backpack")
+    local characterTools = self.character:GetChildren()
+    
+    -- Check backpack
+    if backpack:FindFirstChild("Pickaxe") then
+        return true
+    end
+    
+    -- Check equipped tools
+    for _, item in pairs(characterTools) do
+        if item:IsA("Tool") and item.Name == "Pickaxe" then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Find all Fedorlite models in workspace
+function Module2:FindFedorliteModels()
+    local fedorlites = {}
+    local workspace = game:GetService("Workspace")
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name == self.Config.FEDORLITE_NAME then
+            table.insert(fedorlites, obj)
+        end
+    end
+    
+    print("[Module 2] Found " .. #fedorlites .. " Fedorlite models")
+    return fedorlites
+end
+
+-- Find Resource objects within a Fedorlite model
+function Module2:FindResourcesInFedorlite(fedorliteModel)
+    local resources = {}
+    
+    for _, obj in pairs(fedorliteModel:GetDescendants()) do
+        if obj.Name == self.Config.RESOURCE_NAME then
+            table.insert(resources, obj)
+        end
+    end
+    
+    return resources
+end
+
+-- Mine a single resource
+function Module2:MineResource(resourceObject)
+    -- Check if resource is already mined (transparency = 1)
+    if resourceObject:IsA("BasePart") and resourceObject.Transparency >= 1 then
+        print("[Module 2] Resource already mined (transparent)")
+        return true
+    end
+    
+    -- Find the actual part if resourceObject is a model
+    local resourcePart = resourceObject:IsA("BasePart") and resourceObject or resourceObject:FindFirstChildWhichIsA("BasePart", true)
+    
+    if not resourcePart then
+        print("[Module 2] No BasePart found in resource")
+        return false
+    end
+    
+    -- Check transparency again on the part
+    if resourcePart.Transparency >= 1 then
+        print("[Module 2] Resource already mined (transparent)")
+        return true
+    end
+    
+    -- Find ProximityPrompt
+    local proximityPrompt = resourceObject:FindFirstChildOfClass("ProximityPrompt", true)
+    
+    if not proximityPrompt then
+        print("[Module 2] No ProximityPrompt found in " .. resourceObject.Name)
+        return false
+    end
+    
+    -- Teleport to resource
+    local resourcePosition = resourcePart.Position
+    self.humanoidRootPart.CFrame = CFrame.new(resourcePosition)
+    wait(0.05)
+    
+    -- Set up transparency monitoring
+    local mined = false
+    local connection
+    
+    connection = resourcePart:GetPropertyChangedSignal("Transparency"):Connect(function()
+        if resourcePart.Transparency >= 1 then
+            mined = true
+            connection:Disconnect()
+        end
+    end)
+    
+    -- Keep attempting to mine
+    local startTime = tick()
+    while not mined do
+        -- Fire proximity prompt
+        task.spawn(function()
+            fireproximityprompt(proximityPrompt, self.Config.HOLD_DURATION)
+        end)
+        
+        -- Wait and check
+        wait(self.Config.HOLD_DURATION + 0.1)
+        
+        if resourcePart.Transparency >= 1 then
+            mined = true
+            break
+        end
+        
+        -- Retry delay
+        wait(self.Config.RETRY_DELAY)
+        
+        print("[Module 2] Retrying resource mining...")
+    end
+    
+    connection:Disconnect()
+    print("[Module 2] Successfully mined resource!")
+    return true
+end
+
+-- Mine all resources in all Fedorlite models
+function Module2:MineAllResources()
+    local fedorlites = self:FindFedorliteModels()
+    
+    if #fedorlites == 0 then
+        print("[Module 2] No Fedorlite models found!")
+        return false
+    end
+    
+    for _, fedorlite in ipairs(fedorlites) do
+        local resources = self:FindResourcesInFedorlite(fedorlite)
+        print("[Module 2] Found " .. #resources .. " resources in " .. fedorlite.Name)
+        
+        for _, resource in ipairs(resources) do
+            -- Update character reference
+            self.character = self.player.Character or self.player.CharacterAdded:Wait()
+            self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+            
+            self:MineResource(resource)
+            task.wait()
+        end
+    end
+    
+    print("[Module 2] All resources mined!")
+    return true
+end
+
+-- Main execution loop
+function Module2:Run()
+    print("[Module 2] Starting resource mining...")
+    
+    -- Wait for pickaxe
+    while not self:HasPickaxe() do
+        print("[Module 2] Waiting for pickaxe...")
+        wait(1)
+    end
+    
+    print("[Module 2] Pickaxe detected! Starting mining operation...")
+    
+    -- Mine all resources
+    while true do
+        task.wait()
+        
+        -- Update character reference
+        self.character = self.player.Character or self.player.CharacterAdded:Wait()
+        self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+        
+        self:MineAllResources()
+        
+        print("[Module 2] Mining cycle complete. Waiting before next cycle...")
+        wait(5) -- Wait before checking for new resources
+    end
+end
+
+return Module2

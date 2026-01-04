@@ -236,9 +236,6 @@ local PlayerButtons = {}
 local UpdateConnection
 
 local function UpdatePlayerList()
-    local scrollFrame = ParentContainer._ScrollFrame
-    if not scrollFrame then return end
-    
     -- Clear existing buttons
     for _, button in pairs(PlayerButtons) do
         button:Destroy()
@@ -275,29 +272,13 @@ local function UpdatePlayerList()
     
     -- Create buttons
     for i, player in ipairs(playerList) do
-        local button = CreatePlayerButton(scrollFrame, player, i)
+        local button = CreatePlayerButton(ParentContainer, player, i)
         PlayerButtons[player] = button
     end
 end
 
 local function BuildGUI()
-    -- Make parent scrollable
-    ParentContainer.ClipsDescendants = true
-    
-    -- Create ScrollingFrame for player list
-    local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
-    ScrollFrame.BackgroundTransparency = 1
-    ScrollFrame.BorderSizePixel = 0
-    ScrollFrame.ScrollBarThickness = 3
-    ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 135)
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    ScrollFrame.Active = true
-    ScrollFrame.ZIndex = 1
-    ScrollFrame.Parent = ParentContainer
-    
-    -- Grid layout for 3 columns
+    -- Grid layout for 3 columns - directly on ParentContainer
     local GridLayout = Instance.new("UIGridLayout")
     GridLayout.CellSize = UDim2.new(0.333, -6, 0, 35)
     GridLayout.CellPadding = UDim2.new(0, 4, 0, 4)
@@ -305,17 +286,14 @@ local function BuildGUI()
     GridLayout.FillDirection = Enum.FillDirection.Horizontal
     GridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     GridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    GridLayout.Parent = ScrollFrame
+    GridLayout.Parent = ParentContainer
     
     local Padding = Instance.new("UIPadding")
     Padding.PaddingTop = UDim.new(0, 4)
     Padding.PaddingLeft = UDim.new(0, 4)
     Padding.PaddingRight = UDim.new(0, 4)
     Padding.PaddingBottom = UDim.new(0, 4)
-    Padding.Parent = ScrollFrame
-    
-    -- Store ScrollFrame reference for updates
-    ParentContainer._ScrollFrame = ScrollFrame
+    Padding.Parent = ParentContainer
     
     -- Initial update
     UpdatePlayerList()
@@ -341,11 +319,6 @@ local function Cleanup()
         button:Destroy()
     end
     PlayerButtons = {}
-    
-    if ParentContainer._ScrollFrame then
-        ParentContainer._ScrollFrame:Destroy()
-        ParentContainer._ScrollFrame = nil
-    end
     
     print("[Aegis Teleport] Cleaned up successfully!")
 end

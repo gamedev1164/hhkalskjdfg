@@ -749,8 +749,20 @@ CurrentPage = "Aegis Options"
 -- ║                AEGIS OPTIONS - ESP TAB                    ║
 -- ╚═══════════════════════════════════════════════════════════╝
 do
-    CreatePlaceholder(AegisSubTabs["ESP"].Content, "ESP Module",
-        "Insert your ESP loadstring here to track Aegis team members.")
+    -- Load ESP script to create controls directly in the tab
+    local success, espModule = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/1/Aegis%20Options%20ESP"))()
+    end)
+    
+    if success and espModule then
+        -- The ESP module should have created its controls in the tab
+        print("[CoreX] Aegis ESP loaded successfully!")
+    else
+        -- If loading failed, show error placeholder
+        CreatePlaceholder(AegisSubTabs["ESP"].Content, "ESP Module - Failed to Load",
+            "Error loading ESP from GitHub. Check console for details.")
+        warn("[CoreX] Failed to load Aegis ESP:", espModule)
+    end
 end
 
 -- ╔═══════════════════════════════════════════════════════════╗

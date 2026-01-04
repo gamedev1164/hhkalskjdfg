@@ -1,1 +1,212 @@
+-- MODULE 1: Money and Pickaxe Auto-Purchase System (STANDALONE)
+-- This module handles money collection and pickaxe purchasing
 
+local Module1 = {}
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Configuration
+Module1.Config = {
+    PICKAXE_COST = 25,
+    PICKAXE_TELEPORT = Vector3.new(-240, 13, -839),
+    SCRAP_COLLECTION_TIMEOUT = 5, -- Increased to allow multiple 0.5s retries
+    SCRAP_NAME = "Scrap_Generate_ERROR"
+}
+
+-- Initialize player references
+function Module1:Init()
+    self.player = Players.LocalPlayer
+    self.character = self.player.Character or self.player.CharacterAdded:Wait()
+    self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+    
+    -- Handle character respawn
+    self.player.CharacterAdded:Connect(function(newCharacter)
+        self.character = newCharacter
+        self.humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    end)
+    
+    print("[Module 1] Initialized - Money and Pickaxe System")
+end
+
+-- Check if player has pickaxe in inventory
+function Module1:HasPickaxe()
+    local backpack = self.player:WaitForChild("Backpack")
+    local characterTools = self.character:GetChildren()
+    
+    -- Check backpack
+    if backpack:FindFirstChild("Pickaxe") then
+        return true
+    end
+    
+    -- Check equipped tools
+    for _, item in pairs(characterTools) do
+        if item:IsA("Tool") and item.Name == "Pickaxe" then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Get player's current money
+function Module1:GetPlayerMoney()
+    local moneyValue = self.player:WaitForChild("stats"):WaitForChild("Money")
+    return moneyValue.Value
+end
+
+-- Purchase pickaxe from merchant
+function Module1:PurchasePickaxe()
+    print("[Module 1] Attempting to purchase Pickaxe...")
+    
+    -- Teleport to purchase location
+    self.humanoidRootPart.CFrame = CFrame.new(self.Config.PICKAXE_TELEPORT)
+    wait(0.1)
+    
+    -- Execute purchase
+    local args = {
+        "Pickaxe",
+        "LINKON_CS"
+    }
+    ReplicatedStorage:WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
+    
+    wait(0.3)
+    print("[Module 1] Purchase command sent")
+end
+
+-- Find all scrap generators in workspace
+function Module1:FindScrapGenerators()
+    local scraps = {}
+    local workspace = game:GetService("Workspace")
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == self.Config.SCRAP_NAME then
+            table.insert(scraps, obj)
+        end
+    end
+    
+    print("[Module 1] Found " .. #scraps .. " scrap generators")
+    return scraps
+end
+
+-- Collect from a single scrap generator
+function Module1:CollectFromScrap(scrapObject)
+    -- Find ProximityPrompt
+    local proximityPrompt = scrapObject:FindFirstChildOfClass("ProximityPrompt", true)
+    
+    if not proximityPrompt then
+        print("[Module 1] No ProximityPrompt found in " .. scrapObject.Name)
+        return false
+    end
+    
+    -- Check if already disabled
+    if not proximityPrompt.Enabled then
+        print("[Module 1] Prompt already disabled, skipping")
+        return false
+    end
+    
+    -- Teleport to scrap once
+    local scrapPosition = scrapObject:IsA("BasePart") and scrapObject.Position or scrapObject:FindFirstChildWhichIsA("BasePart", true).Position
+    self.humanoidRootPart.CFrame = CFrame.new(scrapPosition)
+    wait(0.1)
+    
+    -- Modify HoldDuration
+    local originalHoldDuration = proximityPrompt.HoldDuration
+    proximityPrompt.HoldDuration = 0
+    
+    print("[Module 1] Starting scrap collection, will retry every 0.5s...")
+    
+    -- Keep retrying until prompt is disabled
+    while proximityPrompt.Enabled do
+        -- Fire proximity prompt
+        fireproximityprompt(proximityPrompt)
+        print("[Module 1] Holding E on scrap...")
+        
+        -- Wait 0.5 seconds
+        wait(0.5)
+        
+        -- Check if prompt is disabled after 0.2 seconds
+        wait(0.2)
+        
+        if not proximityPrompt.Enabled then
+            print("[Module 1] Successfully collected from scrap!")
+            proximityPrompt.HoldDuration = originalHoldDuration
+            return true
+        end
+        
+        print("[Module 1] Prompt still enabled, retrying...")
+    end
+    
+    -- Should not reach here, but just in case
+    proximityPrompt.HoldDuration = originalHoldDuration
+    return true
+end
+
+-- Main execution loop
+function Module1:Run()
+    while true do
+        task.wait()
+        
+        -- Update character reference
+        self.character = self.player.Character or self.player.CharacterAdded:Wait()
+        self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+        
+        -- Check if player already has pickaxe
+        if self:HasPickaxe() then
+            print("[Module 1] Player has Pickaxe! Module 1 complete.")
+            return true -- Signal completion
+        end
+        
+        -- Get current money
+        local currentMoney = self:GetPlayerMoney()
+        print("[Module 1] Current Money: " .. currentMoney)
+        
+        -- Check if player can afford pickaxe
+        if currentMoney >= self.Config.PICKAXE_COST then
+            self:PurchasePickaxe()
+            
+            -- Wait and check if pickaxe was acquired
+            wait(0.2)
+            if self:HasPickaxe() then
+                print("[Module 1] Pickaxe successfully purchased!")
+                return true -- Signal completion
+            else
+                print("[Module 1] Purchase may have failed, retrying...")
+            end
+        else
+            print("[Module 1] Not enough money (" .. currentMoney .. "/" .. self.Config.PICKAXE_COST .. "), collecting scraps...")
+            
+            -- Find all scrap generators
+            local scraps = self:FindScrapGenerators()
+            
+            if #scraps == 0 then
+                print("[Module 1] No scrap generators found!")
+                wait(2)
+            else
+                -- Attempt to collect from each scrap
+                for i, scrap in ipairs(scraps) do
+                    self:CollectFromScrap(scrap)
+                    task.wait()
+                    
+                    -- Check money again after each collection
+                    if self:GetPlayerMoney() >= self.Config.PICKAXE_COST then
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- STANDALONE EXECUTION - Runs automatically
+print("========================================")
+print("MODULE 1: Money and Pickaxe System")
+print("========================================")
+
+Module1:Init()
+Module1:Run()
+
+print("========================================")
+print("MODULE 1: COMPLETE!")
+print("========================================")

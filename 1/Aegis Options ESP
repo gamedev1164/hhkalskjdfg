@@ -1,1 +1,275 @@
+-- Aegis ESP - Loadstring Version (No GUI)
+-- Simple, clean ESP for Aegis teams only
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Default Settings (modify these as needed)
+local SETTINGS = {
+    ShowName = false,
+    ShowDistance = false,
+    ShowHealth = false,
+    UseHighlight = false,
+    TeamColor = Color3.fromRGB(147, 51, 234), -- Purple
+    HighlightTransparency = 0.5,
+    TextColor = Color3.fromRGB(147, 51, 234), -- Purple
+    MaxDistance = 5000
+}
+
+-- Aegis Team Names
+local AEGIS_TEAMS = {
+    ["AEGIS Corporation"] = true,
+    ["Conference"] = true,
+    ["Experiment1"] = true,
+    ["Experiment2"] = true,
+    ["Insurrectionist"] = true,
+    ["Interrogation"] = true,
+    ["Interview1"] = true,
+    ["Interview2"] = true,
+    ["Lesson1"] = true,
+    ["Lesson2"] = true,
+    ["Patrol1"] = true,
+    ["Patrol2"] = true,
+    ["Patrol3"] = true,
+    ["Patrol4"] = true,
+    ["Rally"] = true,
+    ["Sewer Dweller"] = true,
+    ["The Chairman"] = true,
+    ["Training"] = true,
+    ["Tryout"] = true,
+    ["Voided"] = true
+}
+
+local ESPObjects = {}
+local UpdateConnection
+
+-- Check if player is Aegis team
+local function IsAegisTeam(player)
+    if not player.Team then return false end
+    return AEGIS_TEAMS[player.Team.Name] == true
+end
+
+-- Create ESP for player
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    if not IsAegisTeam(player) then return end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "AegisESP"
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 200, 0, 100)
+    billboard.StudsOffset = Vector3.new(0, -4, 0)
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = SETTINGS.TextColor
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextSize = 14
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Parent = billboard
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "AegisHighlight"
+    highlight.FillColor = SETTINGS.TeamColor
+    highlight.OutlineColor = SETTINGS.TeamColor
+    highlight.FillTransparency = SETTINGS.HighlightTransparency
+    highlight.OutlineTransparency = SETTINGS.HighlightTransparency
+    highlight.Enabled = SETTINGS.UseHighlight
+    
+    ESPObjects[player] = {
+        Player = player,
+        Billboard = billboard,
+        TextLabel = textLabel,
+        Highlight = highlight
+    }
+    
+    -- Attach to character when it exists
+    local function AttachToCharacter()
+        local char = player.Character
+        if char then
+            local head = char:FindFirstChild("Head")
+            local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+            
+            if head then
+                billboard.Adornee = head
+                billboard.Parent = head
+            end
+            
+            if humanoidRootPart then
+                highlight.Parent = char
+            end
+        end
+    end
+    
+    if player.Character then
+        AttachToCharacter()
+    end
+    
+    player.CharacterAdded:Connect(AttachToCharacter)
+end
+
+-- Update ESP text
+local function UpdateESP(espObj)
+    if not espObj or not espObj.Player then return end
+    
+    local player = espObj.Player
+    local char = player.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChild("Humanoid")
+    local rootPart = char:FindFirstChild("HumanoidRootPart")
+    
+    if not rootPart then return end
+    
+    -- Calculate distance
+    local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart)
+        and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        or 0
+    
+    -- Hide if too far
+    if distance > SETTINGS.MaxDistance then
+        espObj.Billboard.Enabled = false
+        espObj.Highlight.Enabled = false
+        return
+    end
+    
+    espObj.Billboard.Enabled = true
+    espObj.Highlight.Enabled = SETTINGS.UseHighlight
+    
+    -- Build text
+    local text = ""
+    
+    if SETTINGS.ShowName then
+        text = player.Name
+    end
+    
+    if SETTINGS.ShowDistance then
+        local distText = string.format("[%d]", math.floor(distance))
+        text = text == "" and distText or (text .. "\n" .. distText)
+    end
+    
+    if SETTINGS.ShowHealth and humanoid then
+        local healthText = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+        text = text == "" and healthText or (text .. "\n" .. healthText)
+    end
+    
+    espObj.TextLabel.Text = text
+end
+
+-- Remove ESP for player
+local function RemoveESP(player)
+    local espObj = ESPObjects[player]
+    if espObj then
+        if espObj.Billboard then espObj.Billboard:Destroy() end
+        if espObj.Highlight then espObj.Highlight:Destroy() end
+        ESPObjects[player] = nil
+    end
+end
+
+-- Initialize ESP for all players
+local function InitializeESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        task.spawn(function()
+            if player.Character then
+                CreateESP(player)
+            end
+            player.CharacterAdded:Connect(function()
+                task.wait(0.1)
+                RemoveESP(player)
+                CreateESP(player)
+            end)
+        end)
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.1)
+            CreateESP(player)
+        end)
+    end)
+    
+    Players.PlayerRemoving:Connect(RemoveESP)
+end
+
+-- Start update loop
+local function StartUpdateLoop()
+    UpdateConnection = RunService.Heartbeat:Connect(function()
+        for _, espObj in pairs(ESPObjects) do
+            UpdateESP(espObj)
+        end
+    end)
+end
+
+-- Cleanup function
+local function Cleanup()
+    if UpdateConnection then
+        UpdateConnection:Disconnect()
+        UpdateConnection = nil
+    end
+    
+    for player, _ in pairs(ESPObjects) do
+        RemoveESP(player)
+    end
+end
+
+-- Start ESP
+InitializeESP()
+StartUpdateLoop()
+
+print("[Aegis ESP] Loaded successfully!")
+print("Tracking 20 Aegis teams with purple highlights")
+
+-- Global cleanup function
+_G.AegisESP_Cleanup = Cleanup
+
+return {
+    Cleanup = Cleanup,
+    SetColor = function(color)
+        SETTINGS.TeamColor = color
+        SETTINGS.TextColor = color
+        for _, obj in pairs(ESPObjects) do
+            if obj.Highlight then
+                obj.Highlight.FillColor = color
+                obj.Highlight.OutlineColor = color
+            end
+            if obj.TextLabel then
+                obj.TextLabel.TextColor3 = color
+            end
+        end
+    end,
+    SetTransparency = function(value)
+        SETTINGS.HighlightTransparency = value
+        for _, obj in pairs(ESPObjects) do
+            if obj.Highlight then
+                obj.Highlight.FillTransparency = value
+                obj.Highlight.OutlineTransparency = value
+            end
+        end
+    end,
+    ToggleHighlight = function(enabled)
+        SETTINGS.UseHighlight = enabled
+        for _, obj in pairs(ESPObjects) do
+            if obj.Highlight then
+                obj.Highlight.Enabled = enabled
+            end
+        end
+    end,
+    ToggleName = function(enabled)
+        SETTINGS.ShowName = enabled
+    end,
+    ToggleDistance = function(enabled)
+        SETTINGS.ShowDistance = enabled
+    end,
+    ToggleHealth = function(enabled)
+        SETTINGS.ShowHealth = enabled
+    end,
+    SetMaxDistance = function(dist)
+        SETTINGS.MaxDistance = dist
+    end
+}

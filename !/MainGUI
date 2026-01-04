@@ -294,8 +294,47 @@ MinimizeButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Close functionality - completely destroy everything
+-- Close functionality - Reset everything and destroy
 CloseButton.MouseButton1Click:Connect(function()
+    print("[CoreX] Closing and resetting all features...")
+    
+    -- Call cleanup functions from loaded modules
+    -- These will be set by the modules when they load
+    if _G.AegisHub then
+        -- ESP Cleanup
+        if _G.AegisHub.AegisESP_Cleanup then
+            pcall(_G.AegisHub.AegisESP_Cleanup)
+        end
+        if _G.AegisHub.WastelanderESP_Cleanup then
+            pcall(_G.AegisHub.WastelanderESP_Cleanup)
+        end
+        
+        -- Hitbox Cleanup
+        if _G.AegisHub.AegisHitbox_Cleanup then
+            pcall(_G.AegisHub.AegisHitbox_Cleanup)
+        end
+        if _G.AegisHub.WastelanderHitbox_Cleanup then
+            pcall(_G.AegisHub.WastelanderHitbox_Cleanup)
+        end
+        
+        -- Teleport Cleanup
+        if _G.AegisHub.AegisTeleport_Cleanup then
+            pcall(_G.AegisHub.AegisTeleport_Cleanup)
+        end
+        if _G.AegisHub.WastelanderTeleport_Cleanup then
+            pcall(_G.AegisHub.WastelanderTeleport_Cleanup)
+        end
+        
+        -- Spectate Cleanup
+        if _G.AegisHub.AegisSpectate_Cleanup then
+            pcall(_G.AegisHub.AegisSpectate_Cleanup)
+        end
+        if _G.AegisHub.WastelanderSpectate_Cleanup then
+            pcall(_G.AegisHub.WastelanderSpectate_Cleanup)
+        end
+    end
+    
+    -- Animate close
     TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
         Size = UDim2.new(0, 0, 0, 0)
     }):Play()
@@ -307,7 +346,7 @@ CloseButton.MouseButton1Click:Connect(function()
     -- Clear global table
     _G.AegisHub = nil
     
-    print("[CoreX] GUI closed and destroyed")
+    print("[CoreX] GUI closed and all features reset to normal")
 end)
 
 -- Divider
@@ -835,8 +874,20 @@ end
 -- ║              AEGIS OPTIONS - HITBOX TAB                   ║
 -- ╚═══════════════════════════════════════════════════════════╝
 do
-    CreatePlaceholder(AegisSubTabs["Hitbox"].Content, "Hitbox Expander",
-        "Insert your Hitbox Expander loadstring here.")
+    -- Load Hitbox script to create controls directly in the tab
+    local success, hitboxModule = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/1/Aegis%20Options%20Hitbox"))()
+    end)
+    
+    if success and hitboxModule then
+        print("[CoreX] Aegis Hitbox loaded successfully!")
+    else
+        CreatePlaceholder(AegisSubTabs["Hitbox"].Content, "Hitbox Expander - Failed to Load",
+            "Error loading Hitbox from GitHub. Check console for details.")
+        if hitboxModule then
+            warn("[CoreX] Failed to load Aegis Hitbox:", hitboxModule)
+        end
+    end
 end
 
 -- ╔═══════════════════════════════════════════════════════════╗

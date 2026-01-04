@@ -478,7 +478,7 @@ local function BuildGUI()
     end)
     
     -- Body Part Transparency Slider
-    CreateSlider(ScrollFrame, "Part Transparency", 0, 100, Settings.Transparency * 100, function(value)
+    CreateSlider(ScrollFrame, "Body Trans", 0, 100, Settings.Transparency * 100, function(value)
         Settings.Transparency = value / 100
         -- Update all existing parts
         for part, _ in pairs(OriginalSizes) do
@@ -489,7 +489,7 @@ local function BuildGUI()
     end)
     
     -- Highlight Transparency Slider (controls both fill and outline)
-    CreateSlider(ScrollFrame, "Highlight Transparency", 0, 100, Settings.HighlightTransparency * 100, function(value)
+    CreateSlider(ScrollFrame, "Highlight Trans", 0, 100, Settings.HighlightTransparency * 100, function(value)
         Settings.HighlightTransparency = value / 100
         -- Update all existing highlights (both fill and outline)
         for _, highlight in pairs(Highlights) do

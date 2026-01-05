@@ -44,6 +44,25 @@ function Module2:HasRequiredItems()
     return false
 end
 
+-- Check if player has RPK-74M in inventory
+function Module2:HasRPK()
+    local backpack = self.player:WaitForChild("Backpack")
+    
+    -- Check backpack
+    if backpack:FindFirstChild("RPK-74M") then
+        return true
+    end
+    
+    -- Check equipped tools
+    for _, item in pairs(self.character:GetChildren()) do
+        if item:IsA("Tool") and item.Name == "RPK-74M" then
+            return true
+        end
+    end
+    
+    return false
+end
+
 -- Check if player has pickaxe
 function Module2:HasPickaxe()
     local backpack = self.player:WaitForChild("Backpack")
@@ -251,31 +270,39 @@ function Module2:Run()
     print("[Module 2] ========================================")
     print("[Module 2] FIRST SELL")
     print("[Module 2] ========================================")
-    print("[Module 2] Teleporting to sell: 312 23 -572")
-    self.humanoidRootPart.CFrame = CFrame.new(312, 23, -572)
+    print("[Module 2] Teleporting to sell: -251 13 -814")
+    self.humanoidRootPart.CFrame = CFrame.new(-251, 13, -814)
     
     print("[Module 2] Waiting 2 seconds at sell location...")
     wait(2)
     
-    -- Teleport to buy RPK74M
+    -- Teleport to buy RPK74M and keep trying until acquired
     print("[Module 2] ========================================")
-    print("[Module 2] PURCHASING RPK74M")
+    print("[Module 2] PURCHASING RPK-74M")
     print("[Module 2] ========================================")
-    print("[Module 2] Teleporting to: -240 13 -813")
-    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -813)
+    print("[Module 2] Teleporting to: -240 13 -817")
+    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -817)
     
-    print("[Module 2] Waiting 2 seconds...")
-    wait(2)
+    task.wait()
     
-    print("[Module 2] Purchasing RPK74M...")
-    local args = {
-        "RPK74M",
-        "LINKON_CS"
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
-    
-    wait(1) -- Wait for purchase to process
-    print("[Module 2] ✓ RPK74M purchase command sent!")
+    -- Keep buying until RPK-74M is detected in inventory
+    while not self:HasRPK() do
+        print("[Module 2] Purchasing RPK-74M...")
+        local args = {
+            "RPK-74M",
+            "LINKON_CS"
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
+        
+        wait(1) -- Wait 1 second between purchase attempts
+        
+        if self:HasRPK() then
+            print("[Module 2] ✓ RPK-74M detected in inventory!")
+            break
+        else
+            print("[Module 2] RPK-74M not detected, retrying purchase...")
+        end
+    end
     
     -- Mine SECOND resource
     print("[Module 2] ========================================")
@@ -309,72 +336,60 @@ function Module2:Run()
     print("[Module 2] Waiting 2 seconds at sell location...")
     wait(2)
     
-    -- Now do the respirator and filter purchase
+    -- Teleport to buy respirator and filter
     print("[Module 2] ========================================")
     print("[Module 2] PURCHASING RESPIRATOR & FILTER")
     print("[Module 2] ========================================")
-    
-    -- Teleport to buy location
     print("[Module 2] Teleporting to buy: -240 13 -839")
     self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -839)
     wait(0.5)
     
-    -- Buy Civilian Grade Respirator
-    print("[Module 2] [1/2] Purchasing Civilian Grade Respirator...")
-    local args1 = {
-        "Civilian Grade Respirator",
-        "BARTON_EC"
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args1))
-    
-    wait(1) -- Wait for server to process
-    
-    -- Buy Filter Replacement
-    print("[Module 2] [2/2] Purchasing Filter Replacement...")
-    local args2 = {
-        "Filter Replacement",
-        "BARTON_EC"
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args2))
-    
-    wait(1) -- Wait for server to process
-    
-    print("[Module 2] ✓ Both purchase commands executed!")
-    
-    -- Wait and check if both items are in inventory
-    print("[Module 2] Checking for both items in inventory...")
-    local checkAttempts = 0
-    
-    while not self:HasRequiredItems() and checkAttempts < 10 do
-        checkAttempts = checkAttempts + 1
-        print("[Module 2] Attempt " .. checkAttempts .. "/10 - Waiting for items...")
-        wait(1)
+    -- Keep buying until both items are detected in inventory
+    while not self:HasRequiredItems() do
+        print("[Module 2] [1/2] Purchasing Civilian Grade Respirator...")
+        local args1 = {
+            "Civilian Grade Respirator",
+            "BARTON_EC"
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args1))
+        
+        wait(0.5)
+        
+        print("[Module 2] [2/2] Purchasing Filter Replacement...")
+        local args2 = {
+            "Filter Replacement",
+            "BARTON_EC"
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args2))
+        
+        wait(1) -- Wait 1 second before checking
+        
+        if self:HasRequiredItems() then
+            print("[Module 2] ✓ Both items detected in inventory!")
+            break
+        else
+            print("[Module 2] Items not detected, retrying purchase...")
+        end
     end
     
-    if self:HasRequiredItems() then
-        print("[Module 2] ========================================")
-        print("[Module 2] ✓✓✓ BOTH ITEMS ACQUIRED! ✓✓✓")
-        print("[Module 2] ========================================")
-        
-        -- Teleport to final location
-        print("[Module 2] Teleporting to final location: -125 5 -790")
-        self.humanoidRootPart.CFrame = CFrame.new(-125, 5, -790)
-        
-        print("[Module 2] ========================================")
-        print("[Module 2] LOADING NEXT SCRIPT...")
-        print("[Module 2] ========================================")
-        
-        -- Load Module 3
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%203", true))()
-        
-        print("[Module 2] ========================================")
-        print("[Module 2] NEXT SCRIPT LOADED - MODULE 2 STOPPING")
-        print("[Module 2] ========================================")
-    else
-        print("[Module 2] ========================================")
-        print("[Module 2] ⚠ WARNING: Items not detected after 10 checks")
-        print("[Module 2] ========================================")
-    end
+    print("[Module 2] ========================================")
+    print("[Module 2] ✓✓✓ BOTH ITEMS ACQUIRED! ✓✓✓")
+    print("[Module 2] ========================================")
+    
+    -- Teleport to final location
+    print("[Module 2] Teleporting to final location: -125 5 -790")
+    self.humanoidRootPart.CFrame = CFrame.new(-125, 5, -790)
+    
+    print("[Module 2] ========================================")
+    print("[Module 2] LOADING NEXT SCRIPT...")
+    print("[Module 2] ========================================")
+    
+    -- Load Module 3
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%203", true))()
+    
+    print("[Module 2] ========================================")
+    print("[Module 2] NEXT SCRIPT LOADED - MODULE 2 STOPPING")
+    print("[Module 2] ========================================")
 end
 
 -- STANDALONE EXECUTION

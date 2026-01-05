@@ -356,7 +356,7 @@ function Module4:Run()
     local NEXT_SCRIPT_URL = "PASTE_YOUR_LOADSTRING_URL_HERE"
     
     -- Option 1: Load from URL
-    -- loadstring(game:HttpGet(NEXT_SCRIPT_URL))()
+    -- loadstring(game:HttpGet(https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%206))()
     
     -- Option 2: Load from string (paste the entire script between the [[ ]])
     -- loadstring([[

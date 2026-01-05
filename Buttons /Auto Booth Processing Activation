@@ -1,0 +1,76 @@
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local ROOT = workspace:WaitForChild("Booths")
+local TARGET_NAME = "Processing_BoothSystem"
+
+local running = true
+local cachedParts = {}
+local lastCacheTime = 0
+
+local function getAllProcessingBoothSystems()
+	local systems = {}
+	for _, obj in ipairs(ROOT:GetDescendants()) do
+		if obj.Name == TARGET_NAME then
+			table.insert(systems, obj)
+		end
+	end
+	return systems
+end
+
+local function getTouchPartsUnderSystems()
+	local currentTime = tick()
+	if currentTime - lastCacheTime < 5 and #cachedParts > 0 then
+		return cachedParts
+	end
+	
+	local parts = {}
+	local seen = {}
+
+	for _, sys in ipairs(getAllProcessingBoothSystems()) do
+		for _, d in ipairs(sys:GetDescendants()) do
+			if d:IsA("TouchTransmitter") then
+				local part = d.Parent
+				if part and part:IsA("BasePart") and not seen[part] then
+					seen[part] = true
+					table.insert(parts, part)
+				end
+			end
+		end
+	end
+	
+	cachedParts = parts
+	lastCacheTime = currentTime
+	
+	return parts
+end
+
+task.spawn(function()
+	while running do
+		if character and character.Parent then
+			local parts = getTouchPartsUnderSystems()
+			
+			for _, part in ipairs(parts) do
+				pcall(function()
+					if part and part.Parent then
+						firetouchinterest(hrp, part, 0)
+						task.wait(0.01)
+						firetouchinterest(hrp, part, 1)
+					end
+				end)
+			end
+		end
+		
+		task.wait(1)
+	end
+end)
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	hrp = char:WaitForChild("HumanoidRootPart")
+	cachedParts = {}
+	lastCacheTime = 0
+end)

@@ -353,7 +353,7 @@ function Module4:Run()
     print("[Module 4] ========================================")
     
     -- LOADSTRING FOR NEXT SCRIPT (paste your URL or code here)
-    local NEXT_SCRIPT_URL = "PASTE_YOUR_LOADSTRING_URL_HERE"
+    local NEXT_SCRIPT_URL = "loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%206", true))()"
     
     -- Option 1: Load from URL
     -- loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%206", true))()

@@ -1,0 +1,124 @@
+-- LocalScript (2× Slower, First-person + Aim at ProximityHolder, no output)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local ORIGINAL_ZOOM = player.CameraMaxZoomDistance
+local ORIGINAL_CAMERA_TYPE = camera.CameraType
+
+player.CameraMaxZoomDistance = 0.5
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local backpack = player:WaitForChild("Backpack")
+
+local TARGET_ITEM_NAME = "Fedoratomic Battery"
+local FINAL_TELEPORT_CFRAME = CFrame.new(-125, 5, -791)
+
+local function getBatteryCount()
+	local count = 0
+	for _, item in ipairs(backpack:GetChildren()) do
+		if item.Name == TARGET_ITEM_NAME then
+			count += 1
+		end
+	end
+	return count
+end
+
+local batteryCrates = {}
+for _, obj in ipairs(workspace:GetDescendants()) do
+	if obj:IsA("Model") and obj.Name == "BatteryCrate" then
+		local holder = obj:FindFirstChild("ProximityHolder", true)
+		if holder then
+			local prompt = holder:FindFirstChildOfClass("ProximityPrompt")
+			if prompt then
+				table.insert(batteryCrates, { holder = holder, prompt = prompt })
+			end
+		end
+	end
+end
+
+local aimConnection
+
+local function aimCameraAt(part)
+	if aimConnection then
+		aimConnection:Disconnect()
+	end
+
+	camera.CameraType = Enum.CameraType.Scriptable
+
+	aimConnection = RunService.RenderStepped:Connect(function()
+		if part and part.Parent then
+			camera.CFrame = CFrame.lookAt(
+				camera.CFrame.Position,
+				part.Position
+			)
+		end
+	end)
+end
+
+local function releaseCamera()
+	if aimConnection then
+		aimConnection:Disconnect()
+		aimConnection = nil
+	end
+	camera.CameraType = ORIGINAL_CAMERA_TYPE
+end
+
+local function attemptCrate(data)
+	local holder = data.holder
+	local prompt = data.prompt
+	if not holder or not prompt then return end
+
+	humanoidRootPart.CFrame = holder.CFrame + Vector3.new(0, 3, 0)
+	task.wait(0.3) -- was 0.15
+
+	camera.CFrame = CFrame.new(
+		humanoidRootPart.Position,
+		holder.Position
+	)
+
+	aimCameraAt(holder)
+
+	prompt.HoldDuration = 0.1
+
+	local startBatteryCount = getBatteryCount()
+	local triggered = false
+
+	local conn
+	conn = prompt.Triggered:Connect(function(p)
+		if p == player then
+			triggered = true
+		end
+	end)
+
+	fireproximityprompt(prompt, 0.5)
+
+	local start = os.clock()
+	while os.clock() - start < 1.6 do -- was 0.8
+		if triggered then break end
+		if getBatteryCount() > startBatteryCount then break end
+		task.wait(0.1) -- was 0.05
+	end
+
+	if conn then conn:Disconnect() end
+	releaseCamera()
+end
+
+humanoid.CameraOffset = Vector3.zero
+humanoid.AutoRotate = false
+
+for _, crate in ipairs(batteryCrates) do
+	attemptCrate(crate)
+	task.wait(0.2) -- was 0.1
+end
+
+humanoidRootPart.CFrame = FINAL_TELEPORT_CFRAME
+
+humanoid.AutoRotate = true
+player.CameraMaxZoomDistance = ORIGINAL_ZOOM
+camera.CameraType = ORIGINAL_CAMERA_TYPE

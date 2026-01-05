@@ -1,0 +1,247 @@
+-- MODULE 5: Freecam Slider Interaction (ULTRA FAST)
+-- Instant camera teleports, stays in freecam for all sliders
+
+local Module5 = {}
+
+-- Services
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Initialize
+function Module5:Init()
+    self.player = Players.LocalPlayer
+    self.character = self.player.Character or self.player.CharacterAdded:Wait()
+    self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+end
+
+-- Find KnobSliderEntity by world pivot position
+function Module5:FindKnobSliderByPivot(targetPivot)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == "KnobSliderEntity" and (obj:IsA("Model") or obj:IsA("Folder")) then
+            local pivot = obj:GetPivot().Position
+            local distance = (pivot - targetPivot).Magnitude
+            if distance < 2 then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+-- Perform ONE slider interaction (camera stays active)
+function Module5:DoSlider(knobSlider, nubbinName, camera)
+    -- Find WaitingSliderPart
+    local slidables = knobSlider:FindFirstChild("Slidables")
+    if not slidables then return end
+    
+    local waitingSliderPart = slidables:FindFirstChild("WaitingSliderPart")
+    if not waitingSliderPart then return end
+    
+    -- Modify DragDetector
+    local dragDetector = slidables:FindFirstChild("DragDetector")
+    local originalMaxDistance = nil
+    
+    if dragDetector then
+        originalMaxDistance = dragDetector.MaxActivationDistance
+        dragDetector.MaxActivationDistance = 10000
+        print("[Module 5] DragDetector MaxActivationDistance set to 10000")
+    end
+    
+    -- Find nubbin
+    local nubbin = nil
+    if nubbinName == "NubbinOff" then
+        nubbin = knobSlider:FindFirstChild("NubbinOff")
+    else
+        local nubbins = knobSlider:FindFirstChild("Nubbins")
+        if nubbins then nubbin = nubbins:FindFirstChild(nubbinName) end
+    end
+    
+    if not nubbin then return end
+    
+    -- INSTANT camera teleport to WaitingSliderPart
+    local sliderPos = waitingSliderPart.Position
+    camera.CFrame = CFrame.new(Vector3.new(sliderPos.X - 3, sliderPos.Y, sliderPos.Z), sliderPos)
+    wait(0.1) -- Let camera settle
+    
+    -- Get WaitingSliderPart screen position and move mouse there
+    local sliderScreenPos = camera:WorldToScreenPoint(sliderPos)
+    print("[Module 5] Moving mouse to slider at: " .. math.floor(sliderScreenPos.X) .. ", " .. math.floor(sliderScreenPos.Y))
+    VirtualInputManager:SendMouseMoveEvent(sliderScreenPos.X, sliderScreenPos.Y, game)
+    wait(0.1) -- Let mouse settle
+    
+    -- Click and hold at slider position
+    print("[Module 5] Clicking and holding slider")
+    VirtualInputManager:SendMouseButtonEvent(sliderScreenPos.X, sliderScreenPos.Y, 0, true, game, 0)
+    wait(0.2) -- CRITICAL: Wait for DragDetector to engage
+    
+    -- INSTANT camera teleport to Nubbin
+    local nubbinPos = nubbin.Position
+    camera.CFrame = CFrame.new(Vector3.new(nubbinPos.X - 3, nubbinPos.Y, nubbinPos.Z), nubbinPos)
+    wait(0.1) -- Let camera settle
+    
+    -- Get Nubbin screen position and move mouse there (while still holding)
+    local nubbinScreenPos = camera:WorldToScreenPoint(nubbinPos)
+    print("[Module 5] Moving mouse to nubbin at: " .. math.floor(nubbinScreenPos.X) .. ", " .. math.floor(nubbinScreenPos.Y))
+    VirtualInputManager:SendMouseMoveEvent(nubbinScreenPos.X, nubbinScreenPos.Y, game)
+    
+    wait(0.2) -- Hold at nubbin position
+    
+    -- Release at nubbin position
+    print("[Module 5] Releasing at nubbin")
+    VirtualInputManager:SendMouseButtonEvent(nubbinScreenPos.X, nubbinScreenPos.Y, 0, false, game, 0)
+    
+    -- Restore DragDetector
+    if dragDetector and originalMaxDistance then
+        dragDetector.MaxActivationDistance = originalMaxDistance
+    end
+    
+    wait(0.1) -- Small wait before next slider
+end
+
+-- Main execution
+function Module5:Run()
+    -- Teleport to starting position
+    self.humanoidRootPart.CFrame = CFrame.new(-1210, -172, 746)
+    wait(0.5)
+    
+    -- ENTER FREECAM ONCE (stays active for all sliders)
+    local camera = workspace.CurrentCamera
+    camera.CameraType = Enum.CameraType.Scriptable
+    
+    -- Slider 1: Nubbin1
+    local pivot1 = Vector3.new(-1186.31262, -169.200333, 733.374756)
+    local knobSlider1 = self:FindKnobSliderByPivot(pivot1)
+    if knobSlider1 then
+        self:DoSlider(knobSlider1, "Nubbin1", camera)
+    end
+    
+    -- Slider 2: Nubbin1
+    local pivot2 = Vector3.new(-1186.31262, -179.600327, 733.374756)
+    local knobSlider2 = self:FindKnobSliderByPivot(pivot2)
+    if knobSlider2 then
+        self:DoSlider(knobSlider2, "Nubbin1", camera)
+    end
+    
+    -- Slider 3: Nubbin10
+    local pivot3 = Vector3.new(-1186.32153, -179.590424, 746.162292)
+    local knobSlider3 = self:FindKnobSliderByPivot(pivot3)
+    if knobSlider3 then
+        self:DoSlider(knobSlider3, "Nubbin10", camera)
+    end
+    
+    -- Slider 4: NubbinOff
+    local pivot4 = Vector3.new(-1186.32153, -179.590424, 765.862244)
+    local knobSlider4 = self:FindKnobSliderByPivot(pivot4)
+    if knobSlider4 then
+        self:DoSlider(knobSlider4, "NubbinOff", camera)
+    end
+    
+    -- RESTORE CAMERA ONCE (after all sliders done)
+    camera.CameraType = Enum.CameraType.Custom
+    
+    print("[Module 5] ========================================")
+    print("[Module 5] STARTING PROXIMITY PROMPT ACTIVATION")
+    print("[Module 5] ========================================")
+    
+    -- Teleport player to coolant control area
+    self.humanoidRootPart.CFrame = CFrame.new(-1226, -133, -36)
+    wait(1)
+    
+    -- Find all CoolantControlPanel models
+    local coolantPanels = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == "CoolantControlPanel" and (obj:IsA("Model") or obj:IsA("Folder")) then
+            table.insert(coolantPanels, obj)
+        end
+    end
+    
+    print("[Module 5] Found " .. #coolantPanels .. " CoolantControlPanel models")
+    
+    -- Enter freecam
+    camera.CameraType = Enum.CameraType.Scriptable
+    
+    -- Process each panel
+    for i, panel in ipairs(coolantPanels) do
+        print("[Module 5] ========================================")
+        print("[Module 5] Processing CoolantControlPanel " .. i .. "/" .. #coolantPanels)
+        
+        -- Find CoolantControls first
+        local coolantControls = panel:FindFirstChild("CoolantControls")
+        if not coolantControls then
+            print("[Module 5] ✗ CoolantControls not found!")
+            continue
+        end
+        
+        -- Find Phases in CoolantControls
+        local phases = coolantControls:FindFirstChild("Phases")
+        if not phases then
+            print("[Module 5] ✗ Phases folder not found!")
+            continue
+        end
+        
+        local phase1 = phases:FindFirstChild("Phase1")
+        if not phase1 then
+            print("[Module 5] ✗ Phase1 not found!")
+            continue
+        end
+        
+        -- Check Phase1 color
+        local phase1Color = phase1.Color
+        print("[Module 5] Phase1 Color: " .. tostring(phase1Color))
+        
+        -- Check if color is (17, 17, 17)
+        local targetColor = Color3.fromRGB(17, 17, 17)
+        if phase1Color == targetColor then
+            print("[Module 5] Phase1 is already (17, 17, 17) - SKIPPING")
+            continue
+        end
+        
+        print("[Module 5] Phase1 is NOT (17, 17, 17) - TOGGLING")
+        
+        -- Find ProximityPrompt
+        local proximityPrompt = panel:FindFirstChildOfClass("ProximityPrompt", true)
+        if not proximityPrompt then
+            print("[Module 5] ✗ ProximityPrompt not found!")
+            continue
+        end
+        
+        print("[Module 5] ✓ Found ProximityPrompt in: " .. proximityPrompt.Parent.Name)
+        
+        -- Store original MaxActivationDistance
+        local originalDistance = proximityPrompt.MaxActivationDistance
+        
+        -- Change to 1000
+        proximityPrompt.MaxActivationDistance = 1000
+        
+        -- Move camera to ProximityPrompt
+        local promptPos = proximityPrompt.Parent.Position
+        camera.CFrame = CFrame.new(promptPos + Vector3.new(0, 0, 5), promptPos)
+        wait(0.2)
+        
+        -- Press F2 to activate
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F2, false, game)
+        wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.F2, false, game)
+        
+        wait(0.3)
+        
+        -- Restore MaxActivationDistance
+        proximityPrompt.MaxActivationDistance = originalDistance
+        
+        print("[Module 5] ✓ Toggled ProximityPrompt " .. i)
+    end
+    
+    -- Restore camera
+    camera.CameraType = Enum.CameraType.Custom
+    
+    print("[Module 5] ========================================")
+    print("[Module 5] ✓ All CoolantControlPanels processed!")
+    print("[Module 5] ========================================")
+    
+    -- Load next module
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%205", true))()
+end
+
+-- AUTO START
+Module5:Init()
+Module5:Run()

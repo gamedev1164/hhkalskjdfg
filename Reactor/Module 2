@@ -319,7 +319,7 @@ function Module2:Run()
         
         -- Option 2: Load from string (paste the entire script between the [[ ]])
         -- loadstring([[
-        --loadstring(game:HttpGet("https://github.com/crazyhamster82/expert-adventure/raw/refs/heads/main/Auto%20Reactor%20Meltdown%20Modules/3%20Module%20Auto%20Equip%20Respirator", true))()
+        --loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%203", true))()
         -- ]])()
         
         print("[Module 2] ========================================")

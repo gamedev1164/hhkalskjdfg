@@ -141,7 +141,7 @@ function Module3:Run()
     
     -- Option 2: Load from string (paste the entire script between the [[ ]])
     -- loadstring([[
-    --loadstring(game:HttpGet("https://raw.githubusercontent.com/crazyhamster82/expert-adventure/refs/heads/main/Auto%20Reactor%20Meltdown%20Modules/4%20Module%20Mine%20Fedorlite%2C%20Check%20Purity%2C%20Mine%2020%20Then%20STOP?token=GHSAT0AAAAAADR6MV2IOIJC6364GWT6P7CQ2K3AH4A", true))()
+    --loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%204))()
     -- ]])()
     
     print("[Module 3] ========================================")

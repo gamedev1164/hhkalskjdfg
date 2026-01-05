@@ -1,345 +1,345 @@
-local a=game:GetService"Players"
-local b=game:GetService"RunService"
-local c=game:GetService"TweenService"
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
-local d=a.LocalPlayer
-local e=d:WaitForChild"PlayerGui"
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local f={
-"Chairman",
-"Table Of Military Leadership",
-"Unit Commander",
-"Unit Captain",
-"Veteran Officer",
-"Warrant Officer",
-"Officer",
-"Administered Specialist",
-"Administered Field Agent",
-"Specialist",
+local RANK_ORDER = {
+	"Chairman",
+	"Table Of Military Leadership",
+	"Unit Commander",
+	"Unit Captain",
+	"Veteran Officer",
+	"Warrant Officer",
+	"Officer",
+	"Administered Specialist",
+	"Administered Field Agent",
+	"Specialist",
 }
 
-local g={
-["Administered Field Agent"]={
-3309970495,226117655,689247279,1975838348,105892068,463669642,861989591
-},Specialist=
-{37883732,509426887,561064343,1385018628},
-["Administered Specialist"]={937564141,7335374299,2761696222,192254622,139320432},Officer=
-{3469222247,755966848,728586602,334713155,817589023},
-["Warrant Officer"]={2522740248,3276554424,176149128,2213826264,189393},
-["Veteran Officer"]={1677921525,62954014,1818230195,1695017283,727677637},
-["Unit Captain"]={1938907604,1509777239,409397743,293671581,100016418},
-["Unit Commander"]={82964247,355588359,923213464},
-["Table Of Military Leadership"]={1419426348,631228062,23030407,100474014,671292893,923214624,112026803},Chairman=
-{17319802},
+local RANKS = {
+	["Administered Field Agent"] = {
+		3309970495, 226117655, 689247279, 1975838348, 105892068, 463669642, 861989591
+	},
+	["Specialist"] = {37883732, 509426887, 561064343, 1385018628},
+	["Administered Specialist"] = {937564141, 7335374299, 2761696222, 192254622, 139320432},
+	["Officer"] = {3469222247, 755966848, 728586602, 334713155, 817589023},
+	["Warrant Officer"] = {2522740248, 3276554424, 176149128, 2213826264, 189393},
+	["Veteran Officer"] = {1677921525, 62954014, 1818230195, 1695017283, 727677637},
+	["Unit Captain"] = {1938907604, 1509777239, 409397743, 293671581, 100016418},
+	["Unit Commander"] = {82964247, 355588359, 923213464},
+	["Table Of Military Leadership"] = {1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803},
+	["Chairman"] = {17319802},
 }
 
-local h={
-["Administered Field Agent"]="AFA",Specialist=
-"SPC",
-["Administered Specialist"]="ASP",Officer=
-"OFC",
-["Warrant Officer"]="WO",
-["Veteran Officer"]="VO",
-["Unit Captain"]="UCPT",
-["Unit Commander"]="UCMD",
-["Table Of Military Leadership"]="TML",Chairman=
-"CHAIR",
+local RANK_ABBREV = {
+	["Administered Field Agent"] = "AFA",
+	["Specialist"] = "SPC",
+	["Administered Specialist"] = "ASP",
+	["Officer"] = "OFC",
+	["Warrant Officer"] = "WO",
+	["Veteran Officer"] = "VO",
+	["Unit Captain"] = "UCPT",
+	["Unit Commander"] = "UCMD",
+	["Table Of Military Leadership"] = "TML",
+	["Chairman"] = "CHAIR",
 }
 
-local i={
-Color3.fromRGB(255,50,50),
-Color3.fromRGB(255,85,0),
-Color3.fromRGB(255,140,0),
-Color3.fromRGB(255,200,0),
-Color3.fromRGB(255,255,0),
-Color3.fromRGB(150,255,50),
-Color3.fromRGB(50,255,120),
-Color3.fromRGB(50,200,255),
-Color3.fromRGB(80,140,255),
-Color3.fromRGB(120,120,255),
+local RANK_COLORS = {
+	Color3.fromRGB(255, 50, 50),
+	Color3.fromRGB(255, 85, 0),
+	Color3.fromRGB(255, 140, 0),
+	Color3.fromRGB(255, 200, 0),
+	Color3.fromRGB(255, 255, 0),
+	Color3.fromRGB(150, 255, 50),
+	Color3.fromRGB(50, 255, 120),
+	Color3.fromRGB(50, 200, 255),
+	Color3.fromRGB(80, 140, 255),
+	Color3.fromRGB(120, 120, 255),
 }
 
-local j={}
-local k={}
+local userIdToRank = {}
+local rankToIndex = {}
 
-for l,m in pairs(g)do
-for n,o in ipairs(m)do
-j[o]=l
-end
-end
-
-for l,m in ipairs(f)do
-k[m]=l
+for rank, userIds in pairs(RANKS) do
+	for _, userId in ipairs(userIds) do
+		userIdToRank[userId] = rank
+	end
 end
 
-local l=Instance.new"ScreenGui"
-l.Name="AdminNotifier"
-l.ResetOnSpawn=false
-l.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
-l.Parent=e
+for index, rank in ipairs(RANK_ORDER) do
+	rankToIndex[rank] = index
+end
 
-local m=Instance.new"Frame"
-m.Name="Main"
-m.AnchorPoint=Vector2.new(1,0)
-m.Position=UDim2.new(1,-15,0,60)
-m.Size=UDim2.new(0,280,0,50)
-m.BackgroundColor3=Color3.fromRGB(18,18,22)
-m.BackgroundTransparency=0.08
-m.BorderSizePixel=0
-m.Parent=l
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminNotifier"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
 
-local n=Instance.new"UICorner"
-n.CornerRadius=UDim.new(0,10)
-n.Parent=m
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Main"
+mainFrame.AnchorPoint = Vector2.new(1, 0)
+mainFrame.Position = UDim2.new(1, -15, 0, 60)
+mainFrame.Size = UDim2.new(0, 280, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+mainFrame.BackgroundTransparency = 0.08
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
 
-local o=Instance.new"UIStroke"
-o.Color=Color3.fromRGB(255,255,255)
-o.Transparency=0.88
-o.Thickness=1.5
-o.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
-o.Parent=m
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
 
-local p=Instance.new"UIGradient"
-p.Color=ColorSequence.new{
-ColorSequenceKeypoint.new(0,Color3.fromRGB(40,40,52)),
-ColorSequenceKeypoint.new(1,Color3.fromRGB(22,22,30))
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(255, 255, 255)
+mainStroke.Transparency = 0.88
+mainStroke.Thickness = 1.5
+mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+mainStroke.Parent = mainFrame
+
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 52)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 22, 30))
 }
-p.Rotation=135
-p.Parent=m
+gradient.Rotation = 135
+gradient.Parent = mainFrame
 
-local q=Instance.new"UIStroke"
-q.Color=Color3.fromRGB(255,60,60)
-q.Transparency=1
-q.Thickness=3
-q.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
-q.Parent=m
+local alertStroke = Instance.new("UIStroke")
+alertStroke.Color = Color3.fromRGB(255, 60, 60)
+alertStroke.Transparency = 1
+alertStroke.Thickness = 3
+alertStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+alertStroke.Parent = mainFrame
 
-local r=Instance.new"Frame"
-r.Position=UDim2.new(0,12,0,10)
-r.Size=UDim2.new(1,-24,0,30)
-r.BackgroundTransparency=1
-r.Parent=m
+local headerFrame = Instance.new("Frame")
+headerFrame.Position = UDim2.new(0, 12, 0, 10)
+headerFrame.Size = UDim2.new(1, -24, 0, 30)
+headerFrame.BackgroundTransparency = 1
+headerFrame.Parent = mainFrame
 
-local s=Instance.new"Frame"
-s.Position=UDim2.new(0,0,0,3)
-s.Size=UDim2.new(0,6,0,6)
-s.BackgroundColor3=Color3.fromRGB(100,100,110)
-s.BorderSizePixel=0
-s.Parent=r
+local statusDot = Instance.new("Frame")
+statusDot.Position = UDim2.new(0, 0, 0, 3)
+statusDot.Size = UDim2.new(0, 6, 0, 6)
+statusDot.BackgroundColor3 = Color3.fromRGB(100, 100, 110)
+statusDot.BorderSizePixel = 0
+statusDot.Parent = headerFrame
 
-local t=Instance.new"UICorner"
-t.CornerRadius=UDim.new(1,0)
-t.Parent=s
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = statusDot
 
-local u=Instance.new"TextLabel"
-u.Position=UDim2.new(0,14,0,0)
-u.Size=UDim2.new(1,-14,0,15)
-u.BackgroundTransparency=1
-u.Font=Enum.Font.GothamBold
-u.Text="ADMIN TRACKER"
-u.TextColor3=Color3.fromRGB(250,250,255)
-u.TextSize=12
-u.TextXAlignment=Enum.TextXAlignment.Left
-u.Parent=r
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Position = UDim2.new(0, 14, 0, 0)
+titleLabel.Size = UDim2.new(1, -14, 0, 15)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "ADMIN TRACKER"
+titleLabel.TextColor3 = Color3.fromRGB(250, 250, 255)
+titleLabel.TextSize = 12
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = headerFrame
 
-local v=Instance.new"TextLabel"
-v.Position=UDim2.new(0,14,0,15)
-v.Size=UDim2.new(1,-14,0,12)
-v.BackgroundTransparency=1
-v.Font=Enum.Font.Gotham
-v.Text="0 admins detected"
-v.TextColor3=Color3.fromRGB(150,150,165)
-v.TextSize=9
-v.TextXAlignment=Enum.TextXAlignment.Left
-v.Parent=r
+local subtitleLabel = Instance.new("TextLabel")
+subtitleLabel.Position = UDim2.new(0, 14, 0, 15)
+subtitleLabel.Size = UDim2.new(1, -14, 0, 12)
+subtitleLabel.BackgroundTransparency = 1
+subtitleLabel.Font = Enum.Font.Gotham
+subtitleLabel.Text = "0 admins detected"
+subtitleLabel.TextColor3 = Color3.fromRGB(150, 150, 165)
+subtitleLabel.TextSize = 9
+subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+subtitleLabel.Parent = headerFrame
 
-local w=Instance.new"Frame"
-w.Position=UDim2.new(0,12,0,45)
-w.Size=UDim2.new(1,-24,0,1)
-w.BackgroundColor3=Color3.fromRGB(255,255,255)
-w.BackgroundTransparency=0.9
-w.BorderSizePixel=0
-w.Parent=m
+local divider = Instance.new("Frame")
+divider.Position = UDim2.new(0, 12, 0, 45)
+divider.Size = UDim2.new(1, -24, 0, 1)
+divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+divider.BackgroundTransparency = 0.9
+divider.BorderSizePixel = 0
+divider.Parent = mainFrame
 
-local x=Instance.new"Frame"
-x.Name="List"
-x.Position=UDim2.new(0,12,0,52)
-x.Size=UDim2.new(1,-24,1,-56)
-x.BackgroundTransparency=1
-x.ClipsDescendants=false
-x.Parent=m
+local listFrame = Instance.new("Frame")
+listFrame.Name = "List"
+listFrame.Position = UDim2.new(0, 12, 0, 52)
+listFrame.Size = UDim2.new(1, -24, 1, -56)
+listFrame.BackgroundTransparency = 1
+listFrame.ClipsDescendants = false
+listFrame.Parent = mainFrame
 
-local y=Instance.new"UIListLayout"
-y.Padding=UDim.new(0,5)
-y.SortOrder=Enum.SortOrder.LayoutOrder
-y.Parent=x
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 5)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = listFrame
 
-local z=false
-local A
+local flashActive = false
+local flashConnection = nil
 
 local function stopFlash()
-z=false
-if A then
-A:Disconnect()
-A=nil
-end
-
-c:Create(q,TweenInfo.new(0.4),{
-Transparency=1
-}):Play()
-
-c:Create(s,TweenInfo.new(0.4),{
-BackgroundColor3=Color3.fromRGB(100,100,110)
-}):Play()
+	flashActive = false
+	if flashConnection then
+		flashConnection:Disconnect()
+		flashConnection = nil
+	end
+	
+	TweenService:Create(alertStroke, TweenInfo.new(0.4), {
+		Transparency = 1
+	}):Play()
+	
+	TweenService:Create(statusDot, TweenInfo.new(0.4), {
+		BackgroundColor3 = Color3.fromRGB(100, 100, 110)
+	}):Play()
 end
 
 local function startFlash()
-if z then return end
-z=true
-
-c:Create(s,TweenInfo.new(0.3),{
-BackgroundColor3=Color3.fromRGB(255,80,80)
-}):Play()
-
-local B=0
-A=b.RenderStepped:Connect(function(C)
-B=B+C*6
-local D=(math.sin(B)+1)/2
-local E=60+(195*D)
-q.Color=Color3.fromRGB(255,E,E)
-q.Transparency=0.2+(0.6*D)
-end)
+	if flashActive then return end
+	flashActive = true
+	
+	TweenService:Create(statusDot, TweenInfo.new(0.3), {
+		BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+	}):Play()
+	
+	local t = 0
+	flashConnection = RunService.RenderStepped:Connect(function(dt)
+		t = t + dt * 6
+		local pulse = (math.sin(t) + 1) / 2
+		local intensity = 60 + (195 * pulse)
+		alertStroke.Color = Color3.fromRGB(255, intensity, intensity)
+		alertStroke.Transparency = 0.2 + (0.6 * pulse)
+	end)
 end
 
-local function createAdminRow(B,C,D)
-local E=k[C]or 10
-local F=i[E]or Color3.fromRGB(255,255,255)
-
-local G=Instance.new"Frame"
-G.Name="AdminRow"
-G.Size=UDim2.new(1,0,0,22)
-G.BackgroundColor3=Color3.fromRGB(30,30,38)
-G.BackgroundTransparency=0.6
-G.BorderSizePixel=0
-G.LayoutOrder=D
-
-local H=Instance.new"UICorner"
-H.CornerRadius=UDim.new(0,6)
-H.Parent=G
-
-local I=Instance.new"UIStroke"
-I.Color=F
-I.Transparency=0.75
-I.Thickness=1
-I.Parent=G
-
-local J=Instance.new"Frame"
-J.Position=UDim2.new(0,6,0.5,0)
-J.AnchorPoint=Vector2.new(0,0.5)
-J.Size=UDim2.new(0,48,0,16)
-J.BackgroundColor3=F
-J.BackgroundTransparency=0.88
-J.BorderSizePixel=0
-J.Parent=G
-
-local K=Instance.new"UICorner"
-K.CornerRadius=UDim.new(0,4)
-K.Parent=J
-
-local L=Instance.new"UIStroke"
-L.Color=F
-L.Transparency=0.4
-L.Thickness=1
-L.Parent=J
-
-local M=Instance.new"TextLabel"
-M.Size=UDim2.new(1,0,1,0)
-M.BackgroundTransparency=1
-M.Font=Enum.Font.GothamBold
-M.Text=h[C]or"???"
-M.TextColor3=F
-M.TextSize=9
-M.Parent=J
-
-local N=Instance.new"TextLabel"
-N.Position=UDim2.new(0,60,0,0)
-N.Size=UDim2.new(1,-66,1,0)
-N.BackgroundTransparency=1
-N.Font=Enum.Font.GothamMedium
-N.Text="@"..B.Name
-N.TextColor3=F
-N.TextSize=11
-N.TextXAlignment=Enum.TextXAlignment.Left
-N.TextTruncate=Enum.TextTruncate.AtEnd
-N.Parent=G
-
-G.BackgroundTransparency=1
-c:Create(G,TweenInfo.new(0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
-BackgroundTransparency=0.6
-}):Play()
-
-return G
+local function createAdminRow(adminPlayer, rank, index)
+	local rankIndex = rankToIndex[rank] or 10
+	local rankColor = RANK_COLORS[rankIndex] or Color3.fromRGB(255, 255, 255)
+	
+	local row = Instance.new("Frame")
+	row.Name = "AdminRow"
+	row.Size = UDim2.new(1, 0, 0, 22)
+	row.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+	row.BackgroundTransparency = 0.6
+	row.BorderSizePixel = 0
+	row.LayoutOrder = index
+	
+	local rowCorner = Instance.new("UICorner")
+	rowCorner.CornerRadius = UDim.new(0, 6)
+	rowCorner.Parent = row
+	
+	local rowStroke = Instance.new("UIStroke")
+	rowStroke.Color = rankColor
+	rowStroke.Transparency = 0.75
+	rowStroke.Thickness = 1
+	rowStroke.Parent = row
+	
+	local badge = Instance.new("Frame")
+	badge.Position = UDim2.new(0, 6, 0.5, 0)
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Size = UDim2.new(0, 48, 0, 16)
+	badge.BackgroundColor3 = rankColor
+	badge.BackgroundTransparency = 0.88
+	badge.BorderSizePixel = 0
+	badge.Parent = row
+	
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(0, 4)
+	badgeCorner.Parent = badge
+	
+	local badgeStroke = Instance.new("UIStroke")
+	badgeStroke.Color = rankColor
+	badgeStroke.Transparency = 0.4
+	badgeStroke.Thickness = 1
+	badgeStroke.Parent = badge
+	
+	local badgeLabel = Instance.new("TextLabel")
+	badgeLabel.Size = UDim2.new(1, 0, 1, 0)
+	badgeLabel.BackgroundTransparency = 1
+	badgeLabel.Font = Enum.Font.GothamBold
+	badgeLabel.Text = RANK_ABBREV[rank] or "???"
+	badgeLabel.TextColor3 = rankColor
+	badgeLabel.TextSize = 9
+	badgeLabel.Parent = badge
+	
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Position = UDim2.new(0, 60, 0, 0)
+	nameLabel.Size = UDim2.new(1, -66, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamMedium
+	nameLabel.Text = "@" .. adminPlayer.Name
+	nameLabel.TextColor3 = rankColor
+	nameLabel.TextSize = 11
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.Parent = row
+	
+	row.BackgroundTransparency = 1
+	TweenService:Create(row, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.6
+	}):Play()
+	
+	return row
 end
 
 local function updateAdminList()
-for B,C in ipairs(x:GetChildren())do
-if not C:IsA"UIListLayout"then
-C:Destroy()
-end
-end
-
-local B={}
-for C,D in ipairs(a:GetPlayers())do
-local E=j[D.UserId]
-if E then
-table.insert(B,{
-player=D,
-rank=E,
-index=k[E]or 999
-})
-end
-end
-
-table.sort(B,function(C,D)
-return C.index<D.index
-end)
-
-local C=#B
-v.Text=C==0 and"No admins detected"or
-(C==1 and"1 admin online"or C.." admins online")
-
-if C==0 then
-c:Create(m,TweenInfo.new(0.35,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
-Size=UDim2.new(0,280,0,50)
-}):Play()
-stopFlash()
-else
-for D,E in ipairs(B)do
-local F=createAdminRow(E.player,E.rank,D)
-F.Parent=x
-end
-
-local D=52+(C*22)+((C-1)*5)+8
-c:Create(m,TweenInfo.new(0.35,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
-Size=UDim2.new(0,280,0,D)
-}):Play()
-
-startFlash()
-end
+	for _, child in ipairs(listFrame:GetChildren()) do
+		if not child:IsA("UIListLayout") then
+			child:Destroy()
+		end
+	end
+	
+	local admins = {}
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local rank = userIdToRank[plr.UserId]
+		if rank then
+			table.insert(admins, {
+				player = plr,
+				rank = rank,
+				index = rankToIndex[rank] or 999
+			})
+		end
+	end
+	
+	table.sort(admins, function(a, b)
+		return a.index < b.index
+	end)
+	
+	local count = #admins
+	subtitleLabel.Text = count == 0 and "No admins detected" or 
+		(count == 1 and "1 admin online" or count .. " admins online")
+	
+	if count == 0 then
+		TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 280, 0, 50)
+		}):Play()
+		stopFlash()
+	else
+		for i, admin in ipairs(admins) do
+			local row = createAdminRow(admin.player, admin.rank, i)
+			row.Parent = listFrame
+		end
+		
+		local newHeight = 52 + (count * 22) + ((count - 1) * 5) + 8
+		TweenService:Create(mainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 280, 0, newHeight)
+		}):Play()
+		
+		startFlash()
+	end
 end
 
 updateAdminList()
 
-a.PlayerAdded:Connect(function()
-task.wait(0.1)
-updateAdminList()
+Players.PlayerAdded:Connect(function()
+	task.wait(0.1)
+	updateAdminList()
 end)
 
-a.PlayerRemoving:Connect(updateAdminList)
+Players.PlayerRemoving:Connect(updateAdminList)
 
 task.spawn(function()
-while l.Parent do
-task.wait(2)
-updateAdminList()
-end
+	while screenGui.Parent do
+		task.wait(2)
+		updateAdminList()
+	end
 end)

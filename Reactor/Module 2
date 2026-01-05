@@ -44,46 +44,6 @@ function Module2:HasRequiredItems()
     return false
 end
 
--- Teleport to sell location and execute sell scripts
-function Module2:SellAndBuy()
-    print("[Module 2] === SELL & BUY CYCLE ===")
-    
-    -- Teleport to sell location
-    print("[Module 2] Teleporting to sell: 312 23 -572")
-    self.humanoidRootPart.CFrame = CFrame.new(312, 23, -572)
-    
-    -- Wait 2 seconds at sell location
-    print("[Module 2] Waiting 2 seconds at sell location...")
-    wait(2)
-    
-    -- Teleport to buy location
-    print("[Module 2] Teleporting to buy: -240 13 -839")
-    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -839)
-    wait(0.5)
-    
-    -- Buy Civilian Grade Respirator
-    print("[Module 2] [1/2] Purchasing Civilian Grade Respirator...")
-    local args1 = {
-        "Civilian Grade Respirator",
-        "BARTON_EC"
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args1))
-    
-    wait(1) -- Wait for server to process
-    
-    -- Buy Filter Replacement
-    print("[Module 2] [2/2] Purchasing Filter Replacement...")
-    local args2 = {
-        "Filter Replacement",
-        "BARTON_EC"
-    }
-    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args2))
-    
-    wait(1) -- Wait for server to process
-    
-    print("[Module 2] ✓ Both purchase commands executed!")
-end
-
 -- Check if player has pickaxe
 function Module2:HasPickaxe()
     local backpack = self.player:WaitForChild("Backpack")
@@ -266,8 +226,10 @@ function Module2:Run()
     self:EquipPickaxe()
     task.wait()
     
-    -- Mine 1 resource
-    print("[Module 2] Mining 1 resource...")
+    -- Mine FIRST resource
+    print("[Module 2] ========================================")
+    print("[Module 2] Mining FIRST resource...")
+    print("[Module 2] ========================================")
     local minedSuccessfully = false
     
     while not minedSuccessfully do
@@ -283,10 +245,101 @@ function Module2:Run()
         end
     end
     
-    print("[Module 2] ✓ Mining complete!")
+    print("[Module 2] ✓ First resource mined!")
     
-    -- Sell and buy
-    self:SellAndBuy()
+    -- Teleport to first sell location
+    print("[Module 2] ========================================")
+    print("[Module 2] FIRST SELL")
+    print("[Module 2] ========================================")
+    print("[Module 2] Teleporting to sell: 312 23 -572")
+    self.humanoidRootPart.CFrame = CFrame.new(312, 23, -572)
+    
+    print("[Module 2] Waiting 2 seconds at sell location...")
+    wait(2)
+    
+    -- Teleport to buy RPK74M
+    print("[Module 2] ========================================")
+    print("[Module 2] PURCHASING RPK74M")
+    print("[Module 2] ========================================")
+    print("[Module 2] Teleporting to: -240 13 -813")
+    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -813)
+    
+    print("[Module 2] Waiting 2 seconds...")
+    wait(2)
+    
+    print("[Module 2] Purchasing RPK74M...")
+    local args = {
+        "RPK74M",
+        "LINKON_CS"
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
+    
+    wait(1) -- Wait for purchase to process
+    print("[Module 2] ✓ RPK74M purchase command sent!")
+    
+    -- Mine SECOND resource
+    print("[Module 2] ========================================")
+    print("[Module 2] Mining SECOND resource...")
+    print("[Module 2] ========================================")
+    
+    minedSuccessfully = false
+    
+    while not minedSuccessfully do
+        self.character = self.player.Character or self.player.CharacterAdded:Wait()
+        self.humanoidRootPart = self.character:WaitForChild("HumanoidRootPart")
+        self:EquipPickaxe()
+        
+        minedSuccessfully = self:MineOneResource()
+        
+        if not minedSuccessfully then
+            print("[Module 2] Mining failed, retrying...")
+            task.wait()
+        end
+    end
+    
+    print("[Module 2] ✓ Second resource mined!")
+    
+    -- Teleport to sell location again
+    print("[Module 2] ========================================")
+    print("[Module 2] SECOND SELL")
+    print("[Module 2] ========================================")
+    print("[Module 2] Teleporting to sell: 312 23 -572")
+    self.humanoidRootPart.CFrame = CFrame.new(312, 23, -572)
+    
+    print("[Module 2] Waiting 2 seconds at sell location...")
+    wait(2)
+    
+    -- Now do the respirator and filter purchase
+    print("[Module 2] ========================================")
+    print("[Module 2] PURCHASING RESPIRATOR & FILTER")
+    print("[Module 2] ========================================")
+    
+    -- Teleport to buy location
+    print("[Module 2] Teleporting to buy: -240 13 -839")
+    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -839)
+    wait(0.5)
+    
+    -- Buy Civilian Grade Respirator
+    print("[Module 2] [1/2] Purchasing Civilian Grade Respirator...")
+    local args1 = {
+        "Civilian Grade Respirator",
+        "BARTON_EC"
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args1))
+    
+    wait(1) -- Wait for server to process
+    
+    -- Buy Filter Replacement
+    print("[Module 2] [2/2] Purchasing Filter Replacement...")
+    local args2 = {
+        "Filter Replacement",
+        "BARTON_EC"
+    }
+    game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args2))
+    
+    wait(1) -- Wait for server to process
+    
+    print("[Module 2] ✓ Both purchase commands executed!")
     
     -- Wait and check if both items are in inventory
     print("[Module 2] Checking for both items in inventory...")

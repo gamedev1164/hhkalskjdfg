@@ -280,16 +280,16 @@ function Module2:Run()
     print("[Module 2] ========================================")
     print("[Module 2] PURCHASING RPK-74M")
     print("[Module 2] ========================================")
-    print("[Module 2] Teleporting to: -240 13 -817")
-    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -817)
+    print("[Module 2] Teleporting to: -240 13 -838")
+    self.humanoidRootPart.CFrame = CFrame.new(-240, 13, -838)
     
     task.wait()
     
     -- Keep buying until RPK-74M is detected in inventory
     while not self:HasRPK() do
-        print("[Module 2] Purchasing RPK-74M...")
+        print("[Module 2] Purchasing RPK74M...")
         local args = {
-            "RPK-74M",
+            "RPK74M",
             "LINKON_CS"
         }
         game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))

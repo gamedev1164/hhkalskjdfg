@@ -1,0 +1,162 @@
+-- MODULE 3: Equip and Use Respirator (FAST VERSION)
+-- This module equips the Civilian Grade Respirator and keeps using it until removed
+
+local Module3 = {}
+
+-- Services
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Initialize player references
+function Module3:Init()
+    self.player = Players.LocalPlayer
+    self.character = self.player.Character or self.player.CharacterAdded:Wait()
+    
+    -- Handle character respawn
+    self.player.CharacterAdded:Connect(function(newCharacter)
+        self.character = newCharacter
+    end)
+    
+    print("[Module 3] Initialized - Respirator Equip & Use System (FAST)")
+end
+
+-- Check if player has both required items
+function Module3:HasBothItems()
+    local backpack = self.player:WaitForChild("Backpack")
+    
+    local hasRespirator = backpack:FindFirstChild("Civilian Grade Respirator")
+    local hasFilter = backpack:FindFirstChild("Filter Replacement")
+    
+    if hasRespirator and hasFilter then
+        return true
+    end
+    
+    return false
+end
+
+-- Check if respirator is still in inventory (backpack or equipped)
+function Module3:HasRespirator()
+    local backpack = self.player:WaitForChild("Backpack")
+    
+    -- Check backpack
+    if backpack:FindFirstChild("Civilian Grade Respirator") then
+        return true
+    end
+    
+    -- Check if equipped
+    for _, item in pairs(self.character:GetChildren()) do
+        if item:IsA("Tool") and item.Name == "Civilian Grade Respirator" then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Equip the Civilian Grade Respirator
+function Module3:EquipRespirator()
+    local backpack = self.player:WaitForChild("Backpack")
+    local respirator = backpack:FindFirstChild("Civilian Grade Respirator")
+    
+    if respirator then
+        self.character.Humanoid:EquipTool(respirator)
+        return true
+    end
+    
+    -- Check if already equipped
+    for _, item in pairs(self.character:GetChildren()) do
+        if item:IsA("Tool") and item.Name == "Civilian Grade Respirator" then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Simulate left click
+function Module3:LeftClick()
+    local camera = workspace.CurrentCamera
+    local screenSize = camera.ViewportSize
+    local centerX = screenSize.X / 2
+    local centerY = screenSize.Y / 2
+    
+    -- Mouse down
+    VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
+    task.wait()
+    
+    -- Mouse up
+    VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
+end
+
+-- Main execution
+function Module3:Run()
+    print("[Module 3] ========================================")
+    print("[Module 3] STARTING MODULE 3 (FAST)")
+    print("[Module 3] ========================================")
+    
+    -- Wait for both items
+    print("[Module 3] Waiting for both items...")
+    while not self:HasBothItems() do
+        task.wait()
+    end
+    
+    print("[Module 3] ✓ Both items detected!")
+    
+    -- Equip respirator instantly
+    print("[Module 3] Equipping Civilian Grade Respirator...")
+    self:EquipRespirator()
+    task.wait()
+    
+    print("[Module 3] ✓ Respirator equipped!")
+    print("[Module 3] Starting continuous left clicking...")
+    
+    local clickCount = 0
+    
+    -- Keep left clicking until respirator is removed from inventory
+    while self:HasRespirator() do
+        clickCount = clickCount + 1
+        self:LeftClick()
+        
+        if clickCount % 10 == 0 then
+            print("[Module 3] Click #" .. clickCount .. " - Respirator still in inventory")
+        end
+        
+        task.wait() -- Minimal wait between clicks
+    end
+    
+    print("[Module 3] ========================================")
+    print("[Module 3] ✓ Respirator removed from inventory!")
+    print("[Module 3] Total clicks: " .. clickCount)
+    print("[Module 3] ========================================")
+    
+    print("[Module 3] ========================================")
+    print("[Module 3] LOADING NEXT SCRIPT...")
+    print("[Module 3] ========================================")
+    
+    -- LOADSTRING FOR NEXT SCRIPT (paste your URL or code here)
+    local NEXT_SCRIPT_URL = "PASTE_YOUR_LOADSTRING_URL_HERE"
+    
+    -- Option 1: Load from URL
+    -- loadstring(game:HttpGet(NEXT_SCRIPT_URL))()
+    
+    -- Option 2: Load from string (paste the entire script between the [[ ]])
+    -- loadstring([[
+    --loadstring(game:HttpGet("https://raw.githubusercontent.com/crazyhamster82/expert-adventure/refs/heads/main/Auto%20Reactor%20Meltdown%20Modules/4%20Module%20Mine%20Fedorlite%2C%20Check%20Purity%2C%20Mine%2020%20Then%20STOP?token=GHSAT0AAAAAADR6MV2IOIJC6364GWT6P7CQ2K3AH4A", true))()
+    -- ]])()
+    
+    print("[Module 3] ========================================")
+    print("[Module 3] NEXT SCRIPT LOADED - MODULE 3 STOPPING")
+    print("[Module 3] ========================================")
+end
+
+-- STANDALONE EXECUTION
+print("========================================")
+print("MODULE 3: Respirator Equip & Use (FAST)")
+print("========================================")
+
+Module3:Init()
+Module3:Run()
+
+print("========================================")
+print("MODULE 3: COMPLETE")
+print("========================================")

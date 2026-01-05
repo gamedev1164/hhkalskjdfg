@@ -138,7 +138,7 @@ function Module1:Run()
             print("[Module 1] ========================================")
             
             -- Load Module 2
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/crazyhamster82/expert-adventure/refs/heads/main/Auto%20Reactor%20Meltdown%20Modules/2%20Module%20Mine%201%20Fedorlite%20Then%20Sell%20Then%20Purchase%20Resparator%20and%20Filter?token=GHSAT0AAAAAADR6MV2JHTSYDZEXVWEXFBYW2K3AJWQ", true))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%202", true))()
             
             print("[Module 1] ========================================")
             print("[Module 1] NEXT SCRIPT LOADED - MODULE 1 STOPPING")

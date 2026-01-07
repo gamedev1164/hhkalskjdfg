@@ -102,28 +102,70 @@ end
 function Module4:CheckFuelLevel()
     print("[Module 4] Checking fuel level...")
     
-    -- Find FuelMonitor in workspace
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj.Name == "Fuel" and obj:IsA("TextLabel") then
-            local fuelText = obj.Text
-            local fuelValue = tonumber(fuelText)
-            
-            if fuelValue then
-                print("[Module 4] Found Fuel TextLabel - Value: " .. fuelValue)
-                
-                if fuelValue >= 2000 then
-                    print("[Module 4] ✓ Fuel >= 2000 - SKIPPING MINING")
-                    return true
-                else
-                    print("[Module 4] ✗ Fuel < 2000 - MINING REQUIRED")
-                    return false
-                end
-            end
-        end
-    end
+    -- Find FuelMonitor → FuelGui → MeltdownCritical → SurfaceGui → ReactorFuel → Fuel
+    local fuelMonitor = workspace:FindFirstChild("FuelMonitor", true)
     
-    print("[Module 4] ⚠ Fuel TextLabel not found - proceeding with mining")
-    return false
+    if not fuelMonitor then
+        print("[Module 4] ⚠ FuelMonitor not found")
+        return false
+    end
+    print("[Module 4] ✓ FuelMonitor found")
+    
+    local fuelGui = fuelMonitor:FindFirstChild("FuelGui")
+    if not fuelGui then
+        print("[Module 4] ⚠ FuelGui not found")
+        return false
+    end
+    print("[Module 4] ✓ FuelGui found")
+    
+    local meltdownCritical = fuelGui:FindFirstChild("MeltdownCritical")
+    if not meltdownCritical then
+        print("[Module 4] ⚠ MeltdownCritical not found")
+        return false
+    end
+    print("[Module 4] ✓ MeltdownCritical found")
+    
+    local surfaceGui = meltdownCritical:FindFirstChild("SurfaceGui")
+    if not surfaceGui then
+        print("[Module 4] ⚠ SurfaceGui not found")
+        return false
+    end
+    print("[Module 4] ✓ SurfaceGui found")
+    
+    local reactorFuel = surfaceGui:FindFirstChild("ReactorFuel")
+    if not reactorFuel then
+        print("[Module 4] ⚠ ReactorFuel not found")
+        return false
+    end
+    print("[Module 4] ✓ ReactorFuel found")
+    
+    local fuelLabel = reactorFuel:FindFirstChild("Fuel")
+    if not fuelLabel or not fuelLabel:IsA("TextLabel") then
+        print("[Module 4] ⚠ Fuel TextLabel not found")
+        return false
+    end
+    print("[Module 4] ✓ Fuel TextLabel found")
+    
+    -- Get fuel value
+    local fuelText = fuelLabel.Text
+    local fuelValue = tonumber(fuelText)
+    
+    if fuelValue then
+        print("[Module 4] ✓ Current Fuel Level: " .. fuelValue)
+        
+        if fuelValue >= 2000 then
+            print("[Module 4] ========================================")
+            print("[Module 4] ✓ Fuel >= 2000 - SKIPPING MINING")
+            print("[Module 4] ========================================")
+            return true
+        else
+            print("[Module 4] ✗ Fuel < 2000 (currently " .. fuelValue .. ") - MINING REQUIRED")
+            return false
+        end
+    else
+        print("[Module 4] ⚠ Could not parse fuel value from text: " .. tostring(fuelText))
+        return false
+    end
 end
 
 -- Check if has pickaxe

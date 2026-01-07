@@ -11,10 +11,11 @@ end
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local page = AegisHub.CameraPage
-local Library = AegisHub.Library  -- FIX: Get Library from AegisHub
+local Library = AegisHub.Library
 
 -- State
 local State = {
@@ -22,14 +23,18 @@ local State = {
     fovValue = 70,
     
     freecamEnabled = false,
-    freecamCamera = nil,
+    freecamSpeed = 50,
+    freecamConn = nil,
+    freecamKeys = {W = false, A = false, S = false, D = false, Space = false, LeftShift = false},
+    freecamCFrame = nil,
+    origCameraType = nil,
+    origCameraSubject = nil,
     
     connections = {}
 }
 
 -- Helper functions
 local function getChar() return player.Character end
-local function getHRP() local c = getChar() return c and c:FindFirstChild("HumanoidRootPart") end
 
 -- FOV
 local function enableFOV()
@@ -47,11 +52,83 @@ local function disableFOV()
 end
 
 -- FreeCam
+local function setFreecamKey(keyCode, isDown)
+    if keyCode == Enum.KeyCode.W then State.freecamKeys.W = isDown
+    elseif keyCode == Enum.KeyCode.A then State.freecamKeys.A = isDown
+    elseif keyCode == Enum.KeyCode.S then State.freecamKeys.S = isDown
+    elseif keyCode == Enum.KeyCode.D then State.freecamKeys.D = isDown
+    elseif keyCode == Enum.KeyCode.Space then State.freecamKeys.Space = isDown
+    elseif keyCode == Enum.KeyCode.LeftShift or keyCode == Enum.KeyCode.RightShift then State.freecamKeys.LeftShift = isDown
+    end
+end
+
+table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setFreecamKey(input.KeyCode, true)
+    end
+end))
+
+table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setFreecamKey(input.KeyCode, false)
+    end
+end))
+
 local function enableFreeCam()
-    -- Load and execute freecam script
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Roblox-Freecam/Freecam/main/Main.lua"))()
+    local cam = Workspace.CurrentCamera
+    if not cam then return end
+    
+    -- Store original camera settings
+    State.origCameraType = cam.CameraType
+    State.origCameraSubject = cam.CameraSubject
+    State.freecamCFrame = cam.CFrame
+    
+    -- Set camera to scriptable
+    cam.CameraType = Enum.CameraType.Scriptable
+    
+    State.freecamConn = RunService.RenderStepped:Connect(function(dt)
+        if not State.freecamEnabled then return end
+        
+        local cam = Workspace.CurrentCamera
+        if not cam then return end
+        
+        -- Get current camera orientation
+        local cf = cam.CFrame
+        local look = cf.LookVector
+        local right = cf.RightVector
+        local up = Vector3.new(0, 1, 0)
+        
+        -- Calculate movement
+        local moveDir = Vector3.zero
+        if State.freecamKeys.W then moveDir = moveDir + look end
+        if State.freecamKeys.S then moveDir = moveDir - look end
+        if State.freecamKeys.A then moveDir = moveDir - right end
+        if State.freecamKeys.D then moveDir = moveDir + right end
+        if State.freecamKeys.Space then moveDir = moveDir + up end
+        if State.freecamKeys.LeftShift then moveDir = moveDir - up end
+        
+        -- Apply movement
+        if moveDir.Magnitude > 0 then
+            local speed = State.freecamSpeed
+            cam.CFrame = cam.CFrame + moveDir.Unit * speed * dt
+        end
     end)
+    
+    table.insert(State.connections, State.freecamConn)
+end
+
+local function disableFreeCam()
+    if State.freecamConn then
+        State.freecamConn:Disconnect()
+        State.freecamConn = nil
+    end
+    
+    local cam = Workspace.CurrentCamera
+    if cam then
+        cam.CameraType = State.origCameraType or Enum.CameraType.Custom
+        cam.CameraSubject = State.origCameraSubject or (player.Character and player.Character:FindFirstChildOfClass("Humanoid"))
+    end
 end
 
 -- Character respawn handler
@@ -62,27 +139,31 @@ table.insert(State.connections, player.CharacterAdded:Connect(function()
 end))
 
 -- Create UI
--- FOV
-Library:CreateToggle(page, "FOV", false, function(v)
-    State.fovEnabled = v
-    if v then enableFOV() else disableFOV() end
-end)
-
-Library:CreateSlider(page, "FOV Value", 10, 150, 70, function(v)
-    State.fovValue = v
-    if State.fovEnabled then
-        local cam = Workspace.CurrentCamera
-        if cam then cam.FieldOfView = v end
+-- FOV with Toggle+Slider
+Library:CreateToggleSlider(page, "FOV", 10, 150, 70, 
+    function(enabled)
+        State.fovEnabled = enabled
+        if enabled then enableFOV() else disableFOV() end
+    end,
+    function(value)
+        State.fovValue = value
+        if State.fovEnabled then
+            local cam = Workspace.CurrentCamera
+            if cam then cam.FieldOfView = value end
+        end
     end
-end)
+)
 
--- FreeCam
-Library:CreateToggle(page, "FreeCam", false, function(v)
-    State.freecamEnabled = v
-    if v then
-        enableFreeCam()
+-- FreeCam with Toggle+Slider
+Library:CreateToggleSlider(page, "FreeCam", 1, 500, 50,
+    function(enabled)
+        State.freecamEnabled = enabled
+        if enabled then enableFreeCam() else disableFreeCam() end
+    end,
+    function(value)
+        State.freecamSpeed = value
     end
-end)
+)
 
 print("✓ Camera Module Loaded")
 

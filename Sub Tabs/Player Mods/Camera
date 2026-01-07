@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - CAMERA MODULE
+--                    AEGIS HUB - CAMERA MODULE (FIXED)
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local page = AegisHub.CameraPage
+local Library = AegisHub.Library  -- FIX: Get Library from AegisHub
 
 -- State
 local State = {
@@ -127,8 +128,6 @@ table.insert(State.connections, player.CharacterAdded:Connect(function()
 end))
 
 -- Create UI
-local Library = AegisHub
-
 -- FOV
 Library:CreateToggle(page, "FOV", false, function(v)
     State.fovEnabled = v

@@ -100,45 +100,29 @@ end
 
 -- Check if Fuel is 2000 or more
 function Module4:CheckFuelLevel()
+    print("[Module 4] Checking fuel level...")
+    
     -- Find FuelMonitor in workspace
-    local fuelMonitor = workspace:FindFirstChild("FuelMonitor", true)
-    
-    if not fuelMonitor then
-        print("[Module 4] ⚠ FuelMonitor not found - proceeding with mining")
-        return false
-    end
-    
-    -- Navigate: FuelMonitor → Support → MeltdownCritical → ReactorFuel → Fuel
-    local support = fuelMonitor:FindFirstChild("Support")
-    if not support then return false end
-    
-    local meltdownCritical = support:FindFirstChild("MeltdownCritical")
-    if not meltdownCritical then return false end
-    
-    local reactorFuel = meltdownCritical:FindFirstChild("ReactorFuel")
-    if not reactorFuel then return false end
-    
-    local fuelTextLabel = reactorFuel:FindFirstChild("Fuel")
-    if not fuelTextLabel or not fuelTextLabel:IsA("TextLabel") then return false end
-    
-    -- Get fuel value from text
-    local fuelText = fuelTextLabel.Text
-    local fuelValue = tonumber(fuelText)
-    
-    if fuelValue then
-        print("[Module 4] Current Fuel Level: " .. fuelValue)
-        
-        if fuelValue >= 2000 then
-            print("[Module 4] ========================================")
-            print("[Module 4] ✓ FUEL LEVEL >= 2000 - SKIPPING MINING")
-            print("[Module 4] ========================================")
-            return true
-        else
-            print("[Module 4] Fuel level < 2000 - Mining required")
-            return false
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == "Fuel" and obj:IsA("TextLabel") then
+            local fuelText = obj.Text
+            local fuelValue = tonumber(fuelText)
+            
+            if fuelValue then
+                print("[Module 4] Found Fuel TextLabel - Value: " .. fuelValue)
+                
+                if fuelValue >= 2000 then
+                    print("[Module 4] ✓ Fuel >= 2000 - SKIPPING MINING")
+                    return true
+                else
+                    print("[Module 4] ✗ Fuel < 2000 - MINING REQUIRED")
+                    return false
+                end
+            end
         end
     end
     
+    print("[Module 4] ⚠ Fuel TextLabel not found - proceeding with mining")
     return false
 end
 

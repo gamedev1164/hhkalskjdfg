@@ -1,4 +1,4 @@
--- MODULE 5: Freecam Slider Interaction (ULTRA FAST)
+- MODULE 5: Freecam Slider Interaction (ULTRA FAST)
 -- Instant camera teleports, stays in freecam for all sliders
 
 local Module5 = {}

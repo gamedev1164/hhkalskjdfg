@@ -262,56 +262,59 @@ table.insert(State.connections, player.CharacterAdded:Connect(function()
 end))
 
 -- Create UI
--- Speed
-Library:CreateToggle(page, "Speed", false, function(v)
-    State.speedEnabled = v
-    if v then enableSpeed() else disableSpeed() end
-end)
-
-Library:CreateSlider(page, "Speed Value", 1, 500, 50, function(v)
-    State.speedValue = v
-    if State.speedEnabled then
-        local hum = getHumanoid()
-        if hum then hum.WalkSpeed = v end
+-- Speed with Toggle+Slider
+Library:CreateToggleSlider(page, "Speed", 1, 500, 50,
+    function(enabled)
+        State.speedEnabled = enabled
+        if enabled then enableSpeed() else disableSpeed() end
+    end,
+    function(value)
+        State.speedValue = value
+        if State.speedEnabled then
+            local hum = getHumanoid()
+            if hum then hum.WalkSpeed = value end
+        end
     end
-end)
+)
 
--- Jump Height
-Library:CreateToggle(page, "Jump Height", false, function(v)
-    State.jumpEnabled = v
-    if v then enableJump() else disableJump() end
-end)
-
-Library:CreateSlider(page, "Jump Height Value", 1, 500, 50, function(v)
-    State.jumpValue = v
-    if State.jumpEnabled then
-        local hum = getHumanoid()
-        if hum then
-            if hum.UseJumpPower then 
-                hum.JumpPower = v
-            else 
-                hum.JumpHeight = v 
+-- Jump Height with Toggle+Slider
+Library:CreateToggleSlider(page, "Jump Height", 1, 500, 50,
+    function(enabled)
+        State.jumpEnabled = enabled
+        if enabled then enableJump() else disableJump() end
+    end,
+    function(value)
+        State.jumpValue = value
+        if State.jumpEnabled then
+            local hum = getHumanoid()
+            if hum then
+                if hum.UseJumpPower then 
+                    hum.JumpPower = value
+                else 
+                    hum.JumpHeight = value 
+                end
             end
         end
     end
-end)
+)
 
--- Infinite Jump
+-- Infinite Jump (toggle only, no slider needed)
 Library:CreateToggle(page, "Infinite Jump", false, function(v)
     State.infJumpEnabled = v
 end)
 
--- CFrame Fly
-Library:CreateToggle(page, "CFrame Fly (Shift for 2x speed)", false, function(v)
-    State.cframeFlyEnabled = v
-    if v then enableCFrameFly() else disableCFrameFly() end
-end)
+-- CFrame Fly with Toggle+Slider
+Library:CreateToggleSlider(page, "CFrame Fly (Shift 2x)", 1, 500, 100,
+    function(enabled)
+        State.cframeFlyEnabled = enabled
+        if enabled then enableCFrameFly() else disableCFrameFly() end
+    end,
+    function(value)
+        State.cframeFlySpeed = value
+    end
+)
 
-Library:CreateSlider(page, "CFrame Fly Speed", 1, 500, 100, function(v)
-    State.cframeFlySpeed = v
-end)
-
--- God Mode
+-- God Mode (toggle only, no slider needed)
 Library:CreateToggle(page, "God Mode", false, function(v)
     State.godModeEnabled = v
     if v then enableGodMode() else disableGodMode() end

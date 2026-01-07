@@ -396,6 +396,11 @@ function Module4:Run()
     print("[Module 4] STARTING AUTO MINING")
     print("[Module 4] ========================================")
     
+    -- Teleport to load FuelMonitor
+    print("[Module 4] Teleporting to load FuelMonitor...")
+    self.humanoidRootPart.CFrame = CFrame.new(-1209, -172, 747)
+    wait(2)
+    
     -- Check fuel level first
     if self:CheckFuelLevel() then
         print("[Module 4] Fuel level sufficient - skipping mining")

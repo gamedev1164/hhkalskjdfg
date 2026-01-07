@@ -102,7 +102,7 @@ end
 function Module4:CheckFuelLevel()
     print("[Module 4] Checking fuel level...")
     
-    -- Find FuelMonitor → FuelGui → MeltdownCritical → SurfaceGui → ReactorFuel → Fuel
+    -- Find FuelMonitor
     local fuelMonitor = workspace:FindFirstChild("FuelMonitor", true)
     
     if not fuelMonitor then
@@ -111,6 +111,7 @@ function Module4:CheckFuelLevel()
     end
     print("[Module 4] ✓ FuelMonitor found")
     
+    -- Find FuelGui
     local fuelGui = fuelMonitor:FindFirstChild("FuelGui")
     if not fuelGui then
         print("[Module 4] ⚠ FuelGui not found")
@@ -118,27 +119,23 @@ function Module4:CheckFuelLevel()
     end
     print("[Module 4] ✓ FuelGui found")
     
-    local meltdownCritical = fuelGui:FindFirstChild("MeltdownCritical")
-    if not meltdownCritical then
-        print("[Module 4] ⚠ MeltdownCritical not found")
-        return false
-    end
-    print("[Module 4] ✓ MeltdownCritical found")
-    
-    local surfaceGui = meltdownCritical:FindFirstChild("SurfaceGui")
+    -- Try to find SurfaceGui (might be in MeltdownCritical or directly in FuelGui)
+    local surfaceGui = fuelGui:FindFirstChild("SurfaceGui", true) -- Recursive search
     if not surfaceGui then
         print("[Module 4] ⚠ SurfaceGui not found")
         return false
     end
     print("[Module 4] ✓ SurfaceGui found")
     
+    -- Find ReactorFuel
     local reactorFuel = surfaceGui:FindFirstChild("ReactorFuel")
     if not reactorFuel then
-        print("[Module 4] ⚠ ReactorFuel not found")
+        print("[Module 4] ⚠ ReactorFuel not found in SurfaceGui")
         return false
     end
     print("[Module 4] ✓ ReactorFuel found")
     
+    -- Find Fuel TextLabel
     local fuelLabel = reactorFuel:FindFirstChild("Fuel")
     if not fuelLabel or not fuelLabel:IsA("TextLabel") then
         print("[Module 4] ⚠ Fuel TextLabel not found")
@@ -148,6 +145,8 @@ function Module4:CheckFuelLevel()
     
     -- Get fuel value
     local fuelText = fuelLabel.Text
+    print("[Module 4] Fuel text: '" .. tostring(fuelText) .. "'")
+    
     local fuelValue = tonumber(fuelText)
     
     if fuelValue then
@@ -163,7 +162,7 @@ function Module4:CheckFuelLevel()
             return false
         end
     else
-        print("[Module 4] ⚠ Could not parse fuel value from text: " .. tostring(fuelText))
+        print("[Module 4] ⚠ Could not parse fuel value from text: '" .. tostring(fuelText) .. "'")
         return false
     end
 end

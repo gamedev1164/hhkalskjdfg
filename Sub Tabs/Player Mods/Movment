@@ -1,1 +1,312 @@
+--==============================================================================
+--                    AEGIS HUB - MOVEMENT MODULE
+--==============================================================================
 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.MovementPage then 
+    warn("Aegis Hub not loaded!") 
+    return 
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local page = AegisHub.MovementPage
+
+-- State
+local State = {
+    speedEnabled = false,
+    speedValue = 50,
+    origWalkSpeed = nil,
+    
+    jumpEnabled = false,
+    jumpValue = 50,
+    origJumpHeight = nil,
+    origJumpPower = nil,
+    
+    infJumpEnabled = false,
+    
+    freecamEnabled = false,
+    freecamSpeed = 50,
+    freecamConn = nil,
+    freecamCFrame = nil,
+    freecamKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
+    
+    godModeEnabled = false,
+    godModeConn = nil,
+    
+    connections = {}
+}
+
+-- Helper functions
+local function getChar() return player.Character end
+local function getHumanoid() local c = getChar() return c and c:FindFirstChildOfClass("Humanoid") end
+local function getHRP() local c = getChar() return c and c:FindFirstChild("HumanoidRootPart") end
+
+-- Instant Movement Physics
+local function applyInstantMovement(hum)
+    if not hum then return end
+    pcall(function()
+        local char = hum.Parent
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 100, 0)
+            end
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    pcall(function()
+                        part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 100, 0)
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+local function removeInstantMovement(hum)
+    if not hum then return end
+    pcall(function()
+        local char = hum.Parent
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function()
+                        part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 1, 1)
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+-- Speed
+local function enableSpeed()
+    local hum = getHumanoid()
+    if hum then
+        if not State.origWalkSpeed then 
+            State.origWalkSpeed = hum.WalkSpeed 
+        end
+        hum.WalkSpeed = State.speedValue
+        applyInstantMovement(hum)
+    end
+end
+
+local function disableSpeed()
+    local hum = getHumanoid()
+    if hum then
+        hum.WalkSpeed = State.origWalkSpeed or 16
+        removeInstantMovement(hum)
+    end
+end
+
+-- Jump
+local function enableJump()
+    local hum = getHumanoid()
+    if hum then
+        if hum.UseJumpPower then
+            if not State.origJumpPower then 
+                State.origJumpPower = hum.JumpPower 
+            end
+            hum.JumpPower = State.jumpValue
+        else
+            if not State.origJumpHeight then 
+                State.origJumpHeight = hum.JumpHeight 
+            end
+            hum.JumpHeight = State.jumpValue
+        end
+    end
+end
+
+local function disableJump()
+    local hum = getHumanoid()
+    if hum then
+        if hum.UseJumpPower then 
+            hum.JumpPower = State.origJumpPower or 50
+        else 
+            hum.JumpHeight = State.origJumpHeight or 7.2 
+        end
+    end
+end
+
+-- Infinite Jump
+table.insert(State.connections, UserInputService.JumpRequest:Connect(function()
+    if State.infJumpEnabled then
+        local hum = getHumanoid()
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.Jumping) 
+        end
+    end
+end))
+
+-- FreeCam
+local function setFreecamKey(keyCode, isDown)
+    local map = {
+        [Enum.KeyCode.W] = "W", [Enum.KeyCode.A] = "A", 
+        [Enum.KeyCode.S] = "S", [Enum.KeyCode.D] = "D",
+        [Enum.KeyCode.Q] = "Q", [Enum.KeyCode.E] = "E",
+        [Enum.KeyCode.LeftShift] = "Shift", [Enum.KeyCode.RightShift] = "Shift"
+    }
+    if map[keyCode] then 
+        State.freecamKeys[map[keyCode]] = isDown 
+    end
+end
+
+table.insert(State.connections, UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setFreecamKey(input.KeyCode, true)
+    end
+end))
+
+table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setFreecamKey(input.KeyCode, false)
+    end
+end))
+
+local function enableFreecam()
+    local hrp = getHRP()
+    if hrp then
+        State.freecamCFrame = hrp.CFrame
+    end
+    
+    State.freecamConn = RunService.RenderStepped:Connect(function(dt)
+        if not State.freecamEnabled then return end
+        
+        local hrp = getHRP()
+        if not hrp then return end
+        
+        hrp.Anchored = true
+        
+        local cam = Workspace.CurrentCamera
+        local look = cam and cam.CFrame.LookVector or hrp.CFrame.LookVector
+        local right = cam and cam.CFrame.RightVector or hrp.CFrame.RightVector
+        local up = Vector3.new(0, 1, 0)
+        local moveDir = Vector3.zero
+        
+        if State.freecamKeys.W then moveDir = moveDir + look end
+        if State.freecamKeys.S then moveDir = moveDir - look end
+        if State.freecamKeys.A then moveDir = moveDir - right end
+        if State.freecamKeys.D then moveDir = moveDir + right end
+        if State.freecamKeys.E then moveDir = moveDir + up end
+        if State.freecamKeys.Q then moveDir = moveDir - up end
+        
+        if moveDir.Magnitude > 0 then
+            local speed = State.freecamSpeed * (State.freecamKeys.Shift and 2 or 1)
+            hrp.CFrame = hrp.CFrame + moveDir.Unit * speed * dt
+        end
+    end)
+    
+    table.insert(State.connections, State.freecamConn)
+end
+
+local function disableFreecam()
+    if State.freecamConn then
+        State.freecamConn:Disconnect()
+        State.freecamConn = nil
+    end
+    
+    local hrp = getHRP()
+    if hrp then
+        hrp.Anchored = false
+    end
+end
+
+-- God Mode
+local function enableGodMode()
+    State.godModeConn = RunService.Heartbeat:Connect(function()
+        if not State.godModeEnabled then return end
+        
+        local hum = getHumanoid()
+        if hum then
+            hum.Health = hum.MaxHealth
+        end
+    end)
+    
+    table.insert(State.connections, State.godModeConn)
+end
+
+local function disableGodMode()
+    if State.godModeConn then
+        State.godModeConn:Disconnect()
+        State.godModeConn = nil
+    end
+end
+
+-- Character respawn handler
+table.insert(State.connections, player.CharacterAdded:Connect(function()
+    task.wait(0.3)
+    
+    if State.speedEnabled then enableSpeed() end
+    if State.jumpEnabled then enableJump() end
+    if State.freecamEnabled then 
+        disableFreecam()
+        enableFreecam()
+    end
+    if State.godModeEnabled then enableGodMode() end
+end))
+
+-- Create UI
+local Library = AegisHub
+
+-- Speed
+Library:CreateToggle(page, "Speed", false, function(v)
+    State.speedEnabled = v
+    if v then enableSpeed() else disableSpeed() end
+end)
+
+Library:CreateSlider(page, "Speed Value", 1, 500, 50, function(v)
+    State.speedValue = v
+    if State.speedEnabled then
+        local hum = getHumanoid()
+        if hum then hum.WalkSpeed = v end
+    end
+end)
+
+-- Jump Height
+Library:CreateToggle(page, "Jump Height", false, function(v)
+    State.jumpEnabled = v
+    if v then enableJump() else disableJump() end
+end)
+
+Library:CreateSlider(page, "Jump Height Value", 1, 500, 50, function(v)
+    State.jumpValue = v
+    if State.jumpEnabled then
+        local hum = getHumanoid()
+        if hum then
+            if hum.UseJumpPower then 
+                hum.JumpPower = v
+            else 
+                hum.JumpHeight = v 
+            end
+        end
+    end
+end)
+
+-- Infinite Jump
+Library:CreateToggle(page, "Infinite Jump", false, function(v)
+    State.infJumpEnabled = v
+end)
+
+-- FreeCam
+Library:CreateToggle(page, "FreeCam (Shift for 2x speed)", false, function(v)
+    State.freecamEnabled = v
+    if v then enableFreecam() else disableFreecam() end
+end)
+
+Library:CreateSlider(page, "FreeCam Speed", 1, 500, 50, function(v)
+    State.freecamSpeed = v
+end)
+
+-- God Mode
+Library:CreateToggle(page, "God Mode", false, function(v)
+    State.godModeEnabled = v
+    if v then enableGodMode() else disableGodMode() end
+end)
+
+print("✓ Movement Module Loaded")
+
+return true

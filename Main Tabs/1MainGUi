@@ -899,7 +899,7 @@ do
         label.Font = Enum.Font.GothamMedium
         label.TextSize = 14
         label.TextColor3 = Theme.TextWhite
-        label.Size = UDim2.new(0, 70, 1, 0)
+        label.Size = UDim2.new(0, 120, 1, 0)
         label.Position = UDim2.new(0, 15, 0, 0)
         label.BackgroundTransparency = 1
         label.TextXAlignment = Enum.TextXAlignment.Left
@@ -908,8 +908,8 @@ do
         
         -- Slider
         local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(0, 120, 0, 12)
-        barBg.Position = UDim2.new(0, 90, 0, 24)
+        barBg.Size = UDim2.new(0, 200, 0, 12)
+        barBg.Position = UDim2.new(0, 140, 0, 24)
         barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         barBg.BorderSizePixel = 0
         barBg.ZIndex = 4
@@ -933,23 +933,23 @@ do
         grabber.Parent = fill
         Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
         
-        -- Value label
+        -- Value label (right of slider)
         local valueLabel = Instance.new("TextLabel")
         valueLabel.Text = tostring(default)
         valueLabel.Font = Enum.Font.GothamBold
         valueLabel.TextSize = 14
         valueLabel.TextColor3 = Theme.Accent
-        valueLabel.Size = UDim2.new(0, 40, 0, 30)
-        valueLabel.Position = UDim2.new(0, 220, 0, 15)
+        valueLabel.Size = UDim2.new(0, 50, 0, 30)
+        valueLabel.Position = UDim2.new(0, 350, 0, 15)
         valueLabel.BackgroundTransparency = 1
         valueLabel.TextXAlignment = Enum.TextXAlignment.Left
         valueLabel.ZIndex = 4
         valueLabel.Parent = frame
         
-        -- TP to Cam button (middle)
+        -- TP to Cam button (between value and toggle)
         local tpBtn = Instance.new("TextButton")
         tpBtn.Size = UDim2.new(0, 80, 0, 26)
-        tpBtn.Position = UDim2.new(0, 270, 0.5, -13)
+        tpBtn.Position = UDim2.new(0, 410, 0.5, -13)
         tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
         tpBtn.BorderSizePixel = 0
         tpBtn.Font = Enum.Font.GothamBold
@@ -972,7 +972,7 @@ do
             if tpCallback then tpCallback() end
         end)
         
-        -- Toggle switch on far right
+        -- Toggle switch on far right (same as FOV)
         local switch = Instance.new("TextButton")
         switch.Text = ""
         switch.Size = UDim2.new(0, 50, 0, 26)

@@ -1,1 +1,158 @@
+--==============================================================================
+--                    AEGIS HUB - CAMERA MODULE
+--==============================================================================
 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.CameraPage then 
+    warn("Aegis Hub not loaded!") 
+    return 
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local page = AegisHub.CameraPage
+
+-- State
+local State = {
+    fovEnabled = false,
+    fovValue = 70,
+    
+    cframeFlyEnabled = false,
+    cframeFlySpeed = 100,
+    cframeFlyConn = nil,
+    cframeFlyKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
+    
+    connections = {}
+}
+
+-- Helper functions
+local function getChar() return player.Character end
+local function getHRP() local c = getChar() return c and c:FindFirstChild("HumanoidRootPart") end
+
+-- FOV
+local function enableFOV()
+    local cam = Workspace.CurrentCamera
+    if cam then 
+        cam.FieldOfView = State.fovValue 
+    end
+end
+
+local function disableFOV()
+    local cam = Workspace.CurrentCamera
+    if cam then 
+        cam.FieldOfView = 70 
+    end
+end
+
+-- CFrame Fly (Desync)
+local function setCFrameFlyKey(keyCode, isDown)
+    local map = {
+        [Enum.KeyCode.W] = "W", [Enum.KeyCode.A] = "A", 
+        [Enum.KeyCode.S] = "S", [Enum.KeyCode.D] = "D",
+        [Enum.KeyCode.Q] = "Q", [Enum.KeyCode.E] = "E",
+        [Enum.KeyCode.LeftShift] = "Shift", [Enum.KeyCode.RightShift] = "Shift"
+    }
+    if map[keyCode] then 
+        State.cframeFlyKeys[map[keyCode]] = isDown 
+    end
+end
+
+table.insert(State.connections, game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setCFrameFlyKey(input.KeyCode, true)
+    end
+end))
+
+table.insert(State.connections, game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setCFrameFlyKey(input.KeyCode, false)
+    end
+end))
+
+local function enableCFrameFly()
+    State.cframeFlyConn = RunService.RenderStepped:Connect(function(dt)
+        if not State.cframeFlyEnabled then return end
+        
+        local hrp = getHRP()
+        if not hrp then return end
+        
+        hrp.Anchored = true
+        
+        local cam = Workspace.CurrentCamera
+        local look = cam and cam.CFrame.LookVector or hrp.CFrame.LookVector
+        local right = cam and cam.CFrame.RightVector or hrp.CFrame.RightVector
+        local up = Vector3.new(0, 1, 0)
+        local moveDir = Vector3.zero
+        
+        if State.cframeFlyKeys.W then moveDir = moveDir + look end
+        if State.cframeFlyKeys.S then moveDir = moveDir - look end
+        if State.cframeFlyKeys.A then moveDir = moveDir - right end
+        if State.cframeFlyKeys.D then moveDir = moveDir + right end
+        if State.cframeFlyKeys.E then moveDir = moveDir + up end
+        if State.cframeFlyKeys.Q then moveDir = moveDir - up end
+        
+        if moveDir.Magnitude > 0 then
+            local speed = State.cframeFlySpeed * (State.cframeFlyKeys.Shift and 2 or 1)
+            hrp.CFrame = hrp.CFrame + moveDir.Unit * speed * dt
+        end
+    end)
+    
+    table.insert(State.connections, State.cframeFlyConn)
+end
+
+local function disableCFrameFly()
+    if State.cframeFlyConn then
+        State.cframeFlyConn:Disconnect()
+        State.cframeFlyConn = nil
+    end
+    
+    local hrp = getHRP()
+    if hrp then
+        hrp.Anchored = false
+    end
+end
+
+-- Character respawn handler
+table.insert(State.connections, player.CharacterAdded:Connect(function()
+    task.wait(0.3)
+    
+    if State.fovEnabled then enableFOV() end
+    if State.cframeFlyEnabled then
+        disableCFrameFly()
+        enableCFrameFly()
+    end
+end))
+
+-- Create UI
+local Library = AegisHub
+
+-- FOV
+Library:CreateToggle(page, "FOV", false, function(v)
+    State.fovEnabled = v
+    if v then enableFOV() else disableFOV() end
+end)
+
+Library:CreateSlider(page, "FOV Value", 10, 150, 70, function(v)
+    State.fovValue = v
+    if State.fovEnabled then
+        local cam = Workspace.CurrentCamera
+        if cam then cam.FieldOfView = v end
+    end
+end)
+
+-- CFrame Fly (Desync)
+Library:CreateToggle(page, "CFrame Fly (Desync)", false, function(v)
+    State.cframeFlyEnabled = v
+    if v then enableCFrameFly() else disableCFrameFly() end
+end)
+
+Library:CreateSlider(page, "CFrame Fly Speed", 1, 500, 100, function(v)
+    State.cframeFlySpeed = v
+end)
+
+print("✓ Camera Module Loaded")
+
+return true

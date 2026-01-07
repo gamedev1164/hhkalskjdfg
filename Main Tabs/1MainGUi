@@ -354,7 +354,6 @@ do
         title.ZIndex = 3
         title.Parent = sidebar
 
-        -- ** CHANGE: Fixed Frame, No Scrolling **
         local tabContainer = Instance.new("Frame")
         tabContainer.Name = "TabContainer"
         tabContainer.Size = UDim2.new(1, 0, 1, -100) 
@@ -424,12 +423,12 @@ do
         local minBtn = CreateCtrl("−", Theme.TextWhite, -80)
         minBtn.MouseButton1Click:Connect(function() Library:Toggle() end)
         
-        local closeBtn = CreateCtrl("×", Theme.Error, -40)
+        local closeBtn = CreateCtrl("×", Color3.fromRGB(255, 80, 80), -40)
         closeBtn.MouseButton1Click:Connect(function()
             if not Library.CloseConfirming then
                 Library.CloseConfirming = true
                 closeBtn.Text = "?"
-                TweenService:Create(closeBtn, TweenInfo.new(0.2), {TextColor3 = Theme.Error}):Play()
+                TweenService:Create(closeBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 80, 80)}):Play()
                 Library:Notify("Exit?", "Press again to fully close.")
                 task.delay(3, function()
                     if Library.CloseConfirming then
@@ -487,10 +486,12 @@ do
 
     function Library:CreateTabs()
         local Icons = {
-            Shield = "rbxassetid://10723407389", Skull = "rbxassetid://10747374131",
-            User = "rbxassetid://10734950309", Globe = "rbxassetid://10734952273",
-            Box = "rbxassetid://10747372992", Pin = "rbxassetid://10723434711",
-            Troll = "rbxassetid://10747374131"
+            User = "rbxassetid://10734950309",
+            Globe = "rbxassetid://10734952273",
+            Shield = "rbxassetid://10723407389",
+            Skull = "rbxassetid://10747374131",
+            Troll = "rbxassetid://10747374131",
+            Pin = "rbxassetid://10723434711"
         }
 
         local function MakeTab(name, icon, order)
@@ -623,53 +624,89 @@ do
             return {Page = page, CreateSubTabs = CreateSubTabs}
         end
 
-        local Aegis = MakeTab("AEGIS", Icons.Shield, 1)
-        local AegisSubs = Aegis.CreateSubTabs({"ESP", "Hitbox", "Teleport", "Spectate"})
+        -- NEW TAB STRUCTURE
+        local PlayerMods = MakeTab("Player Mods", Icons.User, 1)
+        local PlayerSubs = PlayerMods.CreateSubTabs({"Camera", "Movement"})
         
-        local Wastelanders = MakeTab("Wastelanders", Icons.Skull, 2)
-        local WasteSubs = Wastelanders.CreateSubTabs({"ESP", "Hitbox", "Teleport", "Spectate"})
+        local WorldMods = MakeTab("World Mods", Icons.Globe, 2)
+        local WorldModsSubs = WorldMods.CreateSubTabs({"Objects", "Visuals"})
         
-        local Player = MakeTab("Player", Icons.User, 3)
+        local AegisOptions = MakeTab("Aegis Options", Icons.Shield, 3)
+        local AegisSubs = AegisOptions.CreateSubTabs({"ESP", "Hitbox", "Spectate", "Teleport"})
         
-        local World = MakeTab("World", Icons.Globe, 4)
-        local WorldSubs = World.CreateSubTabs({"General", "Wasteland", "Border", "Labs", "Reactor", "Resources"})
+        local WastelanderOptions = MakeTab("Wastelander Options", Icons.Skull, 4)
+        local WasteSubs = WastelanderOptions.CreateSubTabs({"ESP", "Hitbox", "Spectate", "Teleport"})
         
         local Trolling = MakeTab("Trolling", Icons.Troll, 5)
-        local Auto = MakeTab("Auto", Icons.Box, 6)
+        local TrollingSubs = Trolling.CreateSubTabs({"Player Trolling", "World Trolling"})
+        
+        local WorldTeleports = MakeTab("World Teleports", Icons.Pin, 6)
+        local WorldTpSubs = WorldTeleports.CreateSubTabs({"AIA", "Border", "Labs", "Reactor", "Wasteland"})
 
+        -- SET UP AEGIS HUB FIRST (before loading modules)
         _G.AegisHub = {
+            -- Player Mods
+            CameraPage = PlayerSubs["Camera"],
+            MovementPage = PlayerSubs["Movement"],
+            
+            -- World Mods
+            ObjectsPage = WorldModsSubs["Objects"],
+            VisualsPage = WorldModsSubs["Visuals"],
+            
+            -- Aegis Options
             AegisESP = AegisSubs["ESP"],
             AegisHitbox = AegisSubs["Hitbox"],
-            AegisTeleport = AegisSubs["Teleport"],
             AegisSpectate = AegisSubs["Spectate"],
+            AegisTeleport = AegisSubs["Teleport"],
             
+            -- Wastelander Options
             WastelanderESP = WasteSubs["ESP"],
             WastelanderHitbox = WasteSubs["Hitbox"],
-            WastelanderTeleport = WasteSubs["Teleport"],
             WastelanderSpectate = WasteSubs["Spectate"],
+            WastelanderTeleport = WasteSubs["Teleport"],
             
-            PlayerPage = Player.Page,
+            -- Trolling
+            PlayerTrolling = TrollingSubs["Player Trolling"],
+            WorldTrolling = TrollingSubs["World Trolling"],
             
-            WorldPage = WorldSubs["General"],
-            TeleportWasteland = WorldSubs["Wasteland"],
-            TeleportBorder = WorldSubs["Border"],
-            TeleportLabs = WorldSubs["Labs"],
-            TeleportReactor = WorldSubs["Reactor"],
-            TeleportResources = WorldSubs["Resources"],
-            
-            TrollingPage = Trolling.Page,
-            AutoPage = Auto.Page,
+            -- World Teleports
+            TeleportAIA = WorldTpSubs["AIA"],
+            TeleportBorder = WorldTpSubs["Border"],
+            TeleportLabs = WorldTpSubs["Labs"],
+            TeleportReactor = WorldTpSubs["Reactor"],
+            TeleportWasteland = WorldTpSubs["Wasteland"],
             
             Close = function() Library:Destroy() end,
-            Toggle = function() Library:Toggle() end
+            Toggle = function() Library:Toggle() end,
+            
+            -- CRITICAL: Pass Library object so modules can access CreateToggle/CreateSlider
+            Library = Library
         }
 
-        local espPage = AegisSubs["ESP"]
-        Library:CreateToggle(espPage, "Enabled", false, function(v) print("ESP:", v) end)
-        Library:CreateToggle(espPage, "Show Boxes", false, function(v) print("Box:", v) end)
-        Library:CreateToggle(espPage, "Show Names", true, function(v) print("Name:", v) end)
-        Library:CreateSlider(espPage, "Max Distance", 0, 5000, 2000, function(v) print("Dist:", v) end)
+        -- LOAD MODULES (now that _G.AegisHub.Library exists)
+        task.spawn(function()
+            -- Load Movement Module
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Movment"))()
+            end)
+            if not success then
+                warn("Failed to load Movement module:", err)
+            else
+                print("✓ Movement module loaded")
+            end
+            
+            -- Load Camera Module
+            local success2, err2 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Camera"))()
+            end)
+            if not success2 then
+                warn("Failed to load Camera module:", err2)
+            else
+                print("✓ Camera module loaded")
+            end
+        end)
         
+        -- Auto-select first tab
         local ft = Library.Tabs[1]
         ft.Btn.BackgroundColor3 = Theme.Accent
         ft.Btn.BackgroundTransparency = 0

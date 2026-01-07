@@ -304,7 +304,7 @@ Library:CreateToggle(page, "Infinite Jump", false, function(v)
 end)
 
 -- CFrame Fly with Toggle+Slider
-Library:CreateToggleSlider(page, "CFrame Fly (Shift 2x)", 1, 500, 100,
+Library:CreateToggleSlider(page, "CFrame Fly", 1, 500, 100,
     function(enabled)
         State.cframeFlyEnabled = enabled
         if enabled then enableCFrameFly() else disableCFrameFly() end

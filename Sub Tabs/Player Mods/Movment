@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - MOVEMENT MODULE
+--                    AEGIS HUB - MOVEMENT MODULE (FIXED)
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -15,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local page = AegisHub.MovementPage
+local Library = AegisHub.Library  -- FIX: Get Library from AegisHub
 
 -- State
 local State = {
@@ -250,8 +251,6 @@ table.insert(State.connections, player.CharacterAdded:Connect(function()
 end))
 
 -- Create UI
-local Library = AegisHub
-
 -- Speed
 Library:CreateToggle(page, "Speed", false, function(v)
     State.speedEnabled = v

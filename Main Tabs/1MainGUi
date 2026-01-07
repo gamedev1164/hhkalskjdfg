@@ -808,8 +808,8 @@ do
         valueLabel.Parent = sliderFrame
         
         local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(1, -30, 0, 6)
-        barBg.Position = UDim2.new(0, 15, 0, 38)
+        barBg.Size = UDim2.new(1, -30, 0, 12)  -- Increased from 6 to 12
+        barBg.Position = UDim2.new(0, 15, 0, 35)
         barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         barBg.BorderSizePixel = 0
         barBg.ZIndex = 4
@@ -838,10 +838,29 @@ do
             local sizeX = barBg.AbsoluteSize.X
             local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
             local value = math.floor(min + ((max - min) * pos))
-            TweenService:Create(fill, TweenInfo.new(0.1, Enum.EasingStyle.Sine), {Size = UDim2.new(pos, 0, 1, 0)}):Play()
+            fill.Size = UDim2.new(pos, 0, 1, 0)  -- Instant update, no tween
             valueLabel.Text = tostring(value)
             if callback then callback(value) end
         end
+        
+        -- Make bar and fill clickable to jump to position
+        local function startDragging(input)
+            dragging = true
+            Update(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+        end
+        
+        barBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
+        
+        fill.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
         
         grabber.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -849,16 +868,344 @@ do
                 TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
             end
         end)
-        grabber.InputEnded:Connect(function(input)
+        
+        UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 dragging = false
                 TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 14, 0, 14)}):Play()
             end
         end)
+        
         UserInputService.InputChanged:Connect(function(input)
             if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
         end)
         return sliderFrame
+    end
+
+    function Library:CreateFreeCamControl(parent, text, min, max, default, toggleCallback, sliderCallback, tpCallback)
+        local frame = Instance.new("Frame")
+        frame.Name = "FreeCamControl"
+        frame.Size = UDim2.new(1, 0, 0, 60)
+        frame.BackgroundColor3 = Theme.ElementBg
+        frame.BorderSizePixel = 0
+        frame.ZIndex = 3
+        frame.Parent = parent
+        
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+        
+        -- Label on left
+        local label = Instance.new("TextLabel")
+        label.Text = text
+        label.Font = Enum.Font.GothamMedium
+        label.TextSize = 14
+        label.TextColor3 = Theme.TextWhite
+        label.Size = UDim2.new(0, 70, 1, 0)
+        label.Position = UDim2.new(0, 15, 0, 0)
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = frame
+        
+        -- Slider
+        local barBg = Instance.new("Frame")
+        barBg.Size = UDim2.new(0, 120, 0, 12)
+        barBg.Position = UDim2.new(0, 90, 0, 24)
+        barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        barBg.BorderSizePixel = 0
+        barBg.ZIndex = 4
+        barBg.Parent = frame
+        Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+        
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Theme.Accent
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 5
+        fill.Parent = barBg
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+        
+        local grabber = Instance.new("Frame")
+        grabber.Size = UDim2.new(0, 18, 0, 18)
+        grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+        grabber.Position = UDim2.new(1, 0, 0.5, 0)
+        grabber.BackgroundColor3 = Theme.TextWhite
+        grabber.ZIndex = 6
+        grabber.Parent = fill
+        Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+        
+        -- Value label
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Text = tostring(default)
+        valueLabel.Font = Enum.Font.GothamBold
+        valueLabel.TextSize = 14
+        valueLabel.TextColor3 = Theme.Accent
+        valueLabel.Size = UDim2.new(0, 40, 0, 30)
+        valueLabel.Position = UDim2.new(0, 220, 0, 15)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+        valueLabel.ZIndex = 4
+        valueLabel.Parent = frame
+        
+        -- TP to Cam button (middle)
+        local tpBtn = Instance.new("TextButton")
+        tpBtn.Size = UDim2.new(0, 80, 0, 26)
+        tpBtn.Position = UDim2.new(0, 270, 0.5, -13)
+        tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+        tpBtn.BorderSizePixel = 0
+        tpBtn.Font = Enum.Font.GothamBold
+        tpBtn.TextSize = 11
+        tpBtn.TextColor3 = Theme.Accent
+        tpBtn.Text = "TP to Cam"
+        tpBtn.ZIndex = 4
+        tpBtn.Parent = frame
+        Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+        
+        tpBtn.MouseEnter:Connect(function()
+            tpBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        end)
+        
+        tpBtn.MouseLeave:Connect(function()
+            tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+        end)
+        
+        tpBtn.MouseButton1Click:Connect(function()
+            if tpCallback then tpCallback() end
+        end)
+        
+        -- Toggle switch on far right
+        local switch = Instance.new("TextButton")
+        switch.Text = ""
+        switch.Size = UDim2.new(0, 50, 0, 26)
+        switch.Position = UDim2.new(1, -65, 0.5, -13)
+        switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        switch.AutoButtonColor = false
+        switch.ZIndex = 4
+        switch.Parent = frame
+        
+        Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+        
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, 20, 0, 20)
+        dot.Position = UDim2.new(0, 3, 0.5, -10)
+        dot.BackgroundColor3 = Theme.TextWhite
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 5
+        dot.Parent = switch
+        
+        Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+        
+        -- Toggle state
+        local toggleState = false
+        switch.MouseButton1Click:Connect(function()
+            toggleState = not toggleState
+            PlaySound(Sounds.Click)
+            TweenService:Create(switch, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {BackgroundColor3 = toggleState and Theme.Accent or Color3.fromRGB(50, 50, 60)}):Play()
+            TweenService:Create(dot, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {
+                Position = toggleState and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+            }):Play()
+            if toggleCallback then toggleCallback(toggleState) end
+        end)
+        
+        -- Slider interaction
+        local dragging = false
+        local function Update(input)
+            local sizeX = barBg.AbsoluteSize.X
+            local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
+            local value = math.floor(min + ((max - min) * pos))
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            valueLabel.Text = tostring(value)
+            if sliderCallback then sliderCallback(value) end
+        end
+        
+        local function startDragging(input)
+            dragging = true
+            Update(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+        
+        barBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
+        
+        fill.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
+        
+        grabber.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+            end
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+                TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
+        end)
+        
+        return {frame = frame, setToggle = function(on) 
+            toggleState = on
+            switch.BackgroundColor3 = on and Theme.Accent or Color3.fromRGB(50, 50, 60)
+            dot.Position = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        end}
+    end
+
+    function Library:CreateToggleSlider(parent, text, min, max, default, toggleCallback, sliderCallback)
+        local frame = Instance.new("Frame")
+        frame.Name = "ToggleSlider"
+        frame.Size = UDim2.new(1, 0, 0, 60)
+        frame.BackgroundColor3 = Theme.ElementBg
+        frame.BorderSizePixel = 0
+        frame.ZIndex = 3
+        frame.Parent = parent
+        
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+        
+        -- Label on left
+        local label = Instance.new("TextLabel")
+        label.Text = text
+        label.Font = Enum.Font.GothamMedium
+        label.TextSize = 14
+        label.TextColor3 = Theme.TextWhite
+        label.Size = UDim2.new(0, 120, 1, 0)
+        label.Position = UDim2.new(0, 15, 0, 0)
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 4
+        label.Parent = frame
+        
+        -- Slider in middle
+        local barBg = Instance.new("Frame")
+        barBg.Size = UDim2.new(0, 200, 0, 12)  -- Increased from 6 to 12
+        barBg.Position = UDim2.new(0, 140, 0, 24)
+        barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        barBg.BorderSizePixel = 0
+        barBg.ZIndex = 4
+        barBg.Parent = frame
+        Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+        
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Theme.Accent
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 5
+        fill.Parent = barBg
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+        
+        local grabber = Instance.new("Frame")
+        grabber.Size = UDim2.new(0, 14, 0, 14)
+        grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+        grabber.Position = UDim2.new(1, 0, 0.5, 0)
+        grabber.BackgroundColor3 = Theme.TextWhite
+        grabber.ZIndex = 6
+        grabber.Parent = fill
+        Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+        
+        -- Value label (right of slider)
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Text = tostring(default)
+        valueLabel.Font = Enum.Font.GothamBold
+        valueLabel.TextSize = 14
+        valueLabel.TextColor3 = Theme.Accent
+        valueLabel.Size = UDim2.new(0, 50, 0, 30)
+        valueLabel.Position = UDim2.new(0, 350, 0, 15)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+        valueLabel.ZIndex = 4
+        valueLabel.Parent = frame
+        
+        -- Toggle switch on far right
+        local switch = Instance.new("TextButton")
+        switch.Text = ""
+        switch.Size = UDim2.new(0, 50, 0, 26)
+        switch.Position = UDim2.new(1, -65, 0.5, -13)
+        switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        switch.AutoButtonColor = false
+        switch.ZIndex = 4
+        switch.Parent = frame
+        
+        Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+        
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, 20, 0, 20)
+        dot.Position = UDim2.new(0, 3, 0.5, -10)
+        dot.BackgroundColor3 = Theme.TextWhite
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 5
+        dot.Parent = switch
+        
+        Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+        
+        -- Toggle state
+        local toggleState = false
+        switch.MouseButton1Click:Connect(function()
+            toggleState = not toggleState
+            PlaySound(Sounds.Click)
+            TweenService:Create(switch, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {BackgroundColor3 = toggleState and Theme.Accent or Color3.fromRGB(50, 50, 60)}):Play()
+            TweenService:Create(dot, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {
+                Position = toggleState and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+            }):Play()
+            if toggleCallback then toggleCallback(toggleState) end
+        end)
+        
+        -- Slider interaction
+        local dragging = false
+        local function Update(input)
+            local sizeX = barBg.AbsoluteSize.X
+            local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
+            local value = math.floor(min + ((max - min) * pos))
+            fill.Size = UDim2.new(pos, 0, 1, 0)
+            valueLabel.Text = tostring(value)
+            if sliderCallback then sliderCallback(value) end
+        end
+        
+        local function startDragging(input)
+            dragging = true
+            Update(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+        end
+        
+        barBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
+        
+        fill.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                startDragging(input)
+            end
+        end)
+        
+        grabber.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+            end
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+                TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 14, 0, 14)}):Play()
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
+        end)
+        
+        return frame
     end
 
     function Library:Toggle()

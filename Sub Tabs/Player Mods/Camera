@@ -257,44 +257,24 @@ Library:CreateToggleSlider(page, "FOV", 10, 120, 70,
     end
 )
 
--- FreeCam with Toggle+Slider
-Library:CreateToggleSlider(page, "FreeCam", 1, 500, 50,
+-- FreeCam with integrated TP to Cam button
+local freecamControl = Library:CreateFreeCamControl(page, "FreeCam", 1, 500, 50,
     function(enabled)
         State.freecamEnabled = enabled
         if enabled then enableFreeCam() else disableFreeCam() end
     end,
     function(value)
         State.freecamSpeed = value
+    end,
+    function()
+        -- TP to Cam callback
+        teleportToCam()
+        -- Auto turn off toggle
+        if freecamControl then
+            freecamControl.setToggle(false)
+        end
     end
 )
-
--- TP to Cam button
-local tpCamBtn = Instance.new("TextButton")
-tpCamBtn.Size = UDim2.new(0, 120, 0, 45)
-tpCamBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
-tpCamBtn.BorderSizePixel = 0
-tpCamBtn.Font = Enum.Font.GothamBold
-tpCamBtn.TextSize = 13
-tpCamBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-tpCamBtn.Text = "TP to Cam"
-tpCamBtn.ZIndex = 6
-tpCamBtn.Parent = page
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = tpCamBtn
-
-tpCamBtn.MouseButton1Click:Connect(function()
-    teleportToCam()
-end)
-
-tpCamBtn.MouseEnter:Connect(function()
-    tpCamBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-end)
-
-tpCamBtn.MouseLeave:Connect(function()
-    tpCamBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
-end)
 
 print("✓ Camera Module Loaded")
 

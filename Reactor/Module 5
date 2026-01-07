@@ -439,23 +439,45 @@ function Module5:Run()
     -- STEP 8: Resource Tool Consumption
     print("[Module 5] Step 8: Resource tool consumption...")
     self.humanoidRootPart.CFrame = CFrame.new(-1107, -206, 724)
-    wait(0.5)
+    wait(0.3)
     
-    -- Keep using Resource tools until none left
+    -- Find Hatch to aim at
+    local hatch = nil
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj.Name == "Hatch" and obj:IsA("BasePart") then
+            hatch = obj
+            break
+        end
+    end
+    
+    -- Enter freecam to aim at Hatch
+    camera.CameraType = Enum.CameraType.Scriptable
+    
+    if hatch then
+        -- Aim camera at Hatch
+        local hatchPos = hatch.Position
+        camera.CFrame = CFrame.new(camera.CFrame.Position, hatchPos)
+        wait(0.2)
+    end
+    
+    -- Keep using Resource tools until none left (FASTER)
     while self:HasResource() do
         self:EquipResource()
-        wait(0.5)
+        wait(0.2)  -- Faster (was 0.5)
         
         -- Hold E for 1 second
         self:HoldE()
-        wait(0.5)
+        wait(0.2)  -- Faster (was 0.5)
     end
+    
+    -- Restore camera
+    camera.CameraType = Enum.CameraType.Custom
     
     print("[Module 5] All resources consumed!")
     
     -- STEP 9: Load next module
     print("[Module 5] Loading next module...")
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%206", true))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%205", true))()
 end
 
 -- AUTO START

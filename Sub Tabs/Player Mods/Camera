@@ -29,6 +29,9 @@ local State = {
     freecamCFrame = nil,
     origCameraType = nil,
     origCameraSubject = nil,
+    freecamRotating = false,
+    freecamLastMousePos = nil,
+    origHRPCFrame = nil,
     
     connections = {}
 }
@@ -66,18 +69,64 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
     if gpe then return end
     if input.UserInputType == Enum.UserInputType.Keyboard then
         setFreecamKey(input.KeyCode, true)
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if State.freecamEnabled then
+            State.freecamRotating = true
+            State.freecamLastMousePos = UserInputService:GetMouseLocation()
+        end
     end
 end))
 
 table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Keyboard then
         setFreecamKey(input.KeyCode, false)
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+        State.freecamRotating = false
+        State.freecamLastMousePos = nil
+    end
+end))
+
+table.insert(State.connections, UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and State.freecamRotating and State.freecamEnabled then
+        local currentMousePos = UserInputService:GetMouseLocation()
+        if State.freecamLastMousePos then
+            local delta = currentMousePos - State.freecamLastMousePos
+            local cam = Workspace.CurrentCamera
+            if cam then
+                local sensitivity = 0.002
+                local yaw = -delta.X * sensitivity
+                local pitch = -delta.Y * sensitivity
+                
+                local cf = cam.CFrame
+                local lookVector = cf.LookVector
+                local rightVector = cf.RightVector
+                
+                -- Rotate around Y axis (yaw)
+                cf = cf * CFrame.Angles(0, yaw, 0)
+                
+                -- Rotate around X axis (pitch) with limits
+                local currentPitch = math.asin(lookVector.Y)
+                local newPitch = math.clamp(currentPitch + pitch, -math.pi/2 + 0.1, math.pi/2 - 0.1)
+                local pitchDelta = newPitch - currentPitch
+                cf = cf * CFrame.Angles(pitchDelta, 0, 0)
+                
+                cam.CFrame = cf
+            end
+        end
+        State.freecamLastMousePos = currentMousePos
     end
 end))
 
 local function enableFreeCam()
     local cam = Workspace.CurrentCamera
     if not cam then return end
+    
+    -- Freeze character
+    local hrp = getChar() and getChar():FindFirstChild("HumanoidRootPart")
+    if hrp then
+        State.origHRPCFrame = hrp.CFrame
+        hrp.Anchored = true
+    end
     
     -- Store original camera settings
     State.origCameraType = cam.CameraType
@@ -93,25 +142,28 @@ local function enableFreeCam()
         local cam = Workspace.CurrentCamera
         if not cam then return end
         
-        -- Get current camera orientation
-        local cf = cam.CFrame
-        local look = cf.LookVector
-        local right = cf.RightVector
-        local up = Vector3.new(0, 1, 0)
-        
-        -- Calculate movement
-        local moveDir = Vector3.zero
-        if State.freecamKeys.W then moveDir = moveDir + look end
-        if State.freecamKeys.S then moveDir = moveDir - look end
-        if State.freecamKeys.A then moveDir = moveDir - right end
-        if State.freecamKeys.D then moveDir = moveDir + right end
-        if State.freecamKeys.Space then moveDir = moveDir + up end
-        if State.freecamKeys.LeftShift then moveDir = moveDir - up end
-        
-        -- Apply movement
-        if moveDir.Magnitude > 0 then
-            local speed = State.freecamSpeed
-            cam.CFrame = cam.CFrame + moveDir.Unit * speed * dt
+        -- Only move if not rotating
+        if not State.freecamRotating then
+            -- Get current camera orientation
+            local cf = cam.CFrame
+            local look = cf.LookVector
+            local right = cf.RightVector
+            local up = Vector3.new(0, 1, 0)
+            
+            -- Calculate movement
+            local moveDir = Vector3.zero
+            if State.freecamKeys.W then moveDir = moveDir + look end
+            if State.freecamKeys.S then moveDir = moveDir - look end
+            if State.freecamKeys.A then moveDir = moveDir - right end
+            if State.freecamKeys.D then moveDir = moveDir + right end
+            if State.freecamKeys.Space then moveDir = moveDir + up end
+            if State.freecamKeys.LeftShift then moveDir = moveDir - up end
+            
+            -- Apply movement
+            if moveDir.Magnitude > 0 then
+                local speed = State.freecamSpeed
+                cam.CFrame = cam.CFrame + moveDir.Unit * speed * dt
+            end
         end
     end)
     
@@ -124,10 +176,33 @@ local function disableFreeCam()
         State.freecamConn = nil
     end
     
+    -- Unfreeze character
+    local hrp = getChar() and getChar():FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Anchored = false
+    end
+    
     local cam = Workspace.CurrentCamera
     if cam then
         cam.CameraType = State.origCameraType or Enum.CameraType.Custom
         cam.CameraSubject = State.origCameraSubject or (player.Character and player.Character:FindFirstChildOfClass("Humanoid"))
+    end
+    
+    State.freecamRotating = false
+    State.freecamLastMousePos = nil
+end
+
+local function teleportToCam()
+    local cam = Workspace.CurrentCamera
+    local hrp = getChar() and getChar():FindFirstChild("HumanoidRootPart")
+    
+    if cam and hrp and State.freecamEnabled then
+        -- TP character to camera position
+        hrp.CFrame = CFrame.new(cam.CFrame.Position)
+        
+        -- Turn off freecam
+        State.freecamEnabled = false
+        disableFreeCam()
     end
 end
 
@@ -140,7 +215,7 @@ end))
 
 -- Create UI
 -- FOV with Toggle+Slider
-Library:CreateToggleSlider(page, "FOV", 10, 150, 70, 
+Library:CreateToggleSlider(page, "FOV", 10, 120, 70, 
     function(enabled)
         State.fovEnabled = enabled
         if enabled then enableFOV() else disableFOV() end
@@ -164,6 +239,34 @@ Library:CreateToggleSlider(page, "FreeCam", 1, 500, 50,
         State.freecamSpeed = value
     end
 )
+
+-- TP to Cam button
+local tpCamBtn = Instance.new("TextButton")
+tpCamBtn.Size = UDim2.new(0, 120, 0, 45)
+tpCamBtn.BackgroundColor3 = Library.GUI.Parent.Parent.Parent.Parent.Parent.Content.BackgroundColor3
+tpCamBtn.BorderSizePixel = 0
+tpCamBtn.Font = Enum.Font.GothamBold
+tpCamBtn.TextSize = 13
+tpCamBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+tpCamBtn.Text = "TP to Cam"
+tpCamBtn.ZIndex = 6
+tpCamBtn.Parent = page
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = tpCamBtn
+
+tpCamBtn.MouseButton1Click:Connect(function()
+    teleportToCam()
+end)
+
+tpCamBtn.MouseEnter:Connect(function()
+    tpCamBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+end)
+
+tpCamBtn.MouseLeave:Connect(function()
+    tpCamBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+end)
 
 print("✓ Camera Module Loaded")
 

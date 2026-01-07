@@ -1,4 +1,4 @@
-- MODULE 5: Freecam Slider Interaction (ULTRA FAST)
+-- MODULE 5: Freecam Slider Interaction (ULTRA FAST)
 -- Instant camera teleports, stays in freecam for all sliders
 
 local Module5 = {}
@@ -187,8 +187,12 @@ end
 
 -- Main execution
 function Module5:Run()
+    print("[Module 5] Starting...")
+    
     -- STEP 1: Filter Replacement Consumption
+    print("[Module 5] Step 1: Checking Filter Replacement...")
     if self:HasFilterReplacement() then
+        print("[Module 5] Filter Replacement found - consuming...")
         self:EquipFilterReplacement()
         wait(0.5)
         
@@ -196,24 +200,36 @@ function Module5:Run()
             self:LeftClick()
             wait(0.1)
         end
+        print("[Module 5] Filter Replacement consumed!")
+    else
+        print("[Module 5] No Filter Replacement found - skipping")
     end
     
-    -- STEP 2: Check for nearby players - WAIT until clear
+    -- STEP 2: Teleport to slider location FIRST
+    print("[Module 5] Step 2: Teleporting to: -1210 -172 746")
+    self.humanoidRootPart.CFrame = CFrame.new(-1210, -172, 746)
+    wait(0.5)
+    
+    -- STEP 3: Check for nearby players at slider location - WAIT until clear
+    print("[Module 5] Step 3: Checking for nearby players at slider location...")
+    local checkCount = 0
     while true do
         local nearbyPlayers = self:FindNearbyPlayers()
         
         if #nearbyPlayers == 0 then
+            print("[Module 5] No players nearby - continuing!")
             break -- No players, continue
         end
         
+        checkCount = checkCount + 1
+        print("[Module 5] " .. #nearbyPlayers .. " player(s) detected - waiting... (check #" .. checkCount .. ")")
         -- Players detected, wait 1 second and check again
         wait(1)
     end
     
-    -- STEP 3: Sliders (no players nearby)
+    -- STEP 4: Sliders (no players nearby)
+    print("[Module 5] Step 4: Starting sliders...")
     
-    -- Teleport to starting position
-    self.humanoidRootPart.CFrame = CFrame.new(-1210, -172, 746)
     wait(0.5)
     
     -- ENTER FREECAM ONCE (stays active for all sliders)
@@ -323,23 +339,30 @@ function Module5:Run()
     -- RESTORE CAMERA ONCE (after all sliders done)
     camera.CameraType = Enum.CameraType.Custom
     
-    -- STEP 4: Teleport and check for players again before coolant
+    -- STEP 5: Teleport to coolant location FIRST
+    print("[Module 5] Step 5: Teleporting to: -1248 -141 49")
     self.humanoidRootPart.CFrame = CFrame.new(-1248, -141, 49)
     wait(0.5)
     
-    -- Wait until no players nearby
+    -- STEP 6: Check for players at coolant location - Wait until no players nearby
+    print("[Module 5] Step 6: Checking for nearby players at coolant location...")
+    checkCount = 0
     while true do
         local nearbyPlayers = self:FindNearbyPlayers()
         
         if #nearbyPlayers == 0 then
+            print("[Module 5] No players nearby - continuing!")
             break -- No players, continue to coolant
         end
         
+        checkCount = checkCount + 1
+        print("[Module 5] " .. #nearbyPlayers .. " player(s) detected - waiting... (check #" .. checkCount .. ")")
         -- Players detected, wait 1 second and check again
         wait(1)
     end
     
-    -- STEP 5: Coolant Panels (no players nearby)
+    -- STEP 7: Coolant Panels (no players nearby)
+    print("[Module 5] Step 7: Processing coolant panels...")
     
     -- Find all CoolantControlPanel models
     local coolantPanels = {}
@@ -413,7 +436,8 @@ function Module5:Run()
     -- Restore camera
     camera.CameraType = Enum.CameraType.Custom
     
-    -- STEP 6: Resource Tool Consumption
+    -- STEP 8: Resource Tool Consumption
+    print("[Module 5] Step 8: Resource tool consumption...")
     self.humanoidRootPart.CFrame = CFrame.new(-1107, -206, 724)
     wait(0.5)
     
@@ -427,7 +451,10 @@ function Module5:Run()
         wait(0.5)
     end
     
-    -- STEP 7: Load next module
+    print("[Module 5] All resources consumed!")
+    
+    -- STEP 9: Load next module
+    print("[Module 5] Loading next module...")
     loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Reactor/Module%206", true))()
 end
 

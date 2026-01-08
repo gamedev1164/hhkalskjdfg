@@ -378,17 +378,56 @@ do
     label.Font = Enum.Font.GothamMedium
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    label.Size = UDim2.new(0, 100, 1, 0)
+    label.Size = UDim2.new(0, 120, 1, 0)
     label.Position = UDim2.new(0, 15, 0, 0)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 6
     label.Parent = frame
     
-    -- Hotkey Button
+    -- Slider
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(0, 140, 0, 12)
+    barBg.Position = UDim2.new(0, 140, 0, 24)
+    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    barBg.BorderSizePixel = 0
+    barBg.ZIndex = 6
+    barBg.Parent = frame
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.2, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 7
+    fill.Parent = barBg
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local grabber = Instance.new("Frame")
+    grabber.Size = UDim2.new(0, 18, 0, 18)
+    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+    grabber.Position = UDim2.new(1, 0, 0.5, 0)
+    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    grabber.ZIndex = 8
+    grabber.Parent = fill
+    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Text = "100"
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 14
+    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    valueLabel.Size = UDim2.new(0, 50, 0, 30)
+    valueLabel.Position = UDim2.new(0, 290, 0, 15)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.ZIndex = 6
+    valueLabel.Parent = frame
+    
+    -- Hotkey Button (moved next to toggle)
     local hotkeyBtn = Instance.new("TextButton")
     hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
-    hotkeyBtn.Position = UDim2.new(0, 120, 0.5, -13)
+    hotkeyBtn.Position = UDim2.new(1, -125, 0.5, -13)  -- Positioned left of toggle
     hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     hotkeyBtn.BorderSizePixel = 0
     hotkeyBtn.Font = Enum.Font.GothamBold
@@ -421,45 +460,6 @@ do
         State.capturingHotkey = false
     end)
     table.insert(State.connections, hotkeyConn)
-    
-    -- Slider
-    local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 140, 0, 12)
-    barBg.Position = UDim2.new(0, 180, 0, 24)
-    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    barBg.BorderSizePixel = 0
-    barBg.ZIndex = 6
-    barBg.Parent = frame
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
-    
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.2, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    fill.BorderSizePixel = 0
-    fill.ZIndex = 7
-    fill.Parent = barBg
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    
-    local grabber = Instance.new("Frame")
-    grabber.Size = UDim2.new(0, 18, 0, 18)
-    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
-    grabber.Position = UDim2.new(1, 0, 0.5, 0)
-    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    grabber.ZIndex = 8
-    grabber.Parent = fill
-    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
-    
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "100"
-    valueLabel.Font = Enum.Font.GothamBold
-    valueLabel.TextSize = 14
-    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
-    valueLabel.Size = UDim2.new(0, 50, 0, 30)
-    valueLabel.Position = UDim2.new(0, 330, 0, 15)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-    valueLabel.ZIndex = 6
-    valueLabel.Parent = frame
     
     -- Toggle Switch
     local switch = Instance.new("TextButton")

@@ -22,15 +22,15 @@ local State = {
     fullBrightEnabled = false,
     noFogEnabled = false,
     infZoomEnabled = false,
-    skyboxDisabled = false,
-    bloomDisabled = false,
-    distortionDisabled = false,
+    allLightingEffectsRemoved = false,
     xrayEnabled = false,
     xrayLevel = 0.5,
+    doorsHighlighted = false,
     
     enforcementConn = nil,
     xrayOriginal = {},
-    originalEffects = {},
+    originalLightingEffects = {},
+    doorHighlights = {},
     
     connections = {}
 }
@@ -124,81 +124,105 @@ local function disableInfZoom()
     player.CameraMaxZoomDistance = 128
 end
 
--- Skybox Toggle
-local function disableSkybox()
-    local sky = Lighting:FindFirstChildOfClass("Sky")
-    if sky then
-        if not State.originalEffects.Sky then
-            State.originalEffects.Sky = {
-                SkyboxBk = sky.SkyboxBk,
-                SkyboxDn = sky.SkyboxDn,
-                SkyboxFt = sky.SkyboxFt,
-                SkyboxLf = sky.SkyboxLf,
-                SkyboxRt = sky.SkyboxRt,
-                SkyboxUp = sky.SkyboxUp
-            }
+-- Remove All Lighting Effects (Skybox, Bloom, Distortion, etc.)
+local function removeAllLightingEffects()
+    -- Store and remove all effects from Lighting
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("Sky") or 
+           effect:IsA("BloomEffect") or 
+           effect:IsA("BlurEffect") or 
+           effect:IsA("ColorCorrectionEffect") or 
+           effect:IsA("SunRaysEffect") or 
+           effect:IsA("DepthOfFieldEffect") or
+           effect:IsA("Atmosphere") then
+            
+            if not State.originalLightingEffects[effect] then
+                State.originalLightingEffects[effect] = effect.Parent
+            end
+            effect.Parent = nil
         end
+    end
+end
+
+local function restoreAllLightingEffects()
+    for effect, parent in pairs(State.originalLightingEffects) do
+        if effect then
+            effect.Parent = parent
+        end
+    end
+    State.originalLightingEffects = {}
+end
+
+-- Door Highlighting System
+local DOOR_NAMES = {
+    "AEDBlastShield",
+    "GarageDoor",
+    "Gate",
+    "Gate2",
+    "Gate_GeneratorTerminalComplex",
+}
+
+local function isDoorModel(model)
+    if not model or not model:IsA("Model") then return false end
+    
+    for _, doorName in ipairs(DOOR_NAMES) do
+        if model.Name:lower():find(doorName:lower()) then
+            return true
+        end
+    end
+    
+    return false
+end
+
+local function getAllDoors()
+    local doors = {}
+    
+    -- Check Doors folder
+    local doorsFolder = Workspace:FindFirstChild("Doors")
+    if doorsFolder then
+        for _, child in ipairs(doorsFolder:GetDescendants()) do
+            if child:IsA("Model") and isDoorModel(child) then
+                table.insert(doors, child)
+            end
+        end
+    end
+    
+    -- Check workspace root for door models
+    for _, child in ipairs(Workspace:GetChildren()) do
+        if child:IsA("Model") and isDoorModel(child) then
+            table.insert(doors, child)
+        end
+    end
+    
+    return doors
+end
+
+local function clearDoorHighlights()
+    for _, highlight in pairs(State.doorHighlights) do
+        pcall(function() highlight:Destroy() end)
+    end
+    State.doorHighlights = {}
+end
+
+local function highlightDoors()
+    clearDoorHighlights()
+    
+    local doors = getAllDoors()
+    
+    for _, door in ipairs(doors) do
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = door
+        highlight.FillColor = Color3.fromRGB(255, 50, 50)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = door
         
-        sky.SkyboxBk = ""
-        sky.SkyboxDn = ""
-        sky.SkyboxFt = ""
-        sky.SkyboxLf = ""
-        sky.SkyboxRt = ""
-        sky.SkyboxUp = ""
+        table.insert(State.doorHighlights, highlight)
     end
-end
-
-local function enableSkybox()
-    local sky = Lighting:FindFirstChildOfClass("Sky")
-    if sky and State.originalEffects.Sky then
-        local orig = State.originalEffects.Sky
-        sky.SkyboxBk = orig.SkyboxBk
-        sky.SkyboxDn = orig.SkyboxDn
-        sky.SkyboxFt = orig.SkyboxFt
-        sky.SkyboxLf = orig.SkyboxLf
-        sky.SkyboxRt = orig.SkyboxRt
-        sky.SkyboxUp = orig.SkyboxUp
-    end
-end
-
--- Bloom Toggle
-local function disableBloom()
-    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
-    if bloom then
-        if not State.originalEffects.Bloom then
-            State.originalEffects.Bloom = {
-                Enabled = bloom.Enabled
-            }
-        end
-        bloom.Enabled = false
-    end
-end
-
-local function enableBloom()
-    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
-    if bloom and State.originalEffects.Bloom then
-        bloom.Enabled = State.originalEffects.Bloom.Enabled
-    end
-end
-
--- Distortion Toggle (Blur)
-local function disableDistortion()
-    local blur = Lighting:FindFirstChildOfClass("BlurEffect")
-    if blur then
-        if not State.originalEffects.Blur then
-            State.originalEffects.Blur = {
-                Enabled = blur.Enabled
-            }
-        end
-        blur.Enabled = false
-    end
-end
-
-local function enableDistortion()
-    local blur = Lighting:FindFirstChildOfClass("BlurEffect")
-    if blur and State.originalEffects.Blur then
-        blur.Enabled = State.originalEffects.Blur.Enabled
-    end
+    
+    print("✓ Highlighted " .. #doors .. " doors")
 end
 
 -- X-Ray System
@@ -250,19 +274,14 @@ Library:CreateToggle(page, "Infinite Zoom", false, function(enabled)
     if enabled then enableInfZoom() else disableInfZoom() end
 end)
 
-Library:CreateToggle(page, "Toggle Off Skybox", false, function(enabled)
-    State.skyboxDisabled = enabled
-    if enabled then disableSkybox() else enableSkybox() end
+Library:CreateToggle(page, "Remove All Lighting Effects", false, function(enabled)
+    State.allLightingEffectsRemoved = enabled
+    if enabled then removeAllLightingEffects() else restoreAllLightingEffects() end
 end)
 
-Library:CreateToggle(page, "Toggle Off Bloom", false, function(enabled)
-    State.bloomDisabled = enabled
-    if enabled then disableBloom() else enableBloom() end
-end)
-
-Library:CreateToggle(page, "Toggle Off Distortion", false, function(enabled)
-    State.distortionDisabled = enabled
-    if enabled then disableDistortion() else enableDistortion() end
+Library:CreateToggle(page, "Highlight Doors", false, function(enabled)
+    State.doorsHighlighted = enabled
+    if enabled then highlightDoors() else clearDoorHighlights() end
 end)
 
 -- X-ray with slider

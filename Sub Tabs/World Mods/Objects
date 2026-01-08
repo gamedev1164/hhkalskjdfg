@@ -24,20 +24,21 @@ local State = {
     connections = {}
 }
 
--- Door names from screenshots
+-- Door names from screenshots (exact spellings)
 local DOOR_NAMES = {
     "AEDBlastShield",
-    "G36C_Cosmetics",
-    "Garage",
     "GarageDoor",
     "Gate",
     "Gate2",
     "Gate_GeneratorTerminalComplex",
-    "Doors"  -- Generic doors folder
+    "Doors"  -- The Doors folder itself
 }
 
 -- Border wall detection - walls in "Divisional" folder
 local WALL_FOLDER = "Divisional"
+
+-- Height to move objects (1000 studs)
+local MOVE_HEIGHT = 1000
 
 -- Helper function to check if model matches door names
 local function isDoorModel(model)
@@ -102,8 +103,8 @@ local function moveObjectUp(obj, originalPosTable)
                 originalPosTable[obj] = primaryPart.CFrame
             end
             
-            -- Move up 10000 studs
-            local offset = Vector3.new(0, 10000, 0)
+            -- Move up MOVE_HEIGHT studs
+            local offset = Vector3.new(0, MOVE_HEIGHT, 0)
             obj:SetPrimaryPartCFrame(primaryPart.CFrame + offset)
         end
     elseif obj:IsA("BasePart") then
@@ -112,8 +113,8 @@ local function moveObjectUp(obj, originalPosTable)
             originalPosTable[obj] = obj.CFrame
         end
         
-        -- Move up 10000 studs
-        obj.CFrame = obj.CFrame + Vector3.new(0, 10000, 0)
+        -- Move up MOVE_HEIGHT studs
+        obj.CFrame = obj.CFrame + Vector3.new(0, MOVE_HEIGHT, 0)
     end
 end
 

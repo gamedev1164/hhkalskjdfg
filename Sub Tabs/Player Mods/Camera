@@ -27,11 +27,14 @@ local State = {
     freecamCF = nil,
     freecamOrig = nil,
     freecamKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
+    freecamHotkey = Enum.KeyCode.G,
     charOrig = nil,
     
     rmbDown = false,
     yaw = 0,
     pitch = 0,
+    
+    capturingHotkey = false,
     
     connections = {}
 }
@@ -173,6 +176,25 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
     end
 end))
 
+-- Hotkey toggle for FreeCam
+table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    
+    if not State.capturingHotkey and input.KeyCode == State.freecamHotkey then
+        State.freecamEnabled = not State.freecamEnabled
+        if State.freecamEnabled then
+            enableFreeCam()
+        else
+            disableFreeCam()
+        end
+        
+        -- Update toggle if it exists
+        if freecamControlRef then
+            freecamControlRef.setToggle(State.freecamEnabled)
+        end
+    end
+end))
+
 table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         State.rmbDown = false
@@ -257,24 +279,224 @@ Library:CreateToggleSlider(page, "FOV", 10, 120, 70,
     end
 )
 
--- FreeCam with integrated TP to Cam button
-local freecamControl = Library:CreateFreeCamControl(page, "FreeCam", 1, 500, 50,
-    function(enabled)
-        State.freecamEnabled = enabled
-        if enabled then enableFreeCam() else disableFreeCam() end
-    end,
-    function(value)
-        State.freecamSpeed = value
-    end,
-    function()
-        -- TP to Cam callback
-        teleportToCam()
-        -- Auto turn off toggle
-        if freecamControl then
-            freecamControl.setToggle(false)
+-- FreeCam with Hotkey, Slider, and TP to Cam
+local freecamControlRef = nil
+
+do
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 60)
+    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 5
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Text = "FreeCam"
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.Size = UDim2.new(0, 80, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
+    label.Parent = frame
+    
+    -- Hotkey Button
+    local hotkeyBtn = Instance.new("TextButton")
+    hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
+    hotkeyBtn.Position = UDim2.new(0, 100, 0.5, -13)
+    hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    hotkeyBtn.BorderSizePixel = 0
+    hotkeyBtn.Font = Enum.Font.GothamBold
+    hotkeyBtn.TextSize = 11
+    hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+    hotkeyBtn.Text = State.freecamHotkey.Name
+    hotkeyBtn.ZIndex = 6
+    hotkeyBtn.Parent = frame
+    Instance.new("UICorner", hotkeyBtn).CornerRadius = UDim.new(0, 6)
+    
+    hotkeyBtn.MouseButton1Click:Connect(function()
+        State.capturingHotkey = true
+        hotkeyBtn.Text = "..."
+        hotkeyBtn.TextColor3 = Color3.fromRGB(255, 140, 50)
+    end)
+    
+    local hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+        if not State.capturingHotkey then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if input.KeyCode == Enum.KeyCode.Escape then
+            State.capturingHotkey = false
+            hotkeyBtn.Text = State.freecamHotkey.Name
+            hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+            return
         end
+        
+        State.freecamHotkey = input.KeyCode
+        hotkeyBtn.Text = input.KeyCode.Name
+        hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+        State.capturingHotkey = false
+    end)
+    table.insert(State.connections, hotkeyConn)
+    
+    -- Slider
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(0, 100, 0, 12)
+    barBg.Position = UDim2.new(0, 160, 0, 24)
+    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    barBg.BorderSizePixel = 0
+    barBg.ZIndex = 6
+    barBg.Parent = frame
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.1, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 7
+    fill.Parent = barBg
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local grabber = Instance.new("Frame")
+    grabber.Size = UDim2.new(0, 18, 0, 18)
+    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+    grabber.Position = UDim2.new(1, 0, 0.5, 0)
+    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    grabber.ZIndex = 8
+    grabber.Parent = fill
+    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Text = "50"
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 14
+    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    valueLabel.Size = UDim2.new(0, 50, 0, 30)
+    valueLabel.Position = UDim2.new(0, 270, 0, 15)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.ZIndex = 6
+    valueLabel.Parent = frame
+    
+    -- TP to Cam Button
+    local tpBtn = Instance.new("TextButton")
+    tpBtn.Size = UDim2.new(0, 80, 0, 26)
+    tpBtn.Position = UDim2.new(0, 330, 0.5, -13)
+    tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    tpBtn.BorderSizePixel = 0
+    tpBtn.Font = Enum.Font.GothamBold
+    tpBtn.TextSize = 11
+    tpBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+    tpBtn.Text = "TP to Cam"
+    tpBtn.ZIndex = 6
+    tpBtn.Parent = frame
+    Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+    
+    tpBtn.MouseEnter:Connect(function()
+        tpBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    end)
+    
+    tpBtn.MouseLeave:Connect(function()
+        tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    end)
+    
+    tpBtn.MouseButton1Click:Connect(function()
+        teleportToCam()
+        -- Auto turn off
+        State.freecamEnabled = false
+        disableFreeCam()
+        if freecamControlRef then
+            freecamControlRef.setToggle(false)
+        end
+    end)
+    
+    -- Toggle Switch
+    local switch = Instance.new("TextButton")
+    switch.Text = ""
+    switch.Size = UDim2.new(0, 50, 0, 26)
+    switch.Position = UDim2.new(1, -65, 0.5, -13)
+    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    switch.AutoButtonColor = false
+    switch.ZIndex = 6
+    switch.Parent = frame
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 20, 0, 20)
+    dot.Position = UDim2.new(0, 3, 0.5, -10)
+    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 7
+    dot.Parent = switch
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    switch.MouseButton1Click:Connect(function()
+        State.freecamEnabled = not State.freecamEnabled
+        if State.freecamEnabled then enableFreeCam() else disableFreeCam() end
+        
+        local newColor = State.freecamEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.freecamEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+    
+    freecamControlRef = {
+        setToggle = function(on)
+            State.freecamEnabled = on
+            local newColor = on and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+            local newPos = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+            switch.BackgroundColor3 = newColor
+            dot.Position = newPos
+        end
+    }
+    
+    -- Slider logic
+    local dragging = false
+    local function updateSlider(input)
+        local sizeX = barBg.AbsoluteSize.X
+        local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
+        local value = math.floor(1 + (499 * pos))
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        valueLabel.Text = tostring(value)
+        State.freecamSpeed = value
     end
-)
+    
+    barBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+        end
+    end)
+    
+    fill.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+        end
+    end)
+    
+    grabber.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+end
 
 print("✓ Camera Module Loaded")
 

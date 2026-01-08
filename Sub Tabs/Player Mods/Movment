@@ -1,6 +1,24 @@
 --==============================================================================
 --                    AEGIS HUB - MOVEMENT MODULE (FIXED)
 --==============================================================================
+-- PRESETS - Customize default values here
+local PRESETS = {
+    SPEED = {
+        DEFAULT = 50,
+        MIN = 1,
+        MAX = 500
+    },
+    JUMP = {
+        DEFAULT = 50,
+        MIN = 1,
+        MAX = 500
+    },
+    CFRAME_FLY = {
+        DEFAULT = 100,
+        MIN = 1,
+        MAX = 500
+    }
+}
 
 local AegisHub = _G.AegisHub
 if not AegisHub or not AegisHub.MovementPage then 
@@ -20,22 +38,22 @@ local Library = AegisHub.Library  -- FIX: Get Library from AegisHub
 -- State
 local State = {
     speedEnabled = false,
-    speedValue = 50,
+    speedValue = PRESETS.SPEED.DEFAULT,
     origWalkSpeed = nil,
     speedEnforcementConn = nil,
     
     jumpEnabled = false,
-    jumpValue = 50,
+    jumpValue = PRESETS.JUMP.DEFAULT,
     origJumpHeight = nil,
     origJumpPower = nil,
     
     infJumpEnabled = false,
     
     cframeFlyEnabled = false,
-    cframeFlySpeed = 100,
+    cframeFlySpeed = PRESETS.CFRAME_FLY.DEFAULT,
     cframeFlyConn = nil,
     cframeFlyKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
-    cframeFlyHotkey = Enum.KeyCode.F,
+    cframeFlyHotkey = nil,  -- No default hotkey
     
     godModeEnabled = false,
     godModeConn = nil,
@@ -285,8 +303,8 @@ end))
 table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
     
-    -- CFrame Fly Hotkey
-    if not State.capturingHotkey and input.KeyCode == State.cframeFlyHotkey then
+    -- CFrame Fly Hotkey (only if set)
+    if not State.capturingHotkey and State.cframeFlyHotkey and input.KeyCode == State.cframeFlyHotkey then
         State.cframeFlyEnabled = not State.cframeFlyEnabled
         if State.cframeFlyEnabled then
             enableCFrameFly()
@@ -304,7 +322,7 @@ end))
 -- Create UI
 local cframeFlyToggleRef = nil
 -- Speed with Toggle+Slider
-Library:CreateToggleSlider(page, "Speed", 1, 500, 50,
+Library:CreateToggleSlider(page, "Speed", PRESETS.SPEED.MIN, PRESETS.SPEED.MAX, PRESETS.SPEED.DEFAULT,
     function(enabled)
         State.speedEnabled = enabled
         if enabled then enableSpeed() else disableSpeed() end
@@ -319,7 +337,7 @@ Library:CreateToggleSlider(page, "Speed", 1, 500, 50,
 )
 
 -- Jump Height with Toggle+Slider
-Library:CreateToggleSlider(page, "Jump Height", 1, 500, 50,
+Library:CreateToggleSlider(page, "Jump Height", PRESETS.JUMP.MIN, PRESETS.JUMP.MAX, PRESETS.JUMP.DEFAULT,
     function(enabled)
         State.jumpEnabled = enabled
         if enabled then enableJump() else disableJump() end
@@ -376,7 +394,7 @@ do
     hotkeyBtn.Font = Enum.Font.GothamBold
     hotkeyBtn.TextSize = 11
     hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-    hotkeyBtn.Text = State.cframeFlyHotkey.Name
+    hotkeyBtn.Text = State.cframeFlyHotkey and State.cframeFlyHotkey.Name or "None"
     hotkeyBtn.ZIndex = 6
     hotkeyBtn.Parent = frame
     Instance.new("UICorner", hotkeyBtn).CornerRadius = UDim.new(0, 6)
@@ -392,7 +410,7 @@ do
         if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
         if input.KeyCode == Enum.KeyCode.Escape then
             State.capturingHotkey = false
-            hotkeyBtn.Text = State.cframeFlyHotkey.Name
+            hotkeyBtn.Text = State.cframeFlyHotkey and State.cframeFlyHotkey.Name or "None"
             hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
             return
         end

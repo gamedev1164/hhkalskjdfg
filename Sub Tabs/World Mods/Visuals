@@ -1,1 +1,315 @@
+--==============================================================================
+--                    AEGIS HUB - VISUALS MODULE
+--==============================================================================
 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.VisualsPage then 
+    warn("Aegis Hub not loaded!") 
+    return 
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local page = AegisHub.VisualsPage
+local Library = AegisHub.Library
+
+-- State
+local State = {
+    fullBrightEnabled = false,
+    noFogEnabled = false,
+    infZoomEnabled = false,
+    skyboxDisabled = false,
+    bloomDisabled = false,
+    distortionDisabled = false,
+    xrayEnabled = false,
+    xrayLevel = 0.5,
+    
+    enforcementConn = nil,
+    xrayOriginal = {},
+    originalEffects = {},
+    
+    connections = {}
+}
+
+-- Full Bright / No Fog Enforcement
+local function startEnforcement()
+    if State.enforcementConn then State.enforcementConn:Disconnect() end
+    
+    State.enforcementConn = RunService.Heartbeat:Connect(function()
+        if State.fullBrightEnabled then
+            Lighting.ClockTime = 12
+            Lighting.Brightness = 2
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        end
+        
+        if State.noFogEnabled then
+            Lighting.FogStart = 0
+            Lighting.FogEnd = 1e10
+            local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+            if atm then
+                atm.Density = 0
+                atm.Haze = 0
+            end
+        end
+    end)
+    
+    table.insert(State.connections, State.enforcementConn)
+end
+
+local function stopEnforcement()
+    if State.enforcementConn then
+        State.enforcementConn:Disconnect()
+        State.enforcementConn = nil
+    end
+end
+
+-- Full Bright
+local function enableFullBright()
+    Lighting.Brightness = 2
+    Lighting.ClockTime = 12
+    Lighting.Ambient = Color3.new(1, 1, 1)
+    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+    startEnforcement()
+end
+
+local function disableFullBright()
+    Lighting.Brightness = 1
+    Lighting.ClockTime = 12
+    Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+    Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+    
+    if not State.noFogEnabled then
+        stopEnforcement()
+    end
+end
+
+-- No Fog
+local function enableNoFog()
+    Lighting.FogStart = 0
+    Lighting.FogEnd = 1e10
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        atm.Density = 0
+        atm.Haze = 0
+    end
+    startEnforcement()
+end
+
+local function disableNoFog()
+    Lighting.FogEnd = 1000
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        atm.Density = 0.3
+        atm.Haze = 0
+    end
+    
+    if not State.fullBrightEnabled then
+        stopEnforcement()
+    end
+end
+
+-- Infinite Zoom
+local function enableInfZoom()
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 700
+end
+
+local function disableInfZoom()
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 128
+end
+
+-- Skybox Toggle
+local function disableSkybox()
+    local sky = Lighting:FindFirstChildOfClass("Sky")
+    if sky then
+        if not State.originalEffects.Sky then
+            State.originalEffects.Sky = {
+                SkyboxBk = sky.SkyboxBk,
+                SkyboxDn = sky.SkyboxDn,
+                SkyboxFt = sky.SkyboxFt,
+                SkyboxLf = sky.SkyboxLf,
+                SkyboxRt = sky.SkyboxRt,
+                SkyboxUp = sky.SkyboxUp
+            }
+        end
+        
+        sky.SkyboxBk = ""
+        sky.SkyboxDn = ""
+        sky.SkyboxFt = ""
+        sky.SkyboxLf = ""
+        sky.SkyboxRt = ""
+        sky.SkyboxUp = ""
+    end
+end
+
+local function enableSkybox()
+    local sky = Lighting:FindFirstChildOfClass("Sky")
+    if sky and State.originalEffects.Sky then
+        local orig = State.originalEffects.Sky
+        sky.SkyboxBk = orig.SkyboxBk
+        sky.SkyboxDn = orig.SkyboxDn
+        sky.SkyboxFt = orig.SkyboxFt
+        sky.SkyboxLf = orig.SkyboxLf
+        sky.SkyboxRt = orig.SkyboxRt
+        sky.SkyboxUp = orig.SkyboxUp
+    end
+end
+
+-- Bloom Toggle
+local function disableBloom()
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+    if bloom then
+        if not State.originalEffects.Bloom then
+            State.originalEffects.Bloom = {
+                Enabled = bloom.Enabled
+            }
+        end
+        bloom.Enabled = false
+    end
+end
+
+local function enableBloom()
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+    if bloom and State.originalEffects.Bloom then
+        bloom.Enabled = State.originalEffects.Bloom.Enabled
+    end
+end
+
+-- Distortion Toggle (Blur)
+local function disableDistortion()
+    local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+    if blur then
+        if not State.originalEffects.Blur then
+            State.originalEffects.Blur = {
+                Enabled = blur.Enabled
+            }
+        end
+        blur.Enabled = false
+    end
+end
+
+local function enableDistortion()
+    local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+    if blur and State.originalEffects.Blur then
+        blur.Enabled = State.originalEffects.Blur.Enabled
+    end
+end
+
+-- X-Ray System
+local function applyXray(level)
+    for _, inst in ipairs(Workspace:GetDescendants()) do
+        if inst:IsA("BasePart") then
+            local protected = false
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Character and inst:IsDescendantOf(plr.Character) then
+                    protected = true
+                    break
+                end
+            end
+            
+            if not protected then
+                if State.xrayOriginal[inst] == nil then
+                    State.xrayOriginal[inst] = inst.Transparency
+                end
+                inst.Transparency = math.max(State.xrayOriginal[inst], level * 0.9)
+            end
+        end
+    end
+end
+
+local function restoreXray()
+    for part, orig in pairs(State.xrayOriginal) do
+        pcall(function()
+            if part and part.Parent then
+                part.Transparency = orig
+            end
+        end)
+    end
+    State.xrayOriginal = {}
+end
+
+-- Action Handlers
+function Actions.FullBright(on)
+    State.fullBrightEnabled = on
+    if on then enableFullBright() else disableFullBright() end
+end
+
+function Actions.NoFog(on)
+    State.noFogEnabled = on
+    if on then enableNoFog() else disableNoFog() end
+end
+
+function Actions.InfZoom(on)
+    State.infZoomEnabled = on
+    if on then enableInfZoom() else disableInfZoom() end
+end
+
+function Actions.ToggleSkybox(on)
+    State.skyboxDisabled = on
+    if on then disableSkybox() else enableSkybox() end
+end
+
+function Actions.ToggleBloom(on)
+    State.bloomDisabled = on
+    if on then disableBloom() else enableBloom() end
+end
+
+function Actions.ToggleDistortion(on)
+    State.distortionDisabled = on
+    if on then disableDistortion() else enableDistortion() end
+end
+
+function Actions.Xray(on)
+    State.xrayEnabled = on
+    if on then applyXray(State.xrayLevel) else restoreXray() end
+end
+
+function Actions.XrayValue(v)
+    State.xrayLevel = math.clamp(tonumber(v) or 0.5, 0, 1)
+    if State.xrayEnabled then applyXray(State.xrayLevel) end
+end
+
+-- Create UI
+Library:CreateToggle(page, "Full Bright", false, function(enabled)
+    Actions.FullBright(enabled)
+end)
+
+Library:CreateToggle(page, "No Fog", false, function(enabled)
+    Actions.NoFog(enabled)
+end)
+
+Library:CreateToggle(page, "Infinite Zoom", false, function(enabled)
+    Actions.InfZoom(enabled)
+end)
+
+Library:CreateToggle(page, "Toggle Off Skybox", false, function(enabled)
+    Actions.ToggleSkybox(enabled)
+end)
+
+Library:CreateToggle(page, "Toggle Off Bloom", false, function(enabled)
+    Actions.ToggleBloom(enabled)
+end)
+
+Library:CreateToggle(page, "Toggle Off Distortion", false, function(enabled)
+    Actions.ToggleDistortion(enabled)
+end)
+
+-- X-ray with slider
+Library:CreateToggleSlider(page, "X-Ray", 0, 1, 0.5,
+    function(enabled)
+        Actions.Xray(enabled)
+    end,
+    function(value)
+        Actions.XrayValue(value)
+    end
+)
+
+print("✓ Visuals Module Loaded")
+
+return true

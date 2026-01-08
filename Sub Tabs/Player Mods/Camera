@@ -1,6 +1,21 @@
 --==============================================================================
 --                    AEGIS HUB - CAMERA MODULE (FIXED)
 --==============================================================================
+-- PRESETS - Customize default values here
+local PRESETS = {
+    FOV = {
+        DEFAULT = 70,
+        MIN = 10,
+        MAX = 120
+    },
+    FREECAM = {
+        DEFAULT_SPEED = 50,
+        MIN_SPEED = 1,
+        MAX_SPEED = 500,
+        FOV_BOOST = 1.5,           -- FOV multiplier when FreeCam is active
+        MOUSE_SENSITIVITY_BOOST = 1.5  -- Mouse sensitivity multiplier
+    }
+}
 
 local AegisHub = _G.AegisHub
 if not AegisHub or not AegisHub.CameraPage then 
@@ -20,14 +35,16 @@ local Library = AegisHub.Library
 -- State (from CoreX Camera Desync)
 local State = {
     fovEnabled = false,
-    fovValue = 70,
+    fovValue = PRESETS.FOV.DEFAULT,
     
     freecamEnabled = false,
-    freecamSpeed = 50,
+    freecamSpeed = PRESETS.FREECAM.DEFAULT_SPEED,
     freecamCF = nil,
     freecamOrig = nil,
+    freecamOrigFOV = nil,
+    freecamOrigMouseSens = nil,
     freecamKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
-    freecamHotkey = Enum.KeyCode.G,
+    freecamHotkey = nil,  -- No default hotkey
     charOrig = nil,
     
     rmbDown = false,
@@ -119,6 +136,15 @@ local function enableFreeCam()
         }
     end
     
+    -- Store and boost FOV by preset multiplier
+    if not State.freecamOrigFOV then
+        State.freecamOrigFOV = cam.FieldOfView
+    end
+    cam.FieldOfView = State.freecamOrigFOV * PRESETS.FREECAM.FOV_BOOST
+    
+    -- Store original mouse sensitivity (simulated through rotation speed multiplier)
+    State.freecamOrigMouseSens = 1.0  -- Default sensitivity
+    
     State.freecamCF = cam.CFrame
     cam.CameraType = Enum.CameraType.Scriptable
     
@@ -144,10 +170,17 @@ local function disableFreeCam()
         cam.CameraType = Enum.CameraType.Custom
     end
     
+    -- Restore original FOV
+    if State.freecamOrigFOV then
+        cam.FieldOfView = State.freecamOrigFOV
+        State.freecamOrigFOV = nil
+    end
+    
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
     State.rmbDown = false
     State.freecamCF = nil
     State.freecamOrig = nil
+    State.freecamOrigMouseSens = nil
     
     freezeCharacter(false)
 end
@@ -180,7 +213,8 @@ end))
 table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
     
-    if not State.capturingHotkey and input.KeyCode == State.freecamHotkey then
+    -- Only trigger if hotkey is set
+    if not State.capturingHotkey and State.freecamHotkey and input.KeyCode == State.freecamHotkey then
         State.freecamEnabled = not State.freecamEnabled
         if State.freecamEnabled then
             enableFreeCam()
@@ -220,11 +254,11 @@ table.insert(State.connections, RunService.RenderStepped:Connect(function(dt)
     
     local cf = State.freecamCF or cam.CFrame
     
-    -- Handle right-click rotation
+    -- Handle right-click rotation with preset sensitivity boost
     if State.rmbDown then
         local delta = UserInputService:GetMouseDelta()
-        State.yaw = State.yaw - delta.X * 0.0035
-        State.pitch = math.clamp(State.pitch - delta.Y * 0.0035, math.rad(-80), math.rad(80))
+        State.yaw = State.yaw - delta.X * 0.0035 * PRESETS.FREECAM.MOUSE_SENSITIVITY_BOOST
+        State.pitch = math.clamp(State.pitch - delta.Y * 0.0035 * PRESETS.FREECAM.MOUSE_SENSITIVITY_BOOST, math.rad(-80), math.rad(80))
     end
     
     -- Build rotation matrix
@@ -260,12 +294,35 @@ end))
 table.insert(State.connections, player.CharacterAdded:Connect(function()
     task.wait(0.3)
     
+    -- Turn off FreeCam on respawn
+    if State.freecamEnabled then
+        State.freecamEnabled = false
+        disableFreeCam()
+        if freecamControlRef then
+            freecamControlRef.setToggle(false)
+        end
+    end
+    
     if State.fovEnabled then enableFOV() end
+end))
+
+-- Also detect death before respawn
+table.insert(State.connections, player.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.Died:Connect(function()
+        if State.freecamEnabled then
+            State.freecamEnabled = false
+            disableFreeCam()
+            if freecamControlRef then
+                freecamControlRef.setToggle(false)
+            end
+        end
+    end)
 end))
 
 -- Create UI
 -- FOV with Toggle+Slider
-Library:CreateToggleSlider(page, "FOV", 10, 120, 70, 
+Library:CreateToggleSlider(page, "FOV", PRESETS.FOV.MIN, PRESETS.FOV.MAX, PRESETS.FOV.DEFAULT, 
     function(enabled)
         State.fovEnabled = enabled
         if enabled then enableFOV() else disableFOV() end
@@ -297,54 +354,17 @@ do
     label.Font = Enum.Font.GothamMedium
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    label.Size = UDim2.new(0, 80, 1, 0)
+    label.Size = UDim2.new(0, 120, 1, 0)
     label.Position = UDim2.new(0, 15, 0, 0)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 6
     label.Parent = frame
     
-    -- Hotkey Button
-    local hotkeyBtn = Instance.new("TextButton")
-    hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
-    hotkeyBtn.Position = UDim2.new(0, 100, 0.5, -13)
-    hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    hotkeyBtn.BorderSizePixel = 0
-    hotkeyBtn.Font = Enum.Font.GothamBold
-    hotkeyBtn.TextSize = 11
-    hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-    hotkeyBtn.Text = State.freecamHotkey.Name
-    hotkeyBtn.ZIndex = 6
-    hotkeyBtn.Parent = frame
-    Instance.new("UICorner", hotkeyBtn).CornerRadius = UDim.new(0, 6)
-    
-    hotkeyBtn.MouseButton1Click:Connect(function()
-        State.capturingHotkey = true
-        hotkeyBtn.Text = "..."
-        hotkeyBtn.TextColor3 = Color3.fromRGB(255, 140, 50)
-    end)
-    
-    local hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-        if not State.capturingHotkey then return end
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if input.KeyCode == Enum.KeyCode.Escape then
-            State.capturingHotkey = false
-            hotkeyBtn.Text = State.freecamHotkey.Name
-            hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-            return
-        end
-        
-        State.freecamHotkey = input.KeyCode
-        hotkeyBtn.Text = input.KeyCode.Name
-        hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-        State.capturingHotkey = false
-    end)
-    table.insert(State.connections, hotkeyConn)
-    
     -- Slider
     local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 100, 0, 12)
-    barBg.Position = UDim2.new(0, 160, 0, 24)
+    barBg.Size = UDim2.new(0, 120, 0, 12)
+    barBg.Position = UDim2.new(0, 140, 0, 24)
     barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     barBg.BorderSizePixel = 0
     barBg.ZIndex = 6
@@ -411,6 +431,43 @@ do
             freecamControlRef.setToggle(false)
         end
     end)
+    
+    -- Hotkey Button (moved next to toggle)
+    local hotkeyBtn = Instance.new("TextButton")
+    hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
+    hotkeyBtn.Position = UDim2.new(1, -125, 0.5, -13)  -- Positioned left of toggle
+    hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    hotkeyBtn.BorderSizePixel = 0
+    hotkeyBtn.Font = Enum.Font.GothamBold
+    hotkeyBtn.TextSize = 11
+    hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+    hotkeyBtn.Text = State.freecamHotkey and State.freecamHotkey.Name or "None"
+    hotkeyBtn.ZIndex = 6
+    hotkeyBtn.Parent = frame
+    Instance.new("UICorner", hotkeyBtn).CornerRadius = UDim.new(0, 6)
+    
+    hotkeyBtn.MouseButton1Click:Connect(function()
+        State.capturingHotkey = true
+        hotkeyBtn.Text = "..."
+        hotkeyBtn.TextColor3 = Color3.fromRGB(255, 140, 50)
+    end)
+    
+    local hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+        if not State.capturingHotkey then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if input.KeyCode == Enum.KeyCode.Escape then
+            State.capturingHotkey = false
+            hotkeyBtn.Text = State.freecamHotkey and State.freecamHotkey.Name or "None"
+            hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+            return
+        end
+        
+        State.freecamHotkey = input.KeyCode
+        hotkeyBtn.Text = input.KeyCode.Name
+        hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
+        State.capturingHotkey = false
+    end)
+    table.insert(State.connections, hotkeyConn)
     
     -- Toggle Switch
     local switch = Instance.new("TextButton")

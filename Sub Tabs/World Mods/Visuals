@@ -1,6 +1,21 @@
 --==============================================================================
 --                    AEGIS HUB - VISUALS MODULE
 --==============================================================================
+-- PRESETS - Customize default values here
+local PRESETS = {
+    XRAY = {
+        DEFAULT = 0.5,
+        MIN = 0,
+        MAX = 1
+    },
+    INFINITE_ZOOM = 700,  -- Max camera zoom distance
+    DOOR_HIGHLIGHT = {
+        FILL_COLOR = Color3.fromRGB(255, 50, 50),  -- Red
+        OUTLINE_COLOR = Color3.fromRGB(255, 255, 255),  -- White
+        FILL_TRANSPARENCY = 0.5,
+        OUTLINE_TRANSPARENCY = 0
+    }
+}
 
 local AegisHub = _G.AegisHub
 if not AegisHub or not AegisHub.VisualsPage then 
@@ -24,7 +39,7 @@ local State = {
     infZoomEnabled = false,
     allLightingEffectsRemoved = false,
     xrayEnabled = false,
-    xrayLevel = 0.5,
+    xrayLevel = PRESETS.XRAY.DEFAULT,
     doorsHighlighted = false,
     
     enforcementConn = nil,
@@ -116,7 +131,7 @@ end
 -- Infinite Zoom
 local function enableInfZoom()
     player.CameraMinZoomDistance = 0.5
-    player.CameraMaxZoomDistance = 700
+    player.CameraMaxZoomDistance = PRESETS.INFINITE_ZOOM
 end
 
 local function disableInfZoom()
@@ -177,17 +192,29 @@ end
 local function getAllDoors()
     local doors = {}
     
-    -- Check Doors folder
+    -- Check Doors folder and ALL descendants
     local doorsFolder = Workspace:FindFirstChild("Doors")
     if doorsFolder then
+        -- Get all models in the entire hierarchy
         for _, child in ipairs(doorsFolder:GetDescendants()) do
-            if child:IsA("Model") and isDoorModel(child) then
-                table.insert(doors, child)
+            if child:IsA("Model") then
+                -- Check if model name matches any door name
+                local matchesName = false
+                for _, doorName in ipairs(DOOR_NAMES) do
+                    if child.Name:lower():find(doorName:lower()) then
+                        matchesName = true
+                        break
+                    end
+                end
+                
+                if matchesName then
+                    table.insert(doors, child)
+                end
             end
         end
     end
     
-    -- Check workspace root for door models
+    -- Also check workspace root for door models
     for _, child in ipairs(Workspace:GetChildren()) do
         if child:IsA("Model") and isDoorModel(child) then
             table.insert(doors, child)
@@ -212,10 +239,10 @@ local function highlightDoors()
     for _, door in ipairs(doors) do
         local highlight = Instance.new("Highlight")
         highlight.Adornee = door
-        highlight.FillColor = Color3.fromRGB(255, 50, 50)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
+        highlight.FillColor = PRESETS.DOOR_HIGHLIGHT.FILL_COLOR
+        highlight.OutlineColor = PRESETS.DOOR_HIGHLIGHT.OUTLINE_COLOR
+        highlight.FillTransparency = PRESETS.DOOR_HIGHLIGHT.FILL_TRANSPARENCY
+        highlight.OutlineTransparency = PRESETS.DOOR_HIGHLIGHT.OUTLINE_TRANSPARENCY
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Parent = door
         
@@ -285,7 +312,7 @@ Library:CreateToggle(page, "Highlight Doors", false, function(enabled)
 end)
 
 -- X-ray with slider
-Library:CreateToggleSlider(page, "X-Ray", 0, 1, 0.5,
+Library:CreateToggleSlider(page, "X-Ray", PRESETS.XRAY.MIN, PRESETS.XRAY.MAX, PRESETS.XRAY.DEFAULT,
     function(enabled)
         State.xrayEnabled = enabled
         if enabled then applyXray(State.xrayLevel) else restoreXray() end

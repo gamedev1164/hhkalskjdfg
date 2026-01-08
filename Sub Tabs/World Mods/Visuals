@@ -234,79 +234,46 @@ local function restoreXray()
     State.xrayOriginal = {}
 end
 
--- Action Handlers
-function Actions.FullBright(on)
-    State.fullBrightEnabled = on
-    if on then enableFullBright() else disableFullBright() end
-end
-
-function Actions.NoFog(on)
-    State.noFogEnabled = on
-    if on then enableNoFog() else disableNoFog() end
-end
-
-function Actions.InfZoom(on)
-    State.infZoomEnabled = on
-    if on then enableInfZoom() else disableInfZoom() end
-end
-
-function Actions.ToggleSkybox(on)
-    State.skyboxDisabled = on
-    if on then disableSkybox() else enableSkybox() end
-end
-
-function Actions.ToggleBloom(on)
-    State.bloomDisabled = on
-    if on then disableBloom() else enableBloom() end
-end
-
-function Actions.ToggleDistortion(on)
-    State.distortionDisabled = on
-    if on then disableDistortion() else enableDistortion() end
-end
-
-function Actions.Xray(on)
-    State.xrayEnabled = on
-    if on then applyXray(State.xrayLevel) else restoreXray() end
-end
-
-function Actions.XrayValue(v)
-    State.xrayLevel = math.clamp(tonumber(v) or 0.5, 0, 1)
-    if State.xrayEnabled then applyXray(State.xrayLevel) end
-end
-
 -- Create UI
 Library:CreateToggle(page, "Full Bright", false, function(enabled)
-    Actions.FullBright(enabled)
+    State.fullBrightEnabled = enabled
+    if enabled then enableFullBright() else disableFullBright() end
 end)
 
 Library:CreateToggle(page, "No Fog", false, function(enabled)
-    Actions.NoFog(enabled)
+    State.noFogEnabled = enabled
+    if enabled then enableNoFog() else disableNoFog() end
 end)
 
 Library:CreateToggle(page, "Infinite Zoom", false, function(enabled)
-    Actions.InfZoom(enabled)
+    State.infZoomEnabled = enabled
+    if enabled then enableInfZoom() else disableInfZoom() end
 end)
 
 Library:CreateToggle(page, "Toggle Off Skybox", false, function(enabled)
-    Actions.ToggleSkybox(enabled)
+    State.skyboxDisabled = enabled
+    if enabled then disableSkybox() else enableSkybox() end
 end)
 
 Library:CreateToggle(page, "Toggle Off Bloom", false, function(enabled)
-    Actions.ToggleBloom(enabled)
+    State.bloomDisabled = enabled
+    if enabled then disableBloom() else enableBloom() end
 end)
 
 Library:CreateToggle(page, "Toggle Off Distortion", false, function(enabled)
-    Actions.ToggleDistortion(enabled)
+    State.distortionDisabled = enabled
+    if enabled then disableDistortion() else enableDistortion() end
 end)
 
 -- X-ray with slider
 Library:CreateToggleSlider(page, "X-Ray", 0, 1, 0.5,
     function(enabled)
-        Actions.Xray(enabled)
+        State.xrayEnabled = enabled
+        if enabled then applyXray(State.xrayLevel) else restoreXray() end
     end,
     function(value)
-        Actions.XrayValue(value)
+        State.xrayLevel = math.clamp(tonumber(value) or 0.5, 0, 1)
+        if State.xrayEnabled then applyXray(State.xrayLevel) end
     end
 )
 

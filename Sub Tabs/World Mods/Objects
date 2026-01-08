@@ -176,32 +176,23 @@ local function restoreBorderWalls()
     print("✓ Restored border walls")
 end
 
--- Action Handlers
-function Actions.RemoveAllDoors(on)
-    State.doorsRemoved = on
-    if on then
+-- Create UI
+Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
+    State.doorsRemoved = enabled
+    if enabled then
         removeDoors()
     else
         restoreDoors()
     end
-end
+end)
 
-function Actions.RemoveBorderWalls(on)
-    State.borderWallsRemoved = on
-    if on then
+Library:CreateToggle(page, "Remove Border Walls", false, function(enabled)
+    State.borderWallsRemoved = enabled
+    if enabled then
         removeBorderWalls()
     else
         restoreBorderWalls()
     end
-end
-
--- Create UI
-Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
-    Actions.RemoveAllDoors(enabled)
-end)
-
-Library:CreateToggle(page, "Remove Border Walls", false, function(enabled)
-    Actions.RemoveBorderWalls(enabled)
 end)
 
 print("✓ Objects Module Loaded")

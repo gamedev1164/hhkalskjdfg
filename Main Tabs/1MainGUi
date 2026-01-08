@@ -704,6 +704,26 @@ do
             else
                 print("✓ Camera module loaded")
             end
+            
+            -- Load Objects Module
+            local success3, err3 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Objects"))()
+            end)
+            if not success3 then
+                warn("Failed to load Objects module:", err3)
+            else
+                print("✓ Objects module loaded")
+            end
+            
+            -- Load Visuals Module
+            local success4, err4 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Visuals"))()
+            end)
+            if not success4 then
+                warn("Failed to load Visuals module:", err4)
+            else
+                print("✓ Visuals module loaded")
+            end
         end)
         
         -- Auto-select first tab

@@ -209,6 +209,20 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
     end
 end))
 
+table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
+    if not State.freecamEnabled then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        State.rmbDown = false
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    elseif input.UserInputType == Enum.UserInputType.Keyboard then
+        setCamKey(input.KeyCode, false)
+    end
+end))
+
+-- UI Reference (declared before hotkey handler needs it)
+local freecamControlRef = nil
+
 -- Hotkey toggle for FreeCam
 table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
@@ -337,7 +351,6 @@ Library:CreateToggleSlider(page, "FOV", PRESETS.FOV.MIN, PRESETS.FOV.MAX, PRESET
 )
 
 -- FreeCam with Hotkey, Slider, and TP to Cam
-local freecamControlRef = nil
 
 do
     local frame = Instance.new("Frame")

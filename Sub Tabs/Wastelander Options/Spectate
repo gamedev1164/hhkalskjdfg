@@ -1,10 +1,10 @@
 --==============================================================================
---                    WASTELANDER HUB - WASTELANDER SPECTATE MODULE
+--                    AEGIS HUB - WASTELANDER SPECTATE MODULE
 --==============================================================================
 
-local WastelanderHub = _G.WastelanderHub
-if not WastelanderHub or not WastelanderHub.WastelanderSpectate then 
-    warn("Wastelander Hub not loaded!") 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.WastelanderSpectate then 
+    warn("Aegis Hub not loaded!") 
     return 
 end
 
@@ -13,12 +13,12 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local page = WastelanderHub.WastelanderSpectate
-local Library = WastelanderHub.Library
+local page = AegisHub.WastelanderSpectate
+local Library = AegisHub.Library
 
--- Wastelander Team Names
+-- Aegis Team Names
 local AEGIS_TEAMS = {
-    "WASTELANDER Corporation",
+    "AEGIS Corporation",
     "Conference",
     "Experiment1",
     "Experiment2",
@@ -108,27 +108,28 @@ for index, rank in ipairs(RANK_ORDER) do
     rankToIndex[rank] = index
 end
 
--- Check if player is Wastelander
-local function isWastelanderPlayer(plr)
-    if not plr or not plr.Team then return false end
-    
-    for _, teamName in ipairs(WASTELANDER_TEAMS) do
-        if plr.Team.Name == teamName then
-            return true
-        end
-    end
 -- Check if player is Wastelander (NOT Aegis)
 local function isWastelanderPlayer(plr)
     if not plr or not plr.Team then return false end
     
+    -- Check if NOT in Aegis teams
     for _, teamName in ipairs(AEGIS_TEAMS) do
         if plr.Team.Name == teamName then
             return false
         end
     end
     
-    return true
+    return true  -- Is Wastelander
 end
+
+-- Get player rank
+local function getPlayerRank(plr)
+    return userIdToRank[plr.UserId] or "No Rank"
+end
+
+-- Get rank color
+local function getRankColor(rank)
+    local index = rankToIndex[rank]
     if index then
         return RANK_COLORS[index]
     end
@@ -645,9 +646,9 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
-print("✓ Wastelander Spectate Module Loaded")
+print("✓ Aegis Spectate Module Loaded")
 
 -- Expose stopSpectate globally for teleport module
-_G.WastelanderHub.stopSpectate = stopSpectate
+_G.AegisHub.stopSpectate = stopSpectate
 
 return true

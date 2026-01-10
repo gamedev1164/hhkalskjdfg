@@ -180,8 +180,162 @@ end
 local State = {
     playerButtons = {},
     gridFrame = nil,
+    confirmationFrame = nil,
     connections = {}
 }
+
+-- Create confirmation popup
+local function createConfirmationPopup()
+    if State.confirmationFrame then
+        State.confirmationFrame:Destroy()
+    end
+    
+    -- Backdrop
+    local backdrop = Instance.new("Frame")
+    backdrop.Name = "ConfirmBackdrop"
+    backdrop.Size = UDim2.new(1, 0, 1, 0)
+    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    backdrop.BackgroundTransparency = 0.5
+    backdrop.BorderSizePixel = 0
+    backdrop.ZIndex = 100
+    backdrop.Visible = false
+    backdrop.Parent = page
+    
+    -- Popup frame
+    local popup = Instance.new("Frame")
+    popup.AnchorPoint = Vector2.new(0.5, 0.5)
+    popup.Position = UDim2.new(0.5, 0, 0.5, 0)
+    popup.Size = UDim2.new(0, 320, 0, 140)
+    popup.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+    popup.BorderSizePixel = 0
+    popup.ZIndex = 101
+    popup.Parent = backdrop
+    
+    local popupCorner = Instance.new("UICorner")
+    popupCorner.CornerRadius = UDim.new(0, 10)
+    popupCorner.Parent = popup
+    
+    local popupStroke = Instance.new("UIStroke")
+    popupStroke.Color = Color3.fromRGB(138, 43, 226)
+    popupStroke.Thickness = 2
+    popupStroke.Parent = popup
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Position = UDim2.new(0, 20, 0, 20)
+    title.Size = UDim2.new(1, -40, 0, 25)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.Text = "Teleport Confirmation"
+    title.TextColor3 = Color3.fromRGB(240, 240, 245)
+    title.TextSize = 16
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 102
+    title.Parent = popup
+    
+    -- Message
+    local message = Instance.new("TextLabel")
+    message.Name = "Message"
+    message.Position = UDim2.new(0, 20, 0, 55)
+    message.Size = UDim2.new(1, -40, 0, 40)
+    message.BackgroundTransparency = 1
+    message.Font = Enum.Font.Gotham
+    message.Text = ""
+    message.TextColor3 = Color3.fromRGB(200, 200, 210)
+    message.TextSize = 13
+    message.TextWrapped = true
+    message.TextXAlignment = Enum.TextXAlignment.Left
+    message.ZIndex = 102
+    message.Parent = popup
+    
+    -- Cancel button
+    local cancelBtn = Instance.new("TextButton")
+    cancelBtn.Position = UDim2.new(0, 20, 1, -45)
+    cancelBtn.Size = UDim2.new(0.5, -30, 0, 35)
+    cancelBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    cancelBtn.BorderSizePixel = 0
+    cancelBtn.Font = Enum.Font.GothamBold
+    cancelBtn.Text = "Cancel"
+    cancelBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+    cancelBtn.TextSize = 13
+    cancelBtn.AutoButtonColor = false
+    cancelBtn.ZIndex = 102
+    cancelBtn.Parent = popup
+    
+    local cancelCorner = Instance.new("UICorner")
+    cancelCorner.CornerRadius = UDim.new(0, 6)
+    cancelCorner.Parent = cancelBtn
+    
+    -- Confirm button
+    local confirmBtn = Instance.new("TextButton")
+    confirmBtn.Position = UDim2.new(0.5, 10, 1, -45)
+    confirmBtn.Size = UDim2.new(0.5, -30, 0, 35)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    confirmBtn.BorderSizePixel = 0
+    confirmBtn.Font = Enum.Font.GothamBold
+    confirmBtn.Text = "Teleport"
+    confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    confirmBtn.TextSize = 13
+    confirmBtn.AutoButtonColor = false
+    confirmBtn.ZIndex = 102
+    confirmBtn.Parent = popup
+    
+    local confirmCorner = Instance.new("UICorner")
+    confirmCorner.CornerRadius = UDim.new(0, 6)
+    confirmCorner.Parent = confirmBtn
+    
+    -- Hover effects
+    cancelBtn.MouseEnter:Connect(function()
+        TweenService:Create(cancelBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        }):Play()
+    end)
+    
+    cancelBtn.MouseLeave:Connect(function()
+        TweenService:Create(cancelBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        }):Play()
+    end)
+    
+    confirmBtn.MouseEnter:Connect(function()
+        TweenService:Create(confirmBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(158, 63, 246)
+        }):Play()
+    end)
+    
+    confirmBtn.MouseLeave:Connect(function()
+        TweenService:Create(confirmBtn, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+        }):Play()
+    end)
+    
+    State.confirmationFrame = backdrop
+    return backdrop, message, cancelBtn, confirmBtn
+end
+
+-- Show confirmation popup
+local function showConfirmation(targetPlayer, callback)
+    local backdrop, message, cancelBtn, confirmBtn = createConfirmationPopup()
+    
+    message.Text = "Are you sure you want to teleport to " .. targetPlayer.Name .. "?"
+    
+    cancelBtn.MouseButton1Click:Connect(function()
+        backdrop.Visible = false
+        task.wait(0.1)
+        backdrop:Destroy()
+        State.confirmationFrame = nil
+    end)
+    
+    confirmBtn.MouseButton1Click:Connect(function()
+        backdrop.Visible = false
+        callback()
+        task.wait(0.1)
+        backdrop:Destroy()
+        State.confirmationFrame = nil
+    end)
+    
+    backdrop.Visible = true
+end
 
 -- Create player grid (3 columns)
 local function createPlayerList()
@@ -321,9 +475,11 @@ local function createPlayerList()
             }):Play()
         end)
         
-        -- Click to teleport
+        -- Click to teleport (with confirmation)
         button.MouseButton1Click:Connect(function()
-            teleportToPlayer(plr)
+            showConfirmation(plr, function()
+                teleportToPlayer(plr)
+            end)
         end)
         
         State.playerButtons[plr.UserId] = button

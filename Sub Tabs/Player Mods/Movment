@@ -299,6 +299,9 @@ table.insert(State.connections, player.CharacterAdded:Connect(function()
     if State.godModeEnabled then enableGodMode() end
 end))
 
+-- UI Reference (declared before hotkey handler needs it)
+local cframeFlyToggleRef = nil
+
 -- Hotkey Input Handler
 table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
@@ -320,7 +323,6 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
 end))
 
 -- Create UI
-local cframeFlyToggleRef = nil
 -- Speed with Toggle+Slider
 Library:CreateToggleSlider(page, "Speed", PRESETS.SPEED.MIN, PRESETS.SPEED.MAX, PRESETS.SPEED.DEFAULT,
     function(enabled)

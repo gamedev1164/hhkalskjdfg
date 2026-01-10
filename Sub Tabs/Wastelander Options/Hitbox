@@ -1,10 +1,10 @@
 --==============================================================================
---                    WASTELANDER HUB - WASTELANDER HITBOX MODULE
+--                    AEGIS HUB - WASTELANDER HITBOX MODULE
 --==============================================================================
 
-local WastelanderHub = _G.WastelanderHub
-if not WastelanderHub or not WastelanderHub.WastelanderHitbox then 
-    warn("Wastelander Hub not loaded!") 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.WastelanderHitbox then 
+    warn("Aegis Hub not loaded!") 
     return 
 end
 
@@ -12,12 +12,12 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local page = WastelanderHub.WastelanderHitbox
-local Library = WastelanderHub.Library
+local page = AegisHub.WastelanderHitbox
+local Library = AegisHub.Library
 
--- Wastelander Team Names
-local WASTELANDER_TEAMS = {
-    "WASTELANDER Corporation",
+-- Aegis Team Names
+local AEGIS_TEAMS = {
+    "AEGIS Corporation",
     "Conference",
     "Experiment1",
     "Experiment2",
@@ -43,6 +43,15 @@ local State = {
     enabled = false,
     mode = "Head",  -- "Head" or "FullBody"
     size = 5,
+    transparency = 0.9,
+    
+    originalSizes = {},
+    originalTransparencies = {},
+    originalCanCollide = {},
+    
+    connections = {}
+}
+
 -- Check if player is Wastelander (NOT Aegis)
 local function isWastelanderPlayer(plr)
     if not plr or not plr.Team then return false end
@@ -55,16 +64,6 @@ local function isWastelanderPlayer(plr)
     end
     
     return true  -- Is Wastelander
-end
-local function isWastelanderPlayer(plr)
-    if not plr or not plr.Team then return false end
-    
-    for _, teamName in ipairs(WASTELANDER_TEAMS) do
-        if plr.Team.Name == teamName then
-            return true
-        end
-    end
-    return false
 end
 
 -- Store original properties
@@ -135,7 +134,7 @@ local function restoreHitbox(character)
 end
 
 -- Apply hitbox expansion to all Wastelander players
-local function applyToAllWastelander()
+local function applyToAllAegis()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and isWastelanderPlayer(plr) and plr.Character then
             expandHitbox(plr.Character)
@@ -154,7 +153,7 @@ end
 
 -- Enable hitbox expander
 local function enableHitbox()
-    applyToAllWastelander()
+    applyToAllAegis()
     
     -- Monitor for new characters and respawns
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -241,7 +240,7 @@ end
 local function updateAllHitboxes()
     if State.enabled then
         restoreAllHitboxes()
-        applyToAllWastelander()
+        applyToAllAegis()
     end
 end
 
@@ -250,7 +249,7 @@ end
 --==============================================================================
 
 -- Hitbox Expander Toggle
-Library:CreateToggle(page, "Hitbox Expander Wastelander", false, function(enabled)
+Library:CreateToggle(page, "Hitbox Expander Aegis", false, function(enabled)
     State.enabled = enabled
     if enabled then
         enableHitbox()
@@ -629,6 +628,6 @@ do
     end)
 end
 
-print("✓ Wastelander Hitbox Module Loaded")
+print("✓ Aegis Hitbox Module Loaded")
 
 return true

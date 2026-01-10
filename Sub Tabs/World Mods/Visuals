@@ -55,8 +55,6 @@ local function enableLightingEffects()
         atm.Haze = 0
     end
     
-    task.wait(0.1)
-    
     -- Remove All Lighting Effects
     for _, effect in ipairs(Lighting:GetChildren()) do
         if effect:IsA("Sky") or 
@@ -73,8 +71,6 @@ local function enableLightingEffects()
             effect.Parent = nil
         end
     end
-    
-    task.wait(0.1)
     
     -- Infinite Zoom
     if not State.origCameraZoom then

@@ -21,6 +21,77 @@ do
         pcall(_G.AegisHub.Close)
     end
 
+    --// AUTO-REMOVE OCCLUSION OBJECTS
+    task.spawn(function()
+        local occlusionObjects = workspace:FindFirstChild("OcclusionObjects")
+        if occlusionObjects then
+            occlusionObjects:Destroy()
+            print("✓ Auto-removed OcclusionObjects")
+        end
+    end)
+
+    --// AUTO-LOAD ADONIS BYPASS
+    task.spawn(function()
+        local getinfo = getinfo or debug.getinfo
+        local DEBUG = false
+        local Hooked = {}
+
+        local Detected, Kill
+
+        setthreadidentity(2)
+
+        for i, v in getgc(true) do
+            if typeof(v) == "table" then
+                local DetectFunc = rawget(v, "Detected")
+                local KillFunc = rawget(v, "Kill")
+            
+                if typeof(DetectFunc) == "function" and not Detected then
+                    Detected = DetectFunc
+                    
+                    local Old; Old = hookfunction(Detected, function(Action, Info, NoCrash)
+                        if Action ~= "_" then
+                            if DEBUG then
+                                warn(`Adonis AntiCheat flagged\nMethod: {Action}\nInfo: {Info}`)
+                            end
+                        end
+                        
+                        return true
+                    end)
+
+                    table.insert(Hooked, Detected)
+                end
+
+                if rawget(v, "Variables") and rawget(v, "Process") and typeof(KillFunc) == "function" and not Kill then
+                    Kill = KillFunc
+                    local Old; Old = hookfunction(Kill, function(Info)
+                        if DEBUG then
+                            warn(`Adonis AntiCheat tried to kill (fallback): {Info}`)
+                        end
+                    end)
+
+                    table.insert(Hooked, Kill)
+                end
+            end
+        end
+
+        local Old; Old = hookfunction(getrenv().debug.info, newcclosure(function(...)
+            local LevelOrFunc, Info = ...
+
+            if Detected and LevelOrFunc == Detected then
+                if DEBUG then
+                    warn(`Adonis AntiCheat sanity check detected and broken`)
+                end
+
+                return coroutine.yield(coroutine.running())
+            end
+            
+            return Old(...)
+        end))
+        
+        setthreadidentity(7)
+        print("✓ Adonis bypass loaded")
+    end)
+
     local Players = game:GetService("Players")
     local TweenService = game:GetService("TweenService")
     local UserInputService = game:GetService("UserInputService")
@@ -392,7 +463,16 @@ do
             while Library.GUI do
                 local ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
                 local fps = math.floor(1 / RunService.RenderStepped:Wait())
-                statsLabel.Text = string.format("FPS: %d  |  PING: %dms", fps, ping)
+                
+                -- Get player position
+                local player = Players.LocalPlayer
+                local pos = "N/A"
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = player.Character.HumanoidRootPart
+                    pos = string.format("%.0f, %.0f, %.0f", hrp.Position.X, hrp.Position.Y, hrp.Position.Z)
+                end
+                
+                statsLabel.Text = string.format("POS: %s\nFPS: %d  |  PING: %dms", pos, fps, ping)
                 task.wait(0.5)
             end
         end)
@@ -722,6 +802,30 @@ do
         ft.Lbl.TextColor3 = Theme.TextWhite
         ft.Img.ImageColor3 = Theme.TextWhite
         ft.Page.Visible = true
+        
+        -- Teleport to spawn for 3 seconds then return
+        task.spawn(function()
+            local player = Players.LocalPlayer
+            task.wait(0.5) -- Wait for character to load
+            
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                local originalPos = hrp.CFrame
+                
+                -- Teleport to spawn
+                hrp.CFrame = CFrame.new(-74, 56, 271)
+                print("✓ Teleported to spawn for 3 seconds")
+                
+                -- Wait 3 seconds
+                task.wait(3)
+                
+                -- Return to original position
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = originalPos
+                    print("✓ Returned to original position")
+                end
+            end
+        end)
     end
 
     function Library:CreateToggle(parent, text, default, callback)

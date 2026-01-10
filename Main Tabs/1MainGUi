@@ -862,7 +862,7 @@ do
         ft.Img.ImageColor3 = Theme.TextWhite
         ft.Page.Visible = true
         
-        -- Teleport sequence: spawn -> specific location -> original
+        -- Teleport sequence with multiple waypoints and freezing
         task.spawn(function()
             local player = Players.LocalPlayer
             task.wait(0.5) -- Wait for character to load
@@ -871,22 +871,41 @@ do
                 local hrp = player.Character.HumanoidRootPart
                 local originalPos = hrp.CFrame
                 
-                -- Step 1: Teleport to spawn (-74, 56, 271)
-                hrp.CFrame = CFrame.new(-74, 56, 271)
-                print("✓ Teleported to spawn for 3 seconds")
+                -- Freeze player
+                hrp.Anchored = true
+                
+                -- Waypoint 1: (5, 10, 140)
+                hrp.CFrame = CFrame.new(5, 10, 140)
+                print("✓ Teleport waypoint 1: Loading world...")
+                
+                -- Wait for world to load around player
                 task.wait(3)
                 
-                -- Step 2: Teleport to second location (5, 3, 53)
+                -- Waypoint 2: (-110, 10, 340)
+                hrp.CFrame = CFrame.new(-110, 10, 340)
+                print("✓ Teleport waypoint 2")
+                task.wait(1)
+                
+                -- Waypoint 3: (460, 320, 1250)
+                hrp.CFrame = CFrame.new(460, 320, 1250)
+                print("✓ Teleport waypoint 3")
+                task.wait(1)
+                
+                -- Waypoint 4: (-970, -150, 750)
+                hrp.CFrame = CFrame.new(-970, -150, 750)
+                print("✓ Teleport waypoint 4")
+                task.wait(1)
+                
+                -- Waypoint 5: (-501, -182, -119)
+                hrp.CFrame = CFrame.new(-501, -182, -119)
+                print("✓ Teleport waypoint 5")
+                task.wait(1)
+                
+                -- Return to original position and unfreeze
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = CFrame.new(5, 3, 53)
-                    print("✓ Teleported to second location for 2 seconds")
-                    task.wait(2)
-                    
-                    -- Step 3: Return to original position
-                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        player.Character.HumanoidRootPart.CFrame = originalPos
-                        print("✓ Returned to original position")
-                    end
+                    player.Character.HumanoidRootPart.CFrame = originalPos
+                    player.Character.HumanoidRootPart.Anchored = false
+                    print("✓ Returned to original position and unfrozen")
                 end
             end
         end)

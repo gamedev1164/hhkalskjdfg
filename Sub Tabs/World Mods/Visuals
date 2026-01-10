@@ -82,9 +82,9 @@ local function enableLightingEffects()
     player.CameraMinZoomDistance = 0.5
     player.CameraMaxZoomDistance = 700
     
-    -- Start enforcement loop
+    -- Start enforcement loop (faster to prevent flickering)
     if State.enforcementConn then State.enforcementConn:Disconnect() end
-    State.enforcementConn = RunService.Heartbeat:Connect(function()
+    State.enforcementConn = RunService.RenderStepped:Connect(function()
         if not State.lightingEffectsEnabled then return end
         
         -- Enforce Full Bright

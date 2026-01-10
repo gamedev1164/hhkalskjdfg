@@ -40,22 +40,41 @@ local AEGIS_TEAMS = {
         "Training"
     },
     Patrol = {"Patrol1", "Patrol2", "Patrol3", "Patrol4"},
-    Lesson = {"Lesson1", "Lesson2"},
-    Training = {"Training"}
+    Training = {"Lesson1", "Lesson2", "Training"}
 }
+
+-- Get team color based on team name
+local function getTeamColor(teamName)
+    -- Check if Patrol team
+    for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
+        if teamName == patrol then
+            return Color3.fromRGB(0, 100, 255) -- Blue
+        end
+    end
+    
+    -- Check if Training team (includes Lesson1, Lesson2, Training)
+    for _, training in ipairs(AEGIS_TEAMS.Training) do
+        if teamName == training then
+            return Color3.fromRGB(255, 255, 0) -- Yellow
+        end
+    end
+    
+    -- Default color (light red)
+    return Color3.fromRGB(255, 100, 100)
+end
 
 -- State
 local State = {
     allAegisEnabled = false,
     patrolEnabled = false,
-    lessonTrainingEnabled = false,
+    trainingEnabled = false,
     
-    showName = true,
-    showDistance = true,
-    showHealth = true,
+    showName = false,
+    showDistance = false,
+    showHealth = false,
     
-    highlightEnabled = false,
-    highlightTransparency = 0.5,
+    highlightEnabled = true,
+    highlightTransparency = 0.9,
     
     espObjects = {},
     updateConn = nil,
@@ -79,6 +98,8 @@ end
 local function createESP(plr)
     if plr == player then return end
     
+    local teamColor = getTeamColor(plr.Team and plr.Team.Name or "")
+    
     local espData = {
         player = plr,
         billboardGui = nil,
@@ -91,8 +112,8 @@ local function createESP(plr)
     -- Create Highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = "AegisHighlight_" .. plr.Name
-    highlight.FillColor = Color3.fromRGB(138, 43, 226)
-    highlight.OutlineColor = Color3.fromRGB(138, 43, 226)
+    highlight.FillColor = teamColor
+    highlight.OutlineColor = teamColor
     highlight.FillTransparency = State.highlightTransparency
     highlight.OutlineTransparency = State.highlightTransparency
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -116,12 +137,12 @@ local function createESP(plr)
     container.BackgroundTransparency = 1
     container.Parent = billboard
     
-    -- Name label (extra bold)
+    -- Name label (extra bold, light red or team color)
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0, 20)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    nameLabel.TextColor3 = teamColor
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.Font = Enum.Font.GothamBold
@@ -297,10 +318,7 @@ local function refreshESP()
         end
     end
     
-    if State.lessonTrainingEnabled then
-        for _, teamName in ipairs(AEGIS_TEAMS.Lesson) do
-            teamsToShow[teamName] = true
-        end
+    if State.trainingEnabled then
         for _, teamName in ipairs(AEGIS_TEAMS.Training) do
             teamsToShow[teamName] = true
         end
@@ -325,6 +343,16 @@ local function startESP()
     end)
     
     table.insert(State.connections, State.updateConn)
+    
+    -- Check for new players/deaths every 2 seconds
+    task.spawn(function()
+        while State.updateConn do
+            task.wait(2)
+            if State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled then
+                refreshESP()
+            end
+        end
+    end)
 end
 
 -- Stop ESP
@@ -342,7 +370,7 @@ end
 -- Player added/removed handlers
 Players.PlayerAdded:Connect(function(plr)
     task.wait(1)
-    if State.allAegisEnabled or State.patrolEnabled or State.lessonTrainingEnabled then
+    if State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled then
         refreshESP()
     end
 end)
@@ -361,7 +389,7 @@ Library:CreateToggle(page, "All Aegis", false, function(enabled)
     if enabled then
         startESP()
     else
-        if not (State.patrolEnabled or State.lessonTrainingEnabled) then
+        if not (State.patrolEnabled or State.trainingEnabled) then
             stopESP()
         else
             refreshESP()
@@ -416,7 +444,7 @@ do
         if State.patrolEnabled then
             startESP()
         else
-            if not (State.allAegisEnabled or State.lessonTrainingEnabled) then
+            if not (State.allAegisEnabled or State.trainingEnabled) then
                 stopESP()
             else
                 refreshESP()
@@ -430,7 +458,7 @@ do
     end)
 end
 
--- Lesson + Training Toggle (Smaller Sub-Button)
+-- Training Toggle (Smaller Sub-Button) - includes Lesson1, Lesson2, Training
 do
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 35)
@@ -441,7 +469,7 @@ do
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
     
     local label = Instance.new("TextLabel")
-    label.Text = "  Lesson + Training"
+    label.Text = "  Training"
     label.Size = UDim2.new(0.5, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.TextColor3 = Color3.fromRGB(200, 200, 210)
@@ -473,8 +501,8 @@ do
     local TweenService = game:GetService("TweenService")
     
     switch.MouseButton1Click:Connect(function()
-        State.lessonTrainingEnabled = not State.lessonTrainingEnabled
-        if State.lessonTrainingEnabled then
+        State.trainingEnabled = not State.trainingEnabled
+        if State.trainingEnabled then
             startESP()
         else
             if not (State.allAegisEnabled or State.patrolEnabled) then
@@ -484,37 +512,177 @@ do
             end
         end
         
-        local newColor = State.lessonTrainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.lessonTrainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        local newColor = State.trainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.trainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
         TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
         TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
     end)
 end
 
--- Fill Highlight with transparency slider
-Library:CreateToggleSlider(page, "Fill Highlight", 0, 1, 0.5,
-    function(enabled)
-        State.highlightEnabled = enabled
+-- Fill Highlight with specific transparency values (0.1 - 0.9)
+do
+    local transparencyValues = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9}
+    local transparencyLabels = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"}
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 60)
+    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 5
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Text = "Fill Highlight"
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.Size = UDim2.new(0, 120, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
+    label.Parent = frame
+    
+    -- Slider
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(0, 200, 0, 12)
+    barBg.Position = UDim2.new(0, 140, 0, 24)
+    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    barBg.BorderSizePixel = 0
+    barBg.ZIndex = 6
+    barBg.Parent = frame
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.89, 0, 1, 0)  -- Start at 0.9 (index 9/9 = 1.0, but 8/8 = 1.0 so 8/9)
+    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 7
+    fill.Parent = barBg
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local grabber = Instance.new("Frame")
+    grabber.Size = UDim2.new(0, 18, 0, 18)
+    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+    grabber.Position = UDim2.new(1, 0, 0.5, 0)
+    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    grabber.ZIndex = 8
+    grabber.Parent = fill
+    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+    
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Text = "0.9"
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 14
+    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    valueLabel.Size = UDim2.new(0, 50, 0, 30)
+    valueLabel.Position = UDim2.new(0, 350, 0, 15)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.ZIndex = 6
+    valueLabel.Parent = frame
+    
+    -- Toggle switch
+    local switch = Instance.new("TextButton")
+    switch.Text = ""
+    switch.Size = UDim2.new(0, 50, 0, 26)
+    switch.Position = UDim2.new(1, -65, 0.5, -13)
+    switch.BackgroundColor3 = Color3.fromRGB(138, 43, 226)  -- Start enabled
+    switch.AutoButtonColor = false
+    switch.ZIndex = 6
+    switch.Parent = frame
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 20, 0, 20)
+    dot.Position = UDim2.new(1, -23, 0.5, -10)  -- Start enabled position
+    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 7
+    dot.Parent = switch
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    switch.MouseButton1Click:Connect(function()
+        State.highlightEnabled = not State.highlightEnabled
         updateESP()
-    end,
-    function(value)
-        State.highlightTransparency = value
+        
+        local newColor = State.highlightEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.highlightEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+    
+    -- Slider logic with 9 specific steps
+    local dragging = false
+    local function updateSlider(input)
+        local sizeX = barBg.AbsoluteSize.X
+        local relativePos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
+        
+        -- Snap to nearest step (0.1 to 0.9, 9 steps)
+        local step = math.floor(relativePos * 8 + 0.5) / 8  -- 8 intervals for 9 values
+        local index = math.floor(step * 8) + 1
+        index = math.clamp(index, 1, 9)
+        
+        State.highlightTransparency = transparencyValues[index]
+        fill.Size = UDim2.new(step, 0, 1, 0)
+        valueLabel.Text = transparencyLabels[index]
+        
         updateESP()
     end
-)
+    
+    barBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    fill.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    grabber.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+        end
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+end
 
 -- ESP Options
-Library:CreateToggle(page, "Show Name", true, function(enabled)
+Library:CreateToggle(page, "Show Name", false, function(enabled)
     State.showName = enabled
     updateESP()
 end)
 
-Library:CreateToggle(page, "Show Distance", true, function(enabled)
+Library:CreateToggle(page, "Show Distance", false, function(enabled)
     State.showDistance = enabled
     updateESP()
 end)
 
-Library:CreateToggle(page, "Show Health", true, function(enabled)
+Library:CreateToggle(page, "Show Health", false, function(enabled)
     State.showHealth = enabled
     updateESP()
 end)

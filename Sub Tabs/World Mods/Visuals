@@ -235,7 +235,7 @@ local function removeDoors()
         return 
     end
     
-    -- Get ALL parts inside Doors folder (recursive)
+    -- Get ALL parts inside Doors folder (recursive, including inside models)
     local parts = doorsFolder:GetDescendants()
     local count = 0
     
@@ -246,7 +246,7 @@ local function removeDoors()
         end
     end
     
-    print("✓ Removed " .. count .. " door parts")
+    print("✓ Moved " .. count .. " door parts up 1000 studs")
 end
 
 local function restoreDoors()
@@ -261,7 +261,7 @@ end
 local function removeBorderWalls()
     local count = 0
     
-    -- 1. Move all parts in BorderWallModel up 1000 studs
+    -- Only remove BorderWallModel from Workspace
     local borderWallModel = Workspace:FindFirstChild("BorderWallModel")
     if borderWallModel then
         for _, obj in ipairs(borderWallModel:GetDescendants()) do
@@ -270,87 +270,8 @@ local function removeBorderWalls()
                 count = count + 1
             end
         end
-    end
-    
-    -- 2. Move Divisional folder contents
-    local divisionalFolder = Workspace:FindFirstChild("Divisional")
-    if divisionalFolder then
-        for _, obj in ipairs(divisionalFolder:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                movePartUp(obj, State.wallOriginalPositions)
-                count = count + 1
-            end
-        end
-    end
-    
-    -- 3. Intelligent wall detection - scan all parts in Workspace
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and not State.wallOriginalPositions[obj] then
-            local size = obj.Size
-            local position = obj.Position
-            local shouldMove = false
-            
-            -- Check 1: All WedgeParts (typically used for walls)
-            if obj:IsA("WedgePart") then
-                shouldMove = true
-            end
-            
-            -- Check 2: Large flat parts (potential walls)
-            -- Walls are typically thin in one dimension and large in the others
-            local dimensions = {size.X, size.Y, size.Z}
-            table.sort(dimensions)
-            local thinnest = dimensions[1]
-            local largest = dimensions[3]
-            
-            -- If one dimension is very thin compared to the largest (like a wall)
-            if thinnest < 2 and largest > 10 then
-                shouldMove = true
-            end
-            
-            -- Check 3: Concrete material with wall-like proportions
-            if obj.Material == Enum.Material.Concrete then
-                -- Any dimension over 15 studs is likely a wall section
-                if size.X > 15 or size.Y > 15 or size.Z > 15 then
-                    shouldMove = true
-                end
-            end
-            
-            -- Check 4: Parts at extreme positions (likely border walls)
-            local distanceFromCenter = math.sqrt(position.X^2 + position.Z^2)
-            if distanceFromCenter > 500 then
-                -- Far from center, likely a border wall
-                if size.X > 5 or size.Y > 5 or size.Z > 5 then
-                    shouldMove = true
-                end
-            end
-            
-            -- Check 5: Parts with "Wall", "Border", "Barrier" in name
-            local name = obj.Name:lower()
-            if name:find("wall") or name:find("border") or name:find("barrier") or name:find("fence") then
-                shouldMove = true
-            end
-            
-            -- Check 6: Anchored concrete/brick parts (walls are usually anchored)
-            if obj.Anchored and (obj.Material == Enum.Material.Concrete or obj.Material == Enum.Material.Brick) then
-                if size.X > 8 or size.Y > 8 or size.Z > 8 then
-                    shouldMove = true
-                end
-            end
-            
-            -- Skip if part is inside a character
-            local skipPart = false
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player.Character and obj:IsDescendantOf(player.Character) then
-                    skipPart = true
-                    break
-                end
-            end
-            
-            if shouldMove and not skipPart then
-                movePartUp(obj, State.wallOriginalPositions)
-                count = count + 1
-            end
-        end
+    else
+        warn("BorderWallModel not found in Workspace")
     end
     
     print("✓ Moved " .. count .. " border wall parts up 1000 studs")
@@ -419,17 +340,158 @@ Library:CreateToggle(page, "Remove Border Walls", false, function(enabled)
     if enabled then removeBorderWalls() else restoreBorderWalls() end
 end)
 
--- X-ray with slider
-Library:CreateToggleSlider(page, "X-Ray", PRESETS.XRAY.MIN, PRESETS.XRAY.MAX, PRESETS.XRAY.DEFAULT,
-    function(enabled)
-        State.xrayEnabled = enabled
-        if enabled then applyXray(State.xrayLevel) else restoreXray() end
-    end,
-    function(value)
-        State.xrayLevel = math.clamp(tonumber(value) or 0.5, 0, 1)
+-- X-ray with custom slider (5 specific values: 0, 0.25, 0.5, 0.75, 1)
+do
+    local xrayValues = {0, 0.25, 0.5, 0.75, 1}
+    local xrayLabels = {"0", "0.25", "0.5", "0.75", "1"}
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 60)
+    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 5
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Text = "X-Ray"
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.Size = UDim2.new(0, 120, 1, 0)
+    label.Position = UDim2.new(0, 15, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 6
+    label.Parent = frame
+    
+    -- Slider
+    local barBg = Instance.new("Frame")
+    barBg.Size = UDim2.new(0, 200, 0, 12)
+    barBg.Position = UDim2.new(0, 140, 0, 24)
+    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    barBg.BorderSizePixel = 0
+    barBg.ZIndex = 6
+    barBg.Parent = frame
+    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0.5, 0, 1, 0)  -- Start at 0.5 (middle)
+    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 7
+    fill.Parent = barBg
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local grabber = Instance.new("Frame")
+    grabber.Size = UDim2.new(0, 18, 0, 18)
+    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
+    grabber.Position = UDim2.new(1, 0, 0.5, 0)
+    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    grabber.ZIndex = 8
+    grabber.Parent = fill
+    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
+    
+    -- Value label
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Text = "0.5"
+    valueLabel.Font = Enum.Font.GothamBold
+    valueLabel.TextSize = 14
+    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    valueLabel.Size = UDim2.new(0, 50, 0, 30)
+    valueLabel.Position = UDim2.new(0, 350, 0, 15)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
+    valueLabel.ZIndex = 6
+    valueLabel.Parent = frame
+    
+    -- Toggle switch
+    local switch = Instance.new("TextButton")
+    switch.Text = ""
+    switch.Size = UDim2.new(0, 50, 0, 26)
+    switch.Position = UDim2.new(1, -65, 0.5, -13)
+    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    switch.AutoButtonColor = false
+    switch.ZIndex = 6
+    switch.Parent = frame
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 20, 0, 20)
+    dot.Position = UDim2.new(0, 3, 0.5, -10)
+    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 7
+    dot.Parent = switch
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    switch.MouseButton1Click:Connect(function()
+        State.xrayEnabled = not State.xrayEnabled
+        if State.xrayEnabled then applyXray(State.xrayLevel) else restoreXray() end
+        
+        local newColor = State.xrayEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.xrayEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
+        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+    
+    -- Slider logic with 5 steps
+    local dragging = false
+    local function updateSlider(input)
+        local sizeX = barBg.AbsoluteSize.X
+        local relativePos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
+        
+        -- Snap to nearest step (0, 0.25, 0.5, 0.75, 1)
+        local step = math.floor(relativePos * 4 + 0.5) / 4  -- Rounds to nearest 0.25
+        local index = math.floor(step * 4) + 1
+        index = math.clamp(index, 1, 5)
+        
+        State.xrayLevel = xrayValues[index]
+        fill.Size = UDim2.new(step, 0, 1, 0)
+        valueLabel.Text = xrayLabels[index]
+        
         if State.xrayEnabled then applyXray(State.xrayLevel) end
     end
-)
+    
+    barBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    fill.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateSlider(input)
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    grabber.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
+        end
+    end)
+    
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
+        end
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
+end
 
 print("✓ Visuals Module Loaded")
 

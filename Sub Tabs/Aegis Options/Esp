@@ -45,17 +45,27 @@ local AEGIS_TEAMS = {
 
 -- Get team color based on team name
 local function getTeamColor(teamName)
-    -- Check if Patrol team
+    -- Chairman - Green
+    if teamName == "The Chairman" then
+        return Color3.fromRGB(0, 255, 0)
+    end
+    
+    -- Conference - Orange
+    if teamName == "Conference" then
+        return Color3.fromRGB(255, 165, 0)
+    end
+    
+    -- Patrol - Blue
     for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
         if teamName == patrol then
-            return Color3.fromRGB(0, 100, 255) -- Blue
+            return Color3.fromRGB(0, 100, 255)
         end
     end
     
-    -- Check if Training team (includes Lesson1, Lesson2, Training)
+    -- Training (includes Lesson1, Lesson2, Training) - Yellow
     for _, training in ipairs(AEGIS_TEAMS.Training) do
         if teamName == training then
-            return Color3.fromRGB(255, 255, 0) -- Yellow
+            return Color3.fromRGB(255, 255, 0)
         end
     end
     
@@ -66,15 +76,14 @@ end
 -- State
 local State = {
     allAegisEnabled = false,
-    patrolEnabled = false,
-    trainingEnabled = false,
+    patrolTrainingEnabled = false,
     
     showName = false,
     showDistance = false,
     showHealth = false,
     
     highlightEnabled = true,
-    highlightTransparency = 0.9,
+    highlightTransparency = 0.7,
     
     espObjects = {},
     updateConn = nil,
@@ -312,13 +321,10 @@ local function refreshESP()
         end
     end
     
-    if State.patrolEnabled then
+    if State.patrolTrainingEnabled then
         for _, teamName in ipairs(AEGIS_TEAMS.Patrol) do
             teamsToShow[teamName] = true
         end
-    end
-    
-    if State.trainingEnabled then
         for _, teamName in ipairs(AEGIS_TEAMS.Training) do
             teamsToShow[teamName] = true
         end
@@ -348,7 +354,7 @@ local function startESP()
     task.spawn(function()
         while State.updateConn do
             task.wait(2)
-            if State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled then
+            if State.allAegisEnabled or State.patrolTrainingEnabled then
                 refreshESP()
             end
         end
@@ -370,7 +376,7 @@ end
 -- Player added/removed handlers
 Players.PlayerAdded:Connect(function(plr)
     task.wait(1)
-    if State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled then
+    if State.allAegisEnabled or State.patrolTrainingEnabled then
         refreshESP()
     end
 end)
@@ -389,7 +395,7 @@ Library:CreateToggle(page, "All Aegis", false, function(enabled)
     if enabled then
         startESP()
     else
-        if not (State.patrolEnabled or State.trainingEnabled) then
+        if not State.patrolTrainingEnabled then
             stopESP()
         else
             refreshESP()
@@ -397,7 +403,7 @@ Library:CreateToggle(page, "All Aegis", false, function(enabled)
     end
 end)
 
--- Patrol Toggle (Smaller Sub-Button)
+-- Patrol + Training Toggle (Smaller Sub-Button with two colors)
 do
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 35)
@@ -407,16 +413,29 @@ do
     frame.Parent = page
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
     
-    local label = Instance.new("TextLabel")
-    label.Text = "  Patrol"
-    label.Size = UDim2.new(0.5, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 210)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.ZIndex = 4
-    label.Parent = frame
+    local patrolLabel = Instance.new("TextLabel")
+    patrolLabel.Text = "  Patrol"
+    patrolLabel.Size = UDim2.new(0, 60, 1, 0)
+    patrolLabel.Position = UDim2.new(0, 0, 0, 0)
+    patrolLabel.BackgroundTransparency = 1
+    patrolLabel.TextColor3 = Color3.fromRGB(0, 100, 255)  -- Blue
+    patrolLabel.Font = Enum.Font.GothamBold
+    patrolLabel.TextSize = 12
+    patrolLabel.TextXAlignment = Enum.TextXAlignment.Left
+    patrolLabel.ZIndex = 4
+    patrolLabel.Parent = frame
+    
+    local trainingLabel = Instance.new("TextLabel")
+    trainingLabel.Text = " + Training"
+    trainingLabel.Size = UDim2.new(0, 100, 1, 0)
+    trainingLabel.Position = UDim2.new(0, 55, 0, 0)
+    trainingLabel.BackgroundTransparency = 1
+    trainingLabel.TextColor3 = Color3.fromRGB(255, 255, 0)  -- Yellow
+    trainingLabel.Font = Enum.Font.GothamBold
+    trainingLabel.TextSize = 12
+    trainingLabel.TextXAlignment = Enum.TextXAlignment.Left
+    trainingLabel.ZIndex = 4
+    trainingLabel.Parent = frame
     
     local switch = Instance.new("TextButton")
     switch.Text = ""
@@ -440,80 +459,19 @@ do
     local TweenService = game:GetService("TweenService")
     
     switch.MouseButton1Click:Connect(function()
-        State.patrolEnabled = not State.patrolEnabled
-        if State.patrolEnabled then
+        State.patrolTrainingEnabled = not State.patrolTrainingEnabled
+        if State.patrolTrainingEnabled then
             startESP()
         else
-            if not (State.allAegisEnabled or State.trainingEnabled) then
+            if not State.allAegisEnabled then
                 stopESP()
             else
                 refreshESP()
             end
         end
         
-        local newColor = State.patrolEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.patrolEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
-    end)
-end
-
--- Training Toggle (Smaller Sub-Button) - includes Lesson1, Lesson2, Training
-do
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 35)
-    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 3
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
-    local label = Instance.new("TextLabel")
-    label.Text = "  Training"
-    label.Size = UDim2.new(0.5, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 210)
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.ZIndex = 4
-    label.Parent = frame
-    
-    local switch = Instance.new("TextButton")
-    switch.Text = ""
-    switch.Size = UDim2.new(0, 40, 0, 20)
-    switch.Position = UDim2.new(1, -50, 0.5, -10)
-    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    switch.AutoButtonColor = false
-    switch.ZIndex = 4
-    switch.Parent = frame
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
-    
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 16, 0, 16)
-    dot.Position = UDim2.new(0, 2, 0.5, -8)
-    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 5
-    dot.Parent = switch
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    local TweenService = game:GetService("TweenService")
-    
-    switch.MouseButton1Click:Connect(function()
-        State.trainingEnabled = not State.trainingEnabled
-        if State.trainingEnabled then
-            startESP()
-        else
-            if not (State.allAegisEnabled or State.patrolEnabled) then
-                stopESP()
-            else
-                refreshESP()
-            end
-        end
-        
-        local newColor = State.trainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.trainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        local newColor = State.patrolTrainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.patrolTrainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
         TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
         TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
     end)
@@ -556,7 +514,7 @@ do
     Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
     
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.89, 0, 1, 0)  -- Start at 0.9 (index 9/9 = 1.0, but 8/8 = 1.0 so 8/9)
+    fill.Size = UDim2.new(0.75, 0, 1, 0)  -- 0.7 = index 7, which is 6/8 = 0.75
     fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     fill.BorderSizePixel = 0
     fill.ZIndex = 7
@@ -573,7 +531,7 @@ do
     Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "0.9"
+    valueLabel.Text = "0.7"
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 14
     valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
@@ -589,7 +547,7 @@ do
     switch.Text = ""
     switch.Size = UDim2.new(0, 50, 0, 26)
     switch.Position = UDim2.new(1, -65, 0.5, -13)
-    switch.BackgroundColor3 = Color3.fromRGB(138, 43, 226)  -- Start enabled
+    switch.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     switch.AutoButtonColor = false
     switch.ZIndex = 6
     switch.Parent = frame
@@ -597,7 +555,7 @@ do
     
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 20, 0, 20)
-    dot.Position = UDim2.new(1, -23, 0.5, -10)  -- Start enabled position
+    dot.Position = UDim2.new(1, -23, 0.5, -10)
     dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
     dot.BorderSizePixel = 0
     dot.ZIndex = 7
@@ -616,14 +574,13 @@ do
         TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
     end)
     
-    -- Slider logic with 9 specific steps
+    -- Slider logic
     local dragging = false
     local function updateSlider(input)
         local sizeX = barBg.AbsoluteSize.X
         local relativePos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
         
-        -- Snap to nearest step (0.1 to 0.9, 9 steps)
-        local step = math.floor(relativePos * 8 + 0.5) / 8  -- 8 intervals for 9 values
+        local step = math.floor(relativePos * 8 + 0.5) / 8
         local index = math.floor(step * 8) + 1
         index = math.clamp(index, 1, 9)
         
@@ -671,21 +628,168 @@ do
     end)
 end
 
--- ESP Options
-Library:CreateToggle(page, "Show Name", false, function(enabled)
-    State.showName = enabled
-    updateESP()
-end)
-
-Library:CreateToggle(page, "Show Distance", false, function(enabled)
-    State.showDistance = enabled
-    updateESP()
-end)
-
-Library:CreateToggle(page, "Show Health", false, function(enabled)
-    State.showHealth = enabled
-    updateESP()
-end)
+-- ESP Options (All on one line: Name On/Off / Distance On/Off / Health On/Off)
+do
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 3
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    -- Name Toggle
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Text = "Name"
+    nameLabel.Size = UDim2.new(0, 50, 1, 0)
+    nameLabel.Position = UDim2.new(0, 15, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextSize = 12
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.ZIndex = 4
+    nameLabel.Parent = frame
+    
+    local nameSwitch = Instance.new("TextButton")
+    nameSwitch.Text = ""
+    nameSwitch.Size = UDim2.new(0, 40, 0, 20)
+    nameSwitch.Position = UDim2.new(0, 65, 0.5, -10)
+    nameSwitch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    nameSwitch.AutoButtonColor = false
+    nameSwitch.ZIndex = 4
+    nameSwitch.Parent = frame
+    Instance.new("UICorner", nameSwitch).CornerRadius = UDim.new(1, 0)
+    
+    local nameDot = Instance.new("Frame")
+    nameDot.Size = UDim2.new(0, 16, 0, 16)
+    nameDot.Position = UDim2.new(0, 2, 0.5, -8)
+    nameDot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    nameDot.BorderSizePixel = 0
+    nameDot.ZIndex = 5
+    nameDot.Parent = nameSwitch
+    Instance.new("UICorner", nameDot).CornerRadius = UDim.new(1, 0)
+    
+    nameSwitch.MouseButton1Click:Connect(function()
+        State.showName = not State.showName
+        updateESP()
+        
+        local newColor = State.showName and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.showName and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        TweenService:Create(nameSwitch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(nameDot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+    
+    -- Separator
+    local sep1 = Instance.new("TextLabel")
+    sep1.Text = "/"
+    sep1.Size = UDim2.new(0, 10, 1, 0)
+    sep1.Position = UDim2.new(0, 115, 0, 0)
+    sep1.BackgroundTransparency = 1
+    sep1.TextColor3 = Color3.fromRGB(100, 100, 110)
+    sep1.Font = Enum.Font.Gotham
+    sep1.TextSize = 12
+    sep1.ZIndex = 4
+    sep1.Parent = frame
+    
+    -- Distance Toggle
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Text = "Distance"
+    distLabel.Size = UDim2.new(0, 60, 1, 0)
+    distLabel.Position = UDim2.new(0, 135, 0, 0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    distLabel.Font = Enum.Font.Gotham
+    distLabel.TextSize = 12
+    distLabel.TextXAlignment = Enum.TextXAlignment.Left
+    distLabel.ZIndex = 4
+    distLabel.Parent = frame
+    
+    local distSwitch = Instance.new("TextButton")
+    distSwitch.Text = ""
+    distSwitch.Size = UDim2.new(0, 40, 0, 20)
+    distSwitch.Position = UDim2.new(0, 195, 0.5, -10)
+    distSwitch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    distSwitch.AutoButtonColor = false
+    distSwitch.ZIndex = 4
+    distSwitch.Parent = frame
+    Instance.new("UICorner", distSwitch).CornerRadius = UDim.new(1, 0)
+    
+    local distDot = Instance.new("Frame")
+    distDot.Size = UDim2.new(0, 16, 0, 16)
+    distDot.Position = UDim2.new(0, 2, 0.5, -8)
+    distDot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    distDot.BorderSizePixel = 0
+    distDot.ZIndex = 5
+    distDot.Parent = distSwitch
+    Instance.new("UICorner", distDot).CornerRadius = UDim.new(1, 0)
+    
+    distSwitch.MouseButton1Click:Connect(function()
+        State.showDistance = not State.showDistance
+        updateESP()
+        
+        local newColor = State.showDistance and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.showDistance and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        TweenService:Create(distSwitch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(distDot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+    
+    -- Separator
+    local sep2 = Instance.new("TextLabel")
+    sep2.Text = "/"
+    sep2.Size = UDim2.new(0, 10, 1, 0)
+    sep2.Position = UDim2.new(0, 245, 0, 0)
+    sep2.BackgroundTransparency = 1
+    sep2.TextColor3 = Color3.fromRGB(100, 100, 110)
+    sep2.Font = Enum.Font.Gotham
+    sep2.TextSize = 12
+    sep2.ZIndex = 4
+    sep2.Parent = frame
+    
+    -- Health Toggle
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Text = "Health"
+    healthLabel.Size = UDim2.new(0, 50, 1, 0)
+    healthLabel.Position = UDim2.new(0, 265, 0, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextSize = 12
+    healthLabel.TextXAlignment = Enum.TextXAlignment.Left
+    healthLabel.ZIndex = 4
+    healthLabel.Parent = frame
+    
+    local healthSwitch = Instance.new("TextButton")
+    healthSwitch.Text = ""
+    healthSwitch.Size = UDim2.new(0, 40, 0, 20)
+    healthSwitch.Position = UDim2.new(0, 320, 0.5, -10)
+    healthSwitch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    healthSwitch.AutoButtonColor = false
+    healthSwitch.ZIndex = 4
+    healthSwitch.Parent = frame
+    Instance.new("UICorner", healthSwitch).CornerRadius = UDim.new(1, 0)
+    
+    local healthDot = Instance.new("Frame")
+    healthDot.Size = UDim2.new(0, 16, 0, 16)
+    healthDot.Position = UDim2.new(0, 2, 0.5, -8)
+    healthDot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    healthDot.BorderSizePixel = 0
+    healthDot.ZIndex = 5
+    healthDot.Parent = healthSwitch
+    Instance.new("UICorner", healthDot).CornerRadius = UDim.new(1, 0)
+    
+    healthSwitch.MouseButton1Click:Connect(function()
+        State.showHealth = not State.showHealth
+        updateESP()
+        
+        local newColor = State.showHealth and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.showHealth and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        TweenService:Create(healthSwitch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(healthDot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+end
 
 print("✓ Aegis ESP Module Loaded")
 

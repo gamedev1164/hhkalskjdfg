@@ -48,12 +48,14 @@ local AEGIS_TEAMS = {
 local State = {
     allAegisEnabled = false,
     patrolEnabled = false,
-    lessonEnabled = false,
-    trainingEnabled = false,
+    lessonTrainingEnabled = false,
     
     showName = true,
     showDistance = true,
     showHealth = true,
+    
+    highlightEnabled = false,
+    highlightTransparency = 0.5,
     
     espObjects = {},
     updateConn = nil,
@@ -82,8 +84,22 @@ local function createESP(plr)
         billboardGui = nil,
         nameLabel = nil,
         distanceLabel = nil,
-        healthLabel = nil
+        healthLabel = nil,
+        highlight = nil
     }
+    
+    -- Create Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "AegisHighlight_" .. plr.Name
+    highlight.FillColor = Color3.fromRGB(138, 43, 226)
+    highlight.OutlineColor = Color3.fromRGB(138, 43, 226)
+    highlight.FillTransparency = State.highlightTransparency
+    highlight.OutlineTransparency = State.highlightTransparency
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Enabled = State.highlightEnabled
+    highlight.Adornee = nil
+    
+    espData.highlight = highlight
     
     -- Create BillboardGui
     local billboard = Instance.new("BillboardGui")
@@ -92,6 +108,7 @@ local function createESP(plr)
     billboard.Size = UDim2.new(0, 200, 0, 100)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = nil
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Global
     
     -- Container frame
     local container = Instance.new("Frame")
@@ -99,43 +116,49 @@ local function createESP(plr)
     container.BackgroundTransparency = 1
     container.Parent = billboard
     
-    -- Name label
+    -- Name label (extra bold)
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0, 20)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
-    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 14
+    nameLabel.TextSize = 16
     nameLabel.Text = plr.Name
     nameLabel.Visible = State.showName
+    nameLabel.ZIndex = 100
     nameLabel.Parent = container
     
-    -- Distance label
+    -- Distance label (only number, bold)
     local distanceLabel = Instance.new("TextLabel")
     distanceLabel.Size = UDim2.new(1, 0, 0, 18)
     distanceLabel.Position = UDim2.new(0, 0, 0, 22)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    distanceLabel.TextStrokeTransparency = 0.5
-    distanceLabel.Font = Enum.Font.Gotham
-    distanceLabel.TextSize = 12
-    distanceLabel.Text = "0 studs"
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.Font = Enum.Font.GothamBold
+    distanceLabel.TextSize = 14
+    distanceLabel.Text = "0"
     distanceLabel.Visible = State.showDistance
+    distanceLabel.ZIndex = 100
     distanceLabel.Parent = container
     
-    -- Health label
+    -- Health label (bold)
     local healthLabel = Instance.new("TextLabel")
     healthLabel.Size = UDim2.new(1, 0, 0, 18)
     healthLabel.Position = UDim2.new(0, 0, 0, 42)
     healthLabel.BackgroundTransparency = 1
     healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-    healthLabel.TextStrokeTransparency = 0.5
-    healthLabel.Font = Enum.Font.Gotham
-    healthLabel.TextSize = 12
+    healthLabel.TextStrokeTransparency = 0
+    healthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    healthLabel.Font = Enum.Font.GothamBold
+    healthLabel.TextSize = 14
     healthLabel.Text = "100 HP"
     healthLabel.Visible = State.showHealth
+    healthLabel.ZIndex = 100
     healthLabel.Parent = container
     
     espData.billboardGui = billboard
@@ -152,12 +175,18 @@ local function removeESP(plr)
         if State.espObjects[plr].billboardGui then
             State.espObjects[plr].billboardGui:Destroy()
         end
+        if State.espObjects[plr].highlight then
+            State.espObjects[plr].highlight:Destroy()
+        end
         State.espObjects[plr] = nil
     end
 end
 
 -- Update all ESP
 local function updateESP()
+    local playerDistances = {}
+    
+    -- Calculate distances and update ESP
     for plr, espData in pairs(State.espObjects) do
         if not plr or not plr.Parent or not plr.Character then
             removeESP(plr)
@@ -169,44 +198,80 @@ local function updateESP()
         local hum = char:FindFirstChildOfClass("Humanoid")
         
         if hrp and hum then
-            -- Update adornee
-            if espData.billboardGui.Adornee ~= hrp then
-                espData.billboardGui.Adornee = hrp
-                if not espData.billboardGui.Parent then
-                    espData.billboardGui.Parent = hrp
-                end
+            -- Calculate distance
+            local dist = 0
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                dist = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
             end
             
-            -- Update distance
-            if State.showDistance and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                espData.distanceLabel.Text = string.format("%.0f studs", dist)
-            end
-            
-            -- Update health
-            if State.showHealth then
-                local healthPercent = (hum.Health / hum.MaxHealth) * 100
-                espData.healthLabel.Text = string.format("%.0f HP", hum.Health)
-                
-                -- Color based on health
-                if healthPercent > 75 then
-                    espData.healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                elseif healthPercent > 50 then
-                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-                elseif healthPercent > 25 then
-                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
-                else
-                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                end
-            end
-            
-            -- Update visibility based on settings
-            espData.nameLabel.Visible = State.showName
-            espData.distanceLabel.Visible = State.showDistance
-            espData.healthLabel.Visible = State.showHealth
-        else
-            espData.billboardGui.Adornee = nil
+            table.insert(playerDistances, {player = plr, distance = dist, espData = espData, hrp = hrp, hum = hum})
         end
+    end
+    
+    -- Sort by distance (closest first gets highest ZIndex)
+    table.sort(playerDistances, function(a, b) return a.distance < b.distance end)
+    
+    -- Update ESP with sorted ZIndex
+    for i, data in ipairs(playerDistances) do
+        local espData = data.espData
+        local hrp = data.hrp
+        local hum = data.hum
+        local dist = data.distance
+        
+        -- Update adornee
+        if espData.billboardGui.Adornee ~= hrp then
+            espData.billboardGui.Adornee = hrp
+            if not espData.billboardGui.Parent then
+                espData.billboardGui.Parent = hrp
+            end
+        end
+        
+        -- Update highlight
+        if espData.highlight then
+            if espData.highlight.Adornee ~= data.player.Character then
+                espData.highlight.Adornee = data.player.Character
+                if not espData.highlight.Parent then
+                    espData.highlight.Parent = data.player.Character
+                end
+            end
+            espData.highlight.Enabled = State.highlightEnabled
+            espData.highlight.FillTransparency = State.highlightTransparency
+            espData.highlight.OutlineTransparency = State.highlightTransparency
+        end
+        
+        -- Set ZIndex based on proximity (closest = highest)
+        local zIndex = 1000 - i
+        espData.billboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        espData.nameLabel.ZIndex = zIndex
+        espData.distanceLabel.ZIndex = zIndex
+        espData.healthLabel.ZIndex = zIndex
+        
+        -- Update distance (number only)
+        if State.showDistance then
+            espData.distanceLabel.Text = string.format("%.0f", dist)
+        end
+        
+        -- Update health
+        if State.showHealth then
+            local healthPercent = (hum.Health / hum.MaxHealth) * 100
+            espData.healthLabel.Text = string.format("%.0f HP", hum.Health)
+            
+            -- Color based on health
+            if healthPercent > 75 then
+                espData.healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            elseif healthPercent > 50 then
+                espData.healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            elseif healthPercent > 25 then
+                espData.healthLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+            else
+                espData.healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            end
+        end
+        
+        -- Update visibility based on settings
+        espData.nameLabel.Visible = State.showName
+        espData.distanceLabel.Visible = State.showDistance
+        espData.healthLabel.Visible = State.showHealth
     end
 end
 
@@ -232,13 +297,10 @@ local function refreshESP()
         end
     end
     
-    if State.lessonEnabled then
+    if State.lessonTrainingEnabled then
         for _, teamName in ipairs(AEGIS_TEAMS.Lesson) do
             teamsToShow[teamName] = true
         end
-    end
-    
-    if State.trainingEnabled then
         for _, teamName in ipairs(AEGIS_TEAMS.Training) do
             teamsToShow[teamName] = true
         end
@@ -280,7 +342,7 @@ end
 -- Player added/removed handlers
 Players.PlayerAdded:Connect(function(plr)
     task.wait(1)
-    if State.allAegisEnabled or State.patrolEnabled or State.lessonEnabled or State.trainingEnabled then
+    if State.allAegisEnabled or State.patrolEnabled or State.lessonTrainingEnabled then
         refreshESP()
     end
 end)
@@ -293,14 +355,13 @@ end)
 --                          CREATE UI
 --==============================================================================
 
--- All Aegis Toggle
+-- All Aegis Toggle (Main Button)
 Library:CreateToggle(page, "All Aegis", false, function(enabled)
     State.allAegisEnabled = enabled
     if enabled then
         startESP()
     else
-        -- Check if any other team is enabled
-        if not (State.patrolEnabled or State.lessonEnabled or State.trainingEnabled) then
+        if not (State.patrolEnabled or State.lessonTrainingEnabled) then
             stopESP()
         else
             refreshESP()
@@ -308,47 +369,139 @@ Library:CreateToggle(page, "All Aegis", false, function(enabled)
     end
 end)
 
--- Patrol Toggle (Patrol1-4)
-Library:CreateToggle(page, "Patrol", false, function(enabled)
-    State.patrolEnabled = enabled
-    if enabled then
-        startESP()
-    else
-        if not (State.allAegisEnabled or State.lessonEnabled or State.trainingEnabled) then
-            stopESP()
+-- Patrol Toggle (Smaller Sub-Button)
+do
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 3
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local label = Instance.new("TextLabel")
+    label.Text = "  Patrol"
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 210)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
+    label.Parent = frame
+    
+    local switch = Instance.new("TextButton")
+    switch.Text = ""
+    switch.Size = UDim2.new(0, 40, 0, 20)
+    switch.Position = UDim2.new(1, -50, 0.5, -10)
+    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    switch.AutoButtonColor = false
+    switch.ZIndex = 4
+    switch.Parent = frame
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 16, 0, 16)
+    dot.Position = UDim2.new(0, 2, 0.5, -8)
+    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 5
+    dot.Parent = switch
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    switch.MouseButton1Click:Connect(function()
+        State.patrolEnabled = not State.patrolEnabled
+        if State.patrolEnabled then
+            startESP()
         else
-            refreshESP()
+            if not (State.allAegisEnabled or State.lessonTrainingEnabled) then
+                stopESP()
+            else
+                refreshESP()
+            end
         end
-    end
-end)
+        
+        local newColor = State.patrolEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.patrolEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+end
 
--- Lesson Toggle (Lesson1-2)
-Library:CreateToggle(page, "Lesson", false, function(enabled)
-    State.lessonEnabled = enabled
-    if enabled then
-        startESP()
-    else
-        if not (State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled) then
-            stopESP()
+-- Lesson + Training Toggle (Smaller Sub-Button)
+do
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 35)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 3
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local label = Instance.new("TextLabel")
+    label.Text = "  Lesson + Training"
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(200, 200, 210)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
+    label.Parent = frame
+    
+    local switch = Instance.new("TextButton")
+    switch.Text = ""
+    switch.Size = UDim2.new(0, 40, 0, 20)
+    switch.Position = UDim2.new(1, -50, 0.5, -10)
+    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    switch.AutoButtonColor = false
+    switch.ZIndex = 4
+    switch.Parent = frame
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 16, 0, 16)
+    dot.Position = UDim2.new(0, 2, 0.5, -8)
+    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    dot.BorderSizePixel = 0
+    dot.ZIndex = 5
+    dot.Parent = switch
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
+    
+    switch.MouseButton1Click:Connect(function()
+        State.lessonTrainingEnabled = not State.lessonTrainingEnabled
+        if State.lessonTrainingEnabled then
+            startESP()
         else
-            refreshESP()
+            if not (State.allAegisEnabled or State.patrolEnabled) then
+                stopESP()
+            else
+                refreshESP()
+            end
         end
-    end
-end)
+        
+        local newColor = State.lessonTrainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
+        local newPos = State.lessonTrainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
+    end)
+end
 
--- Training Toggle
-Library:CreateToggle(page, "Training", false, function(enabled)
-    State.trainingEnabled = enabled
-    if enabled then
-        startESP()
-    else
-        if not (State.allAegisEnabled or State.patrolEnabled or State.lessonEnabled) then
-            stopESP()
-        else
-            refreshESP()
-        end
+-- Fill Highlight with transparency slider
+Library:CreateToggleSlider(page, "Fill Highlight", 0, 1, 0.5,
+    function(enabled)
+        State.highlightEnabled = enabled
+        updateESP()
+    end,
+    function(value)
+        State.highlightTransparency = value
+        updateESP()
     end
-end)
+)
 
 -- ESP Options
 Library:CreateToggle(page, "Show Name", true, function(enabled)

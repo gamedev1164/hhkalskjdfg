@@ -179,15 +179,57 @@ local function enableHitbox()
         end
     end)
     table.insert(State.connections, playerAddedConn)
+    
+    -- Continuous check every 2 seconds for new players/respawns
+    local checkConn = task.spawn(function()
+        while State.enabled do
+            task.wait(2)
+            if State.enabled then
+                -- Reapply to all Aegis players to catch any that were missed
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= player and isAegisPlayer(plr) and plr.Character then
+                        local character = plr.Character
+                        local needsExpansion = false
+                        
+                        -- Check if hitbox needs to be applied
+                        if State.mode == "Head" then
+                            local head = character:FindFirstChild("Head")
+                            if head and not State.originalSizes[head] then
+                                needsExpansion = true
+                            end
+                        else
+                            for _, part in ipairs(character:GetChildren()) do
+                                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                                    if not State.originalSizes[part] then
+                                        needsExpansion = true
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if needsExpansion then
+                            expandHitbox(character)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    table.insert(State.connections, checkConn)
 end
 
 -- Disable hitbox expander
 local function disableHitbox()
     restoreAllHitboxes()
     
-    -- Disconnect all connections
+    -- Disconnect all connections and cancel tasks
     for _, conn in ipairs(State.connections) do
-        conn:Disconnect()
+        if typeof(conn) == "RBXScriptConnection" then
+            conn:Disconnect()
+        elseif typeof(conn) == "thread" then
+            task.cancel(conn)
+        end
     end
     State.connections = {}
 end

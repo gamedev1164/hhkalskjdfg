@@ -9,7 +9,7 @@ local PRESETS = {
         MAX = 120
     },
     FREECAM = {
-        DEFAULT_SPEED = 50,
+        DEFAULT_SPEED = 200,
         MIN_SPEED = 1,
         MAX_SPEED = 500,
         FOV_BOOST = 1.5,           -- FOV multiplier when FreeCam is active
@@ -363,7 +363,7 @@ do
     
     -- Slider
     local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 120, 0, 12)
+    barBg.Size = UDim2.new(0, 200, 0, 12)  -- Increased from 120 to 200
     barBg.Position = UDim2.new(0, 140, 0, 24)
     barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     barBg.BorderSizePixel = 0
@@ -372,7 +372,7 @@ do
     Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
     
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.1, 0, 1, 0)
+    fill.Size = UDim2.new(0.4, 0, 1, 0)  -- Updated for 200 default
     fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     fill.BorderSizePixel = 0
     fill.ZIndex = 7
@@ -389,12 +389,12 @@ do
     Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "50"
+    valueLabel.Text = "200"  -- Updated default
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 14
     valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
     valueLabel.Size = UDim2.new(0, 50, 0, 30)
-    valueLabel.Position = UDim2.new(0, 270, 0, 15)
+    valueLabel.Position = UDim2.new(0, 350, 0, 15)
     valueLabel.BackgroundTransparency = 1
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.ZIndex = 6
@@ -403,8 +403,8 @@ do
     -- TP to Cam Button
     local tpBtn = Instance.new("TextButton")
     tpBtn.Size = UDim2.new(0, 80, 0, 26)
-    tpBtn.Position = UDim2.new(0, 330, 0.5, -13)
-    tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+    tpBtn.Position = UDim2.new(0, 410, 0.5, -13)
+    tpBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)  -- Darker background
     tpBtn.BorderSizePixel = 0
     tpBtn.Font = Enum.Font.GothamBold
     tpBtn.TextSize = 11
@@ -415,11 +415,11 @@ do
     Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
     
     tpBtn.MouseEnter:Connect(function()
-        tpBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        tpBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
     end)
     
     tpBtn.MouseLeave:Connect(function()
-        tpBtn.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+        tpBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     end)
     
     tpBtn.MouseButton1Click:Connect(function()
@@ -506,8 +506,8 @@ do
             State.freecamEnabled = on
             local newColor = on and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
             local newPos = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-            switch.BackgroundColor3 = newColor
-            dot.Position = newPos
+            TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+            TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
         end
     }
     

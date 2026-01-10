@@ -160,11 +160,165 @@ local State = {
     targetPlayer = nil,
     originalCamera = nil,
     waitingForRespawn = false,
+    healthSyncConnection = nil,
+    originalTools = {},
     playerButtons = {},
     gridFrame = nil,
     connections = {},
     spectateConnections = {}
 }
+
+-- Store original tools
+local function storeOriginalTools()
+    State.originalTools = {}
+    
+    if player.Backpack then
+        for _, tool in ipairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(State.originalTools, tool:Clone())
+            end
+        end
+    end
+    
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(State.originalTools, tool:Clone())
+            end
+        end
+    end
+end
+
+-- Restore original tools
+local function restoreOriginalTools()
+    -- Clear current backpack
+    if player.Backpack then
+        for _, tool in ipairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Destroy()
+            end
+        end
+    end
+    
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Destroy()
+            end
+        end
+    end
+    
+    -- Restore original tools
+    for _, tool in ipairs(State.originalTools) do
+        local clone = tool:Clone()
+        clone.Parent = player.Backpack
+    end
+    
+    State.originalTools = {}
+end
+
+-- Clone target's backpack
+local function cloneBackpack(targetPlayer)
+    if not targetPlayer or not player.Backpack then return end
+    
+    -- Clear current backpack (except original tools which are already stored)
+    if player.Backpack then
+        for _, tool in ipairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Destroy()
+            end
+        end
+    end
+    
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Destroy()
+            end
+        end
+    end
+    
+    -- Clone target's backpack
+    if targetPlayer.Backpack then
+        for _, tool in ipairs(targetPlayer.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                local clone = tool:Clone()
+                clone.Parent = player.Backpack
+            end
+        end
+    end
+    
+    -- Clone tools they're holding
+    if targetPlayer.Character then
+        for _, tool in ipairs(targetPlayer.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                local clone = tool:Clone()
+                clone.Parent = player.Backpack
+            end
+        end
+    end
+    
+    print("✓ Cloned " .. targetPlayer.Name .. "'s backpack")
+end
+
+-- Sync health with target
+local function startHealthSync(targetPlayer)
+    -- Stop previous health sync
+    if State.healthSyncConnection then
+        State.healthSyncConnection:Disconnect()
+        State.healthSyncConnection = nil
+    end
+    
+    -- Start syncing health
+    State.healthSyncConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not State.spectating or State.targetPlayer ~= targetPlayer then
+            if State.healthSyncConnection then
+                State.healthSyncConnection:Disconnect()
+                State.healthSyncConnection = nil
+            end
+            return
+        end
+        
+        local targetChar = targetPlayer.Character
+        local myChar = player.Character
+        
+        if targetChar and myChar then
+            local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+            local myHum = myChar:FindFirstChildOfClass("Humanoid")
+            
+            if targetHum and myHum then
+                -- Sync health
+                if myHum.Health ~= targetHum.Health then
+                    myHum.Health = targetHum.Health
+                end
+                
+                -- Sync max health
+                if myHum.MaxHealth ~= targetHum.MaxHealth then
+                    myHum.MaxHealth = targetHum.MaxHealth
+                end
+            end
+        end
+    end)
+    
+    table.insert(State.spectateConnections, State.healthSyncConnection)
+end
+
+-- Stop health sync
+local function stopHealthSync()
+    if State.healthSyncConnection then
+        State.healthSyncConnection:Disconnect()
+        State.healthSyncConnection = nil
+    end
+    
+    -- Reset health to normal
+    if player.Character then
+        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.MaxHealth = 100
+            hum.Health = 100
+        end
+    end
+end
 
 -- Stop spectating
 function stopSpectate()
@@ -173,6 +327,12 @@ function stopSpectate()
     State.spectating = false
     State.targetPlayer = nil
     State.waitingForRespawn = false
+    
+    -- Stop health sync
+    stopHealthSync()
+    
+    -- Restore original backpack
+    restoreOriginalTools()
     
     -- Disconnect spectate-specific connections
     for _, conn in ipairs(State.spectateConnections) do
@@ -203,6 +363,9 @@ local function spectatePlayer(targetPlayer)
         stopSpectate()
     end
     
+    -- Store original tools before starting
+    storeOriginalTools()
+    
     -- Start spectating
     State.spectating = true
     State.targetPlayer = targetPlayer
@@ -217,6 +380,13 @@ local function spectatePlayer(targetPlayer)
             camera.CameraSubject = hum
             camera.CameraType = Enum.CameraType.Custom
             State.waitingForRespawn = false
+            
+            -- Clone backpack
+            cloneBackpack(targetPlayer)
+            
+            -- Start health sync
+            startHealthSync(targetPlayer)
+            
             print("✓ Now spectating " .. targetPlayer.Name)
         end
     end

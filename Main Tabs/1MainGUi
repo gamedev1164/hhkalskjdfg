@@ -629,7 +629,7 @@ do
         local PlayerSubs = PlayerMods.CreateSubTabs({"Camera", "Movement"})
         
         local WorldMods = MakeTab("World Mods", Icons.Globe, 2)
-        local WorldModsSubs = WorldMods.CreateSubTabs({"Objects", "Visuals"})
+        local WorldModsSubs = WorldMods.CreateSubTabs({"Visuals"})
         
         local AegisOptions = MakeTab("Aegis Options", Icons.Shield, 3)
         local AegisSubs = AegisOptions.CreateSubTabs({"ESP", "Hitbox", "Spectate", "Teleport"})
@@ -650,7 +650,6 @@ do
             MovementPage = PlayerSubs["Movement"],
             
             -- World Mods
-            ObjectsPage = WorldModsSubs["Objects"],
             VisualsPage = WorldModsSubs["Visuals"],
             
             -- Aegis Options
@@ -705,22 +704,12 @@ do
                 print("✓ Camera module loaded")
             end
             
-            -- Load Objects Module
-            local success3, err3 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Objects"))()
-            end)
-            if not success3 then
-                warn("Failed to load Objects module:", err3)
-            else
-                print("✓ Objects module loaded")
-            end
-            
             -- Load Visuals Module
-            local success4, err4 = pcall(function()
+            local success3, err3 = pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Visuals"))()
             end)
-            if not success4 then
-                warn("Failed to load Visuals module:", err4)
+            if not success3 then
+                warn("Failed to load Visuals module:", err3)
             else
                 print("✓ Visuals module loaded")
             end
@@ -828,7 +817,7 @@ do
         valueLabel.Parent = sliderFrame
         
         local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(1, -30, 0, 12)  -- Increased from 6 to 12
+        barBg.Size = UDim2.new(0, 200, 0, 12)  -- Match FreeCam slider
         barBg.Position = UDim2.new(0, 15, 0, 35)
         barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         barBg.BorderSizePixel = 0
@@ -845,7 +834,7 @@ do
         Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
         
         local grabber = Instance.new("Frame")
-        grabber.Size = UDim2.new(0, 14, 0, 14)
+        grabber.Size = UDim2.new(0, 18, 0, 18)
         grabber.AnchorPoint = Vector2.new(0.5, 0.5)
         grabber.Position = UDim2.new(1, 0, 0.5, 0)
         grabber.BackgroundColor3 = Theme.TextWhite
@@ -1123,7 +1112,7 @@ do
         Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
         
         local grabber = Instance.new("Frame")
-        grabber.Size = UDim2.new(0, 14, 0, 14)
+        grabber.Size = UDim2.new(0, 18, 0, 18)
         grabber.AnchorPoint = Vector2.new(0.5, 0.5)
         grabber.Position = UDim2.new(1, 0, 0.5, 0)
         grabber.BackgroundColor3 = Theme.TextWhite

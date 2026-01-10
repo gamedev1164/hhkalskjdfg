@@ -1,10 +1,10 @@
 --==============================================================================
---                    WASTELANDER HUB - WASTELANDER TELEPORT MODULE
+--                    AEGIS HUB - WASTELANDER TELEPORT MODULE
 --==============================================================================
 
-local WastelanderHub = _G.WastelanderHub
-if not WastelanderHub or not WastelanderHub.WastelanderTeleport then 
-    warn("Wastelander Hub not loaded!") 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.WastelanderTeleport then 
+    warn("Aegis Hub not loaded!") 
     return 
 end
 
@@ -12,12 +12,12 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local page = WastelanderHub.WastelanderTeleport
-local Library = WastelanderHub.Library
+local page = AegisHub.WastelanderTeleport
+local Library = AegisHub.Library
 
--- Wastelander Team Names
-local WASTELANDER_TEAMS = {
-    "WASTELANDER Corporation",
+-- Aegis Team Names
+local AEGIS_TEAMS = {
+    "AEGIS Corporation",
     "Conference",
     "Experiment1",
     "Experiment2",
@@ -107,28 +107,29 @@ for index, rank in ipairs(RANK_ORDER) do
     rankToIndex[rank] = index
 end
 
--- Check if player is Wastelander
-local function isWastelanderPlayer(plr)
-    if not plr or not plr.Team then return false end
-    
-    for _, teamName in ipairs(WASTELANDER_TEAMS) do
-        if plr.Team.Name == teamName then
-            return true
-        end
-    end
-    return false
 -- Check if player is Wastelander (NOT Aegis)
 local function isWastelanderPlayer(plr)
     if not plr or not plr.Team then return false end
     
+    -- Check if NOT in Aegis teams
     for _, teamName in ipairs(AEGIS_TEAMS) do
         if plr.Team.Name == teamName then
             return false
         end
     end
     
-    return true
+    return true  -- Is Wastelander
 end
+
+-- Get player rank
+local function getPlayerRank(plr)
+    return userIdToRank[plr.UserId] or "No Rank"
+end
+
+-- Get rank color
+local function getRankColor(rank)
+    local index = rankToIndex[rank]
+    if index then
         return RANK_COLORS[index]
     end
     return Color3.fromRGB(150, 150, 150)  -- Gray for no rank
@@ -518,8 +519,8 @@ local function createPlayerList()
         button.MouseButton1Click:Connect(function()
             showConfirmation(plr, function()
                 -- Stop spectate if active
-                if _G.WastelanderHub and _G.WastelanderHub.stopSpectate then
-                    pcall(_G.WastelanderHub.stopSpectate)
+                if _G.AegisHub and _G.AegisHub.stopSpectate then
+                    pcall(_G.AegisHub.stopSpectate)
                 end
                 
                 teleportToPlayer(plr)
@@ -574,6 +575,6 @@ task.spawn(function()
     end
 end)
 
-print("✓ Wastelander Teleport Module Loaded")
+print("✓ Aegis Teleport Module Loaded")
 
 return true

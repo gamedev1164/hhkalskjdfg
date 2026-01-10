@@ -3,12 +3,7 @@
 --==============================================================================
 -- PRESETS - Customize default values here
 local PRESETS = {
-    XRAY = {
-        DEFAULT = 0.5,
-        MIN = 0,
-        MAX = 1
-    },
-    MOVE_HEIGHT = 1000  -- Height to move doors/walls
+    MOVE_HEIGHT = 1000  -- Height to move doors
 }
 
 local AegisHub = _G.AegisHub
@@ -30,17 +25,14 @@ local Library = AegisHub.Library
 local State = {
     lightingEffectsEnabled = false,  -- Combined: Full Bright, No Fog, Remove Effects, Inf Zoom
     xrayEnabled = false,
-    xrayLevel = PRESETS.XRAY.DEFAULT,
     doorsHighlighted = false,
     doorsRemoved = false,
-    borderWallsRemoved = false,
     
     enforcementConn = nil,
     xrayOriginal = {},
     originalLightingEffects = {},
     doorHighlights = {},
     doorOriginalPositions = {},
-    wallOriginalPositions = {},
     origCameraZoom = nil,
     
     connections = {}
@@ -163,18 +155,20 @@ local function getAllDoorParts()
     -- Get Doors folder and ALL descendants
     local doorsFolder = Workspace:FindFirstChild("Doors")
     if doorsFolder then
-        -- Get all parts in the entire hierarchy
+        -- Look for specific models and their Door parts
         for _, child in ipairs(doorsFolder:GetDescendants()) do
             local name = child.Name:lower()
             
-            -- Look for specific door part names
+            -- Highlight specific door parts and models
             if child:IsA("BasePart") or child:IsA("Model") then
                 if name == "door" or 
                    name == "door2" or 
                    name == "gate" or 
                    name == "gate2" or 
+                   name == "garage" or
                    name == "garagedoor" or 
-                   name == "aedblastshield" then
+                   name == "aedblastshield" or
+                   name == "gate_generatorterminalcomplex" then
                     table.insert(doorParts, child)
                 end
             end
@@ -258,36 +252,8 @@ local function restoreDoors()
     print("✓ Restored doors")
 end
 
-local function removeBorderWalls()
-    local count = 0
-    
-    -- Only remove BorderWallModel from Workspace
-    local borderWallModel = Workspace:FindFirstChild("BorderWallModel")
-    if borderWallModel then
-        for _, obj in ipairs(borderWallModel:GetDescendants()) do
-            if obj:IsA("BasePart") then
-                movePartUp(obj, State.wallOriginalPositions)
-                count = count + 1
-            end
-        end
-    else
-        warn("BorderWallModel not found in Workspace")
-    end
-    
-    print("✓ Moved " .. count .. " border wall parts up 1000 studs")
-end
-
-local function restoreBorderWalls()
-    for part, _ in pairs(State.wallOriginalPositions) do
-        restorePartPosition(part, State.wallOriginalPositions)
-    end
-    
-    State.wallOriginalPositions = {}
-    print("✓ Restored border walls")
-end
-
 -- X-Ray System
-local function applyXray(level)
+local function applyXray()
     for _, inst in ipairs(Workspace:GetDescendants()) do
         if inst:IsA("BasePart") then
             local protected = false
@@ -302,7 +268,7 @@ local function applyXray(level)
                 if State.xrayOriginal[inst] == nil then
                     State.xrayOriginal[inst] = inst.Transparency
                 end
-                inst.Transparency = math.max(State.xrayOriginal[inst], level * 0.9)
+                inst.Transparency = 1  -- Full transparency
             end
         end
     end
@@ -335,163 +301,10 @@ Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
     if enabled then removeDoors() else restoreDoors() end
 end)
 
-Library:CreateToggle(page, "Remove Border Walls", false, function(enabled)
-    State.borderWallsRemoved = enabled
-    if enabled then removeBorderWalls() else restoreBorderWalls() end
+Library:CreateToggle(page, "X-Ray", false, function(enabled)
+    State.xrayEnabled = enabled
+    if enabled then applyXray() else restoreXray() end
 end)
-
--- X-ray with custom slider (5 specific values: 0, 0.25, 0.5, 0.75, 1)
-do
-    local xrayValues = {0, 0.25, 0.5, 0.75, 1}
-    local xrayLabels = {"0", "0.25", "0.5", "0.75", "1"}
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 60)
-    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 5
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    
-    -- Label
-    local label = Instance.new("TextLabel")
-    label.Text = "X-Ray"
-    label.Font = Enum.Font.GothamMedium
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    label.Size = UDim2.new(0, 120, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.ZIndex = 6
-    label.Parent = frame
-    
-    -- Slider
-    local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 200, 0, 12)
-    barBg.Position = UDim2.new(0, 140, 0, 24)
-    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    barBg.BorderSizePixel = 0
-    barBg.ZIndex = 6
-    barBg.Parent = frame
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
-    
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.5, 0, 1, 0)  -- Start at 0.5 (middle)
-    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    fill.BorderSizePixel = 0
-    fill.ZIndex = 7
-    fill.Parent = barBg
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    
-    local grabber = Instance.new("Frame")
-    grabber.Size = UDim2.new(0, 18, 0, 18)
-    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
-    grabber.Position = UDim2.new(1, 0, 0.5, 0)
-    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    grabber.ZIndex = 8
-    grabber.Parent = fill
-    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
-    
-    -- Value label
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "0.5"
-    valueLabel.Font = Enum.Font.GothamBold
-    valueLabel.TextSize = 14
-    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
-    valueLabel.Size = UDim2.new(0, 50, 0, 30)
-    valueLabel.Position = UDim2.new(0, 350, 0, 15)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-    valueLabel.ZIndex = 6
-    valueLabel.Parent = frame
-    
-    -- Toggle switch
-    local switch = Instance.new("TextButton")
-    switch.Text = ""
-    switch.Size = UDim2.new(0, 50, 0, 26)
-    switch.Position = UDim2.new(1, -65, 0.5, -13)
-    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    switch.AutoButtonColor = false
-    switch.ZIndex = 6
-    switch.Parent = frame
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
-    
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 20, 0, 20)
-    dot.Position = UDim2.new(0, 3, 0.5, -10)
-    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 7
-    dot.Parent = switch
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    local TweenService = game:GetService("TweenService")
-    
-    switch.MouseButton1Click:Connect(function()
-        State.xrayEnabled = not State.xrayEnabled
-        if State.xrayEnabled then applyXray(State.xrayLevel) else restoreXray() end
-        
-        local newColor = State.xrayEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.xrayEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
-    end)
-    
-    -- Slider logic with 5 steps
-    local dragging = false
-    local function updateSlider(input)
-        local sizeX = barBg.AbsoluteSize.X
-        local relativePos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
-        
-        -- Snap to nearest step (0, 0.25, 0.5, 0.75, 1)
-        local step = math.floor(relativePos * 4 + 0.5) / 4  -- Rounds to nearest 0.25
-        local index = math.floor(step * 4) + 1
-        index = math.clamp(index, 1, 5)
-        
-        State.xrayLevel = xrayValues[index]
-        fill.Size = UDim2.new(step, 0, 1, 0)
-        valueLabel.Text = xrayLabels[index]
-        
-        if State.xrayEnabled then applyXray(State.xrayLevel) end
-    end
-    
-    barBg.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            updateSlider(input)
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    fill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            updateSlider(input)
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    grabber.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    game:GetService("UserInputService").InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
-        end
-    end)
-    
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateSlider(input)
-        end
-    end)
-end
 
 print("✓ Visuals Module Loaded")
 

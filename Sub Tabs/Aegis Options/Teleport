@@ -138,19 +138,19 @@ local function getRankAbbrev(rank)
     return RANK_ABBREV[rank] or "N/A"
 end
 
--- Get hours played
+-- Get hours played (fixed path)
 local function getHoursPlayed(plr)
-    -- Look for MinutesPlayed value in player stats
+    -- Path: player → stats → MinutesPlayed (NumberValue in seconds)
     local stats = plr:FindFirstChild("stats")
     if stats then
         local minutesPlayed = stats:FindFirstChild("MinutesPlayed")
-        if minutesPlayed and minutesPlayed:IsA("NumberValue") then
-            -- Convert seconds to hours
+        if minutesPlayed and minutesPlayed:IsA("IntValue") or minutesPlayed:IsA("NumberValue") then
+            -- Value is in seconds, convert to hours
             local hours = minutesPlayed.Value / 3600
-            return string.format("%.1f hrs", hours)
+            return hours, string.format("%.1f hrs", hours)
         end
     end
-    return "0.0 hrs"
+    return 0, "0.0 hrs"
 end
 
 -- Teleport to player
@@ -179,54 +179,72 @@ end
 -- State
 local State = {
     playerButtons = {},
-    scrollFrame = nil,
+    gridFrame = nil,
     connections = {}
 }
 
--- Create player list UI
+-- Create player grid (3 columns)
 local function createPlayerList()
-    -- Collect all Aegis players
-    local aegisPlayers = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player and isAegisPlayer(plr) then
-            local rank = getPlayerRank(plr)
-            local rankIndex = rankToIndex[rank] or 999
-            table.insert(aegisPlayers, {
-                player = plr,
-                rank = rank,
-                rankIndex = rankIndex
-            })
-        end
-    end
-    
-    -- Sort by rank (highest first)
-    table.sort(aegisPlayers, function(a, b)
-        return a.rankIndex < b.rankIndex
-    end)
-    
     -- Clear existing buttons
     for _, btn in pairs(State.playerButtons) do
         btn:Destroy()
     end
     State.playerButtons = {}
     
-    -- Create buttons for each player
+    -- Collect all Aegis players
+    local aegisPlayers = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and isAegisPlayer(plr) then
+            local rank = getPlayerRank(plr)
+            local rankIndex = rankToIndex[rank] or 999
+            local hoursNum, hoursText = getHoursPlayed(plr)
+            
+            -- Only add if they have a rank
+            if rank ~= "No Rank" then
+                table.insert(aegisPlayers, {
+                    player = plr,
+                    rank = rank,
+                    rankIndex = rankIndex,
+                    hours = hoursNum,
+                    hoursText = hoursText
+                })
+            end
+        end
+    end
+    
+    -- Sort by rank first (highest first), then by hours (highest first)
+    table.sort(aegisPlayers, function(a, b)
+        if a.rankIndex ~= b.rankIndex then
+            return a.rankIndex < b.rankIndex
+        end
+        return a.hours > b.hours
+    end)
+    
+    -- Create 3-column grid
+    local column = 0
+    local row = 0
+    
     for i, data in ipairs(aegisPlayers) do
         local plr = data.player
         local rank = data.rank
         local rankColor = getRankColor(rank)
         local rankAbbrev = getRankAbbrev(rank)
-        local hours = getHoursPlayed(plr)
+        local hoursText = data.hoursText
         
-        -- Create button frame
+        -- Calculate position (3 columns)
+        column = (i - 1) % 3
+        row = math.floor((i - 1) / 3)
+        
+        -- Create button frame (clickable)
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -10, 0, 60)
+        button.Position = UDim2.new(column * 0.333, column * 5 + 5, 0, row * 80 + 5)
+        button.Size = UDim2.new(0.333, -10, 0, 75)
         button.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
         button.BorderSizePixel = 0
         button.AutoButtonColor = false
         button.Text = ""
         button.ZIndex = 5
-        button.Parent = State.scrollFrame
+        button.Parent = State.gridFrame
         
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 8)
@@ -239,80 +257,43 @@ local function createPlayerList()
         stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
         stroke.Parent = button
         
-        -- Player name
+        -- Player name (top)
         local nameLabel = Instance.new("TextLabel")
-        nameLabel.Position = UDim2.new(0, 15, 0, 8)
-        nameLabel.Size = UDim2.new(1, -90, 0, 18)
+        nameLabel.Position = UDim2.new(0, 8, 0, 8)
+        nameLabel.Size = UDim2.new(1, -16, 0, 20)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Font = Enum.Font.GothamBold
         nameLabel.Text = plr.Name
         nameLabel.TextColor3 = Color3.fromRGB(240, 240, 245)
-        nameLabel.TextSize = 14
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.TextSize = 12
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
         nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
         nameLabel.ZIndex = 6
         nameLabel.Parent = button
         
-        -- Rank badge
-        local rankBadge = Instance.new("Frame")
-        rankBadge.Position = UDim2.new(0, 15, 0, 30)
-        rankBadge.Size = UDim2.new(0, 50, 0, 20)
-        rankBadge.BackgroundColor3 = rankColor
-        rankBadge.BackgroundTransparency = 0.85
-        rankBadge.BorderSizePixel = 0
-        rankBadge.ZIndex = 6
-        rankBadge.Parent = button
-        
-        local rankCorner = Instance.new("UICorner")
-        rankCorner.CornerRadius = UDim.new(0, 5)
-        rankCorner.Parent = rankBadge
-        
-        local rankStroke = Instance.new("UIStroke")
-        rankStroke.Color = rankColor
-        rankStroke.Transparency = 0.5
-        rankStroke.Thickness = 1
-        rankStroke.Parent = rankBadge
-        
+        -- Rank badge (middle)
         local rankLabel = Instance.new("TextLabel")
-        rankLabel.Size = UDim2.new(1, 0, 1, 0)
+        rankLabel.Position = UDim2.new(0, 8, 0, 32)
+        rankLabel.Size = UDim2.new(1, -16, 0, 16)
         rankLabel.BackgroundTransparency = 1
         rankLabel.Font = Enum.Font.GothamBold
         rankLabel.Text = rankAbbrev
         rankLabel.TextColor3 = rankColor
-        rankLabel.TextSize = 10
-        rankLabel.ZIndex = 7
-        rankLabel.Parent = rankBadge
+        rankLabel.TextSize = 11
+        rankLabel.ZIndex = 6
+        rankLabel.Parent = button
         
-        -- Hours played
+        -- Hours (bottom)
         local hoursLabel = Instance.new("TextLabel")
-        hoursLabel.Position = UDim2.new(0, 70, 0, 30)
-        hoursLabel.Size = UDim2.new(1, -160, 0, 20)
+        hoursLabel.Position = UDim2.new(0, 8, 0, 52)
+        hoursLabel.Size = UDim2.new(1, -16, 0, 15)
         hoursLabel.BackgroundTransparency = 1
         hoursLabel.Font = Enum.Font.Gotham
-        hoursLabel.Text = "⏱ " .. hours
-        hoursLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
-        hoursLabel.TextSize = 11
-        hoursLabel.TextXAlignment = Enum.TextXAlignment.Left
+        hoursLabel.Text = hoursText
+        hoursLabel.TextColor3 = Color3.fromRGB(160, 160, 170)
+        hoursLabel.TextSize = 10
         hoursLabel.ZIndex = 6
         hoursLabel.Parent = button
-        
-        -- Teleport button
-        local tpButton = Instance.new("TextButton")
-        tpButton.Position = UDim2.new(1, -70, 0.5, -15)
-        tpButton.Size = UDim2.new(0, 60, 0, 30)
-        tpButton.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-        tpButton.BorderSizePixel = 0
-        tpButton.Font = Enum.Font.GothamBold
-        tpButton.Text = "TP"
-        tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tpButton.TextSize = 12
-        tpButton.AutoButtonColor = false
-        tpButton.ZIndex = 6
-        tpButton.Parent = button
-        
-        local tpCorner = Instance.new("UICorner")
-        tpCorner.CornerRadius = UDim.new(0, 6)
-        tpCorner.Parent = tpButton
         
         -- Hover effects
         button.MouseEnter:Connect(function()
@@ -333,32 +314,24 @@ local function createPlayerList()
             }):Play()
         end)
         
-        tpButton.MouseEnter:Connect(function()
-            TweenService:Create(tpButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(158, 63, 246)
-            }):Play()
-        end)
-        
-        tpButton.MouseLeave:Connect(function()
-            TweenService:Create(tpButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-            }):Play()
-        end)
-        
-        -- Teleport on click
-        tpButton.MouseButton1Click:Connect(function()
+        -- Click to teleport
+        button.MouseButton1Click:Connect(function()
             teleportToPlayer(plr)
         end)
         
         State.playerButtons[plr.UserId] = button
     end
+    
+    -- Update canvas size
+    local totalRows = math.ceil(#aegisPlayers / 3)
+    State.gridFrame.CanvasSize = UDim2.new(0, 0, 0, totalRows * 80 + 10)
 end
 
 --==============================================================================
 --                          CREATE UI
 --==============================================================================
 
--- Create scroll frame for player list
+-- Create grid frame for player list (3 columns)
 do
     local scrollFrame = Instance.new("ScrollingFrame")
     scrollFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -367,23 +340,10 @@ do
     scrollFrame.ScrollBarThickness = 6
     scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     scrollFrame.ZIndex = 4
     scrollFrame.Parent = page
     
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 8)
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Parent = scrollFrame
-    
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingRight = UDim.new(0, 5)
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingBottom = UDim.new(0, 5)
-    padding.Parent = scrollFrame
-    
-    State.scrollFrame = scrollFrame
+    State.gridFrame = scrollFrame
 end
 
 -- Initial player list

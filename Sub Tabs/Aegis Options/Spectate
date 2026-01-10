@@ -646,4 +646,7 @@ end)
 
 print("✓ Aegis Spectate Module Loaded")
 
+-- Expose stopSpectate globally for teleport module
+_G.AegisHub.stopSpectate = stopSpectate
+
 return true

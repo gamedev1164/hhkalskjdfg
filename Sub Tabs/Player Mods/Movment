@@ -4,17 +4,17 @@
 -- PRESETS - Customize default values here
 local PRESETS = {
     SPEED = {
-        DEFAULT = 50,
+        DEFAULT = 200,
         MIN = 1,
         MAX = 500
     },
     JUMP = {
-        DEFAULT = 50,
+        DEFAULT = 200,
         MIN = 1,
         MAX = 500
     },
     CFRAME_FLY = {
-        DEFAULT = 100,
+        DEFAULT = 200,
         MIN = 1,
         MAX = 500
     }
@@ -312,7 +312,7 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
             disableCFrameFly()
         end
         
-        -- Update toggle if it exists
+        -- Update toggle visual immediately
         if cframeFlyToggleRef then
             cframeFlyToggleRef.setToggle(State.cframeFlyEnabled)
         end
@@ -387,7 +387,7 @@ do
     
     -- Slider
     local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 140, 0, 12)
+    barBg.Size = UDim2.new(0, 200, 0, 12)  -- Increased from 140 to 200
     barBg.Position = UDim2.new(0, 140, 0, 24)
     barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     barBg.BorderSizePixel = 0
@@ -396,7 +396,7 @@ do
     Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
     
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.2, 0, 1, 0)
+    fill.Size = UDim2.new(0.4, 0, 1, 0)  -- Updated for 200 default
     fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     fill.BorderSizePixel = 0
     fill.ZIndex = 7
@@ -413,12 +413,12 @@ do
     Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "100"
+    valueLabel.Text = "200"  -- Updated default
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 14
     valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
     valueLabel.Size = UDim2.new(0, 50, 0, 30)
-    valueLabel.Position = UDim2.new(0, 290, 0, 15)
+    valueLabel.Position = UDim2.new(0, 350, 0, 15)
     valueLabel.BackgroundTransparency = 1
     valueLabel.TextXAlignment = Enum.TextXAlignment.Left
     valueLabel.ZIndex = 6
@@ -498,8 +498,8 @@ do
             State.cframeFlyEnabled = on
             local newColor = on and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
             local newPos = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-            switch.BackgroundColor3 = newColor
-            dot.Position = newPos
+            TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
+            TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
         end
     }
     

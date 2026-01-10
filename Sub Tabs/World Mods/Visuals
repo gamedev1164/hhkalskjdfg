@@ -8,13 +8,13 @@ local PRESETS = {
         MIN = 0,
         MAX = 1
     },
-    INFINITE_ZOOM = 700,  -- Max camera zoom distance
     DOOR_HIGHLIGHT = {
         FILL_COLOR = Color3.fromRGB(255, 50, 50),  -- Red
         OUTLINE_COLOR = Color3.fromRGB(255, 255, 255),  -- White
         FILL_TRANSPARENCY = 0.5,
         OUTLINE_TRANSPARENCY = 0
-    }
+    },
+    MOVE_HEIGHT = 1000  -- Height to move doors/walls
 }
 
 local AegisHub = _G.AegisHub
@@ -34,77 +34,33 @@ local Library = AegisHub.Library
 
 -- State
 local State = {
-    fullBrightEnabled = false,
-    noFogEnabled = false,
-    infZoomEnabled = false,
-    allLightingEffectsRemoved = false,
+    lightingEffectsEnabled = false,  -- Combined: Full Bright, No Fog, Remove Effects, Inf Zoom
     xrayEnabled = false,
     xrayLevel = PRESETS.XRAY.DEFAULT,
     doorsHighlighted = false,
+    doorsRemoved = false,
+    borderWallsRemoved = false,
     
     enforcementConn = nil,
     xrayOriginal = {},
     originalLightingEffects = {},
     doorHighlights = {},
+    doorOriginalPositions = {},
+    wallOriginalPositions = {},
+    origCameraZoom = nil,
     
     connections = {}
 }
 
--- Full Bright / No Fog Enforcement
-local function startEnforcement()
-    if State.enforcementConn then State.enforcementConn:Disconnect() end
-    
-    State.enforcementConn = RunService.Heartbeat:Connect(function()
-        if State.fullBrightEnabled then
-            Lighting.ClockTime = 12
-            Lighting.Brightness = 2
-            Lighting.Ambient = Color3.new(1, 1, 1)
-            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-        end
-        
-        if State.noFogEnabled then
-            Lighting.FogStart = 0
-            Lighting.FogEnd = 1e10
-            local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atm then
-                atm.Density = 0
-                atm.Haze = 0
-            end
-        end
-    end)
-    
-    table.insert(State.connections, State.enforcementConn)
-end
-
-local function stopEnforcement()
-    if State.enforcementConn then
-        State.enforcementConn:Disconnect()
-        State.enforcementConn = nil
-    end
-end
-
--- Full Bright
-local function enableFullBright()
+-- Combined Lighting Effects (Full Bright + No Fog + Remove Effects + Infinite Zoom)
+local function enableLightingEffects()
+    -- Full Bright
     Lighting.Brightness = 2
     Lighting.ClockTime = 12
     Lighting.Ambient = Color3.new(1, 1, 1)
     Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-    startEnforcement()
-end
-
-local function disableFullBright()
-    Lighting.Brightness = 1
-    Lighting.ClockTime = 12
-    Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-    Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
     
-    if not State.noFogEnabled then
-        stopEnforcement()
-    end
-end
-
--- No Fog
-local function enableNoFog()
+    -- No Fog
     Lighting.FogStart = 0
     Lighting.FogEnd = 1e10
     local atm = Lighting:FindFirstChildOfClass("Atmosphere")
@@ -112,36 +68,8 @@ local function enableNoFog()
         atm.Density = 0
         atm.Haze = 0
     end
-    startEnforcement()
-end
-
-local function disableNoFog()
-    Lighting.FogEnd = 1000
-    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-    if atm then
-        atm.Density = 0.3
-        atm.Haze = 0
-    end
     
-    if not State.fullBrightEnabled then
-        stopEnforcement()
-    end
-end
-
--- Infinite Zoom
-local function enableInfZoom()
-    player.CameraMinZoomDistance = 0.5
-    player.CameraMaxZoomDistance = PRESETS.INFINITE_ZOOM
-end
-
-local function disableInfZoom()
-    player.CameraMinZoomDistance = 0.5
-    player.CameraMaxZoomDistance = 128
-end
-
--- Remove All Lighting Effects (Skybox, Bloom, Distortion, etc.)
-local function removeAllLightingEffects()
-    -- Store and remove all effects from Lighting
+    -- Remove All Lighting Effects
     for _, effect in ipairs(Lighting:GetChildren()) do
         if effect:IsA("Sky") or 
            effect:IsA("BloomEffect") or 
@@ -157,15 +85,74 @@ local function removeAllLightingEffects()
             effect.Parent = nil
         end
     end
+    
+    -- Infinite Zoom
+    if not State.origCameraZoom then
+        State.origCameraZoom = {
+            min = player.CameraMinZoomDistance,
+            max = player.CameraMaxZoomDistance
+        }
+    end
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 700
+    
+    -- Start enforcement loop
+    if State.enforcementConn then State.enforcementConn:Disconnect() end
+    State.enforcementConn = RunService.Heartbeat:Connect(function()
+        if not State.lightingEffectsEnabled then return end
+        
+        -- Enforce Full Bright
+        Lighting.ClockTime = 12
+        Lighting.Brightness = 2
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+        
+        -- Enforce No Fog
+        Lighting.FogStart = 0
+        Lighting.FogEnd = 1e10
+        local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atm then
+            atm.Density = 0
+            atm.Haze = 0
+        end
+    end)
+    table.insert(State.connections, State.enforcementConn)
 end
 
-local function restoreAllLightingEffects()
+local function disableLightingEffects()
+    -- Stop enforcement
+    if State.enforcementConn then
+        State.enforcementConn:Disconnect()
+        State.enforcementConn = nil
+    end
+    
+    -- Restore Lighting
+    Lighting.Brightness = 1
+    Lighting.ClockTime = 12
+    Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+    Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+    Lighting.FogEnd = 1000
+    
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atm then
+        atm.Density = 0.3
+        atm.Haze = 0
+    end
+    
+    -- Restore Effects
     for effect, parent in pairs(State.originalLightingEffects) do
         if effect then
             effect.Parent = parent
         end
     end
     State.originalLightingEffects = {}
+    
+    -- Restore Zoom
+    if State.origCameraZoom then
+        player.CameraMinZoomDistance = State.origCameraZoom.min
+        player.CameraMaxZoomDistance = State.origCameraZoom.max
+        State.origCameraZoom = nil
+    end
 end
 
 -- Door Highlighting System
@@ -252,6 +239,90 @@ local function highlightDoors()
     print("✓ Highlighted " .. #doors .. " doors")
 end
 
+-- Door/Wall Removal System
+local function movePartUp(part, originalPosTable)
+    if part:IsA("BasePart") then
+        -- Store original CFrame
+        if not originalPosTable[part] then
+            originalPosTable[part] = part.CFrame
+        end
+        
+        -- Move up PRESETS.MOVE_HEIGHT studs
+        part.CFrame = part.CFrame + Vector3.new(0, PRESETS.MOVE_HEIGHT, 0)
+    end
+end
+
+local function restorePartPosition(part, originalPosTable)
+    local originalCFrame = originalPosTable[part]
+    if not originalCFrame then return end
+    
+    if part:IsA("BasePart") and part.Parent then
+        part.CFrame = originalCFrame
+    end
+end
+
+local function removeDoors()
+    -- Get Doors folder
+    local doorsFolder = Workspace:FindFirstChild("Doors")
+    if not doorsFolder then 
+        warn("Doors folder not found")
+        return 
+    end
+    
+    -- Get ALL parts inside Doors folder (recursive)
+    local parts = doorsFolder:GetDescendants()
+    local count = 0
+    
+    for _, obj in ipairs(parts) do
+        if obj:IsA("BasePart") then
+            movePartUp(obj, State.doorOriginalPositions)
+            count = count + 1
+        end
+    end
+    
+    print("✓ Removed " .. count .. " door parts")
+end
+
+local function restoreDoors()
+    for part, _ in pairs(State.doorOriginalPositions) do
+        restorePartPosition(part, State.doorOriginalPositions)
+    end
+    
+    State.doorOriginalPositions = {}
+    print("✓ Restored doors")
+end
+
+local function removeBorderWalls()
+    -- Get Divisional folder
+    local divisionalFolder = Workspace:FindFirstChild("Divisional")
+    if not divisionalFolder then 
+        warn("Divisional folder not found")
+        return 
+    end
+    
+    -- Get ALL parts inside Divisional folder (recursive)
+    local parts = divisionalFolder:GetDescendants()
+    local count = 0
+    
+    for _, obj in ipairs(parts) do
+        if obj:IsA("BasePart") then
+            movePartUp(obj, State.wallOriginalPositions)
+            count = count + 1
+        end
+    end
+    
+    print("✓ Removed " .. count .. " border wall parts")
+end
+
+local function restoreBorderWalls()
+    for part, _ in pairs(State.wallOriginalPositions) do
+        restorePartPosition(part, State.wallOriginalPositions)
+    end
+    
+    State.wallOriginalPositions = {}
+    print("✓ Restored border walls")
+end
+
 -- X-Ray System
 local function applyXray(level)
     for _, inst in ipairs(Workspace:GetDescendants()) do
@@ -286,29 +357,24 @@ local function restoreXray()
 end
 
 -- Create UI
-Library:CreateToggle(page, "Full Bright", false, function(enabled)
-    State.fullBrightEnabled = enabled
-    if enabled then enableFullBright() else disableFullBright() end
-end)
-
-Library:CreateToggle(page, "No Fog", false, function(enabled)
-    State.noFogEnabled = enabled
-    if enabled then enableNoFog() else disableNoFog() end
-end)
-
-Library:CreateToggle(page, "Infinite Zoom", false, function(enabled)
-    State.infZoomEnabled = enabled
-    if enabled then enableInfZoom() else disableInfZoom() end
-end)
-
-Library:CreateToggle(page, "Remove All Lighting Effects", false, function(enabled)
-    State.allLightingEffectsRemoved = enabled
-    if enabled then removeAllLightingEffects() else restoreAllLightingEffects() end
+Library:CreateToggle(page, "Lighting Effects, Full Bright, No Fog", false, function(enabled)
+    State.lightingEffectsEnabled = enabled
+    if enabled then enableLightingEffects() else disableLightingEffects() end
 end)
 
 Library:CreateToggle(page, "Highlight Doors", false, function(enabled)
     State.doorsHighlighted = enabled
     if enabled then highlightDoors() else clearDoorHighlights() end
+end)
+
+Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
+    State.doorsRemoved = enabled
+    if enabled then removeDoors() else restoreDoors() end
+end)
+
+Library:CreateToggle(page, "Remove Border Walls", false, function(enabled)
+    State.borderWallsRemoved = enabled
+    if enabled then removeBorderWalls() else restoreBorderWalls() end
 end)
 
 -- X-ray with slider

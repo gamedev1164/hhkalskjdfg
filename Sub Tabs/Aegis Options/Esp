@@ -75,8 +75,7 @@ end
 
 -- State
 local State = {
-    allAegisEnabled = false,
-    patrolTrainingEnabled = true,  -- Start enabled
+    allAegisEnabled = true,  -- Start enabled (includes all teams)
     
     showName = false,
     showDistance = false,
@@ -321,15 +320,6 @@ local function refreshESP()
         end
     end
     
-    if State.patrolTrainingEnabled then
-        for _, teamName in ipairs(AEGIS_TEAMS.Patrol) do
-            teamsToShow[teamName] = true
-        end
-        for _, teamName in ipairs(AEGIS_TEAMS.Training) do
-            teamsToShow[teamName] = true
-        end
-    end
-    
     -- Create ESP for matching players
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and plr.Team and teamsToShow[plr.Team.Name] then
@@ -354,7 +344,7 @@ local function startESP()
     task.spawn(function()
         while State.updateConn do
             task.wait(2)
-            if State.allAegisEnabled or State.patrolTrainingEnabled then
+            if State.allAegisEnabled then
                 refreshESP()
             end
         end
@@ -376,7 +366,7 @@ end
 -- Player added/removed handlers
 Players.PlayerAdded:Connect(function(plr)
     task.wait(1)
-    if State.allAegisEnabled or State.patrolTrainingEnabled then
+    if State.allAegisEnabled then
         refreshESP()
     end
 end)
@@ -389,93 +379,15 @@ end)
 --                          CREATE UI
 --==============================================================================
 
--- All Aegis Toggle (Main Button)
-Library:CreateToggle(page, "All Aegis", false, function(enabled)
+-- All Aegis Toggle (Main Button) - Starts enabled
+Library:CreateToggle(page, "All Aegis", true, function(enabled)
     State.allAegisEnabled = enabled
     if enabled then
         startESP()
     else
-        if not State.patrolTrainingEnabled then
-            stopESP()
-        else
-            refreshESP()
-        end
+        stopESP()
     end
 end)
-
--- Patrol + Training Toggle (Smaller Sub-Button with two colors)
-do
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 35)
-    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 3
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
-    
-    local patrolLabel = Instance.new("TextLabel")
-    patrolLabel.Text = "  Patrol"
-    patrolLabel.Size = UDim2.new(0, 60, 1, 0)
-    patrolLabel.Position = UDim2.new(0, 0, 0, 0)
-    patrolLabel.BackgroundTransparency = 1
-    patrolLabel.TextColor3 = Color3.fromRGB(0, 100, 255)  -- Blue
-    patrolLabel.Font = Enum.Font.GothamBold
-    patrolLabel.TextSize = 12
-    patrolLabel.TextXAlignment = Enum.TextXAlignment.Left
-    patrolLabel.ZIndex = 4
-    patrolLabel.Parent = frame
-    
-    local trainingLabel = Instance.new("TextLabel")
-    trainingLabel.Text = " + Training"
-    trainingLabel.Size = UDim2.new(0, 100, 1, 0)
-    trainingLabel.Position = UDim2.new(0, 55, 0, 0)
-    trainingLabel.BackgroundTransparency = 1
-    trainingLabel.TextColor3 = Color3.fromRGB(255, 255, 0)  -- Yellow
-    trainingLabel.Font = Enum.Font.GothamBold
-    trainingLabel.TextSize = 12
-    trainingLabel.TextXAlignment = Enum.TextXAlignment.Left
-    trainingLabel.ZIndex = 4
-    trainingLabel.Parent = frame
-    
-    local switch = Instance.new("TextButton")
-    switch.Text = ""
-    switch.Size = UDim2.new(0, 40, 0, 20)
-    switch.Position = UDim2.new(1, -50, 0.5, -10)
-    switch.BackgroundColor3 = Color3.fromRGB(138, 43, 226)  -- Start enabled
-    switch.AutoButtonColor = false
-    switch.ZIndex = 4
-    switch.Parent = frame
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
-    
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 16, 0, 16)
-    dot.Position = UDim2.new(1, -18, 0.5, -8)  -- Start enabled position
-    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 5
-    dot.Parent = switch
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    local TweenService = game:GetService("TweenService")
-    
-    switch.MouseButton1Click:Connect(function()
-        State.patrolTrainingEnabled = not State.patrolTrainingEnabled
-        if State.patrolTrainingEnabled then
-            startESP()
-        else
-            if not State.allAegisEnabled then
-                stopESP()
-            else
-                refreshESP()
-            end
-        end
-        
-        local newColor = State.patrolTrainingEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.patrolTrainingEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
-    end)
-end
 
 -- Fill Highlight with specific transparency values (0.1 - 0.9)
 do

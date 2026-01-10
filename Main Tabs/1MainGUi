@@ -812,6 +812,46 @@ do
             else
                 print("✓ Visuals module loaded")
             end
+            
+            -- Load Aegis ESP Module
+            local success4, err4 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Esp"))()
+            end)
+            if not success4 then
+                warn("Failed to load Aegis ESP module:", err4)
+            else
+                print("✓ Aegis ESP module loaded")
+            end
+            
+            -- Load Aegis Hitbox Module
+            local success5, err5 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Hitbox"))()
+            end)
+            if not success5 then
+                warn("Failed to load Aegis Hitbox module:", err5)
+            else
+                print("✓ Aegis Hitbox module loaded")
+            end
+            
+            -- Load Aegis Spectate Module
+            local success6, err6 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Spectate"))()
+            end)
+            if not success6 then
+                warn("Failed to load Aegis Spectate module:", err6)
+            else
+                print("✓ Aegis Spectate module loaded")
+            end
+            
+            -- Load Aegis Teleport Module
+            local success7, err7 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Teleport"))()
+            end)
+            if not success7 then
+                warn("Failed to load Aegis Teleport module:", err7)
+            else
+                print("✓ Aegis Teleport module loaded")
+            end
         end)
         
         -- Auto-select first tab

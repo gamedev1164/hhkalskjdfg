@@ -50,19 +50,26 @@ local function getTeamColor(teamName)
         return Color3.fromRGB(139, 0, 0)
     end
     
-    -- Conference - Orange
+    -- Conference - Light Orange
     if teamName == "Conference" then
-        return Color3.fromRGB(255, 165, 0)
+        return Color3.fromRGB(255, 200, 100)
     end
     
-    -- Training (includes Lesson1, Lesson2, Training) - Yellow
-    for _, training in ipairs(AEGIS_TEAMS.Training) do
-        if teamName == training then
-            return Color3.fromRGB(255, 255, 0)
+    -- Patrol - Light Blue
+    for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
+        if teamName == patrol then
+            return Color3.fromRGB(100, 180, 255)
         end
     end
     
-    -- All other Aegis (including Patrol) - Light Red
+    -- Training (includes Lesson1, Lesson2, Training) - Light Green
+    for _, training in ipairs(AEGIS_TEAMS.Training) do
+        if teamName == training then
+            return Color3.fromRGB(100, 255, 150)
+        end
+    end
+    
+    -- All other Aegis - Light Red
     return Color3.fromRGB(255, 100, 100)
 end
 
@@ -333,10 +340,10 @@ local function startESP()
     
     table.insert(State.connections, State.updateConn)
     
-    -- Check for new players/deaths every 2 seconds
+    -- Check for team changes and new players every 5 seconds
     task.spawn(function()
         while State.updateConn do
-            task.wait(2)
+            task.wait(5)
             if State.allAegisEnabled then
                 refreshESP()
             end

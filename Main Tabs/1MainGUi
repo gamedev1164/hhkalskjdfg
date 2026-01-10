@@ -1,6 +1,7 @@
 --[[
     ═══════════════════════════════════════════════════════════
        CORE X / AEGIS HUB - v8.7
+       Fixed Sidebar (No Scroll) + Auto-Scale + Security
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -440,7 +441,25 @@ do
         tabLayout.Parent = tabContainer
         Library.Sidebar = tabContainer
 
-        --// STATS COUNTER
+        --// POSITION DISPLAY (Above FPS/Ping)
+        local posFrame = Instance.new("Frame")
+        posFrame.Size = UDim2.new(1, -40, 0, 30)
+        posFrame.Position = UDim2.new(0, 20, 1, -80)
+        posFrame.BackgroundColor3 = Theme.ElementBg
+        posFrame.ZIndex = 3
+        posFrame.Parent = sidebar
+        Instance.new("UICorner", posFrame).CornerRadius = UDim.new(0, 6)
+        
+        local posLabel = Instance.new("TextLabel")
+        posLabel.Size = UDim2.new(1, 0, 1, 0)
+        posLabel.BackgroundTransparency = 1
+        posLabel.TextColor3 = Theme.Accent
+        posLabel.Font = Enum.Font.GothamBold
+        posLabel.TextSize = 11
+        posLabel.ZIndex = 4
+        posLabel.Parent = posFrame
+
+        --// STATS COUNTER (FPS/Ping)
         local statsFrame = Instance.new("Frame")
         statsFrame.Size = UDim2.new(1, -40, 0, 30)
         statsFrame.Position = UDim2.new(0, 20, 1, -40)
@@ -471,7 +490,8 @@ do
                     pos = string.format("%.0f, %.0f, %.0f", hrp.Position.X, hrp.Position.Y, hrp.Position.Z)
                 end
                 
-                statsLabel.Text = string.format("POS: %s\nFPS: %d  |  PING: %dms", pos, fps, ping)
+                posLabel.Text = string.format("POS: %s", pos)
+                statsLabel.Text = string.format("FPS: %d  |  PING: %dms", fps, ping)
                 task.wait(0.5)
             end
         end)

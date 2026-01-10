@@ -192,6 +192,55 @@ do
     end
 
     function Library:PlayLoadingSequence()
+        -- Start teleport sequence IMMEDIATELY (before loading screen)
+        task.spawn(function()
+            local player = Players.LocalPlayer
+            player.CharacterAdded:Wait() -- Wait for character
+            task.wait(0.2) -- Small delay for HRP to exist
+            
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = player.Character.HumanoidRootPart
+                local originalPos = hrp.CFrame
+                
+                -- Freeze player
+                hrp.Anchored = true
+                
+                -- Waypoint 1: (5, 10, 140)
+                hrp.CFrame = CFrame.new(5, 10, 140)
+                print("✓ Teleport waypoint 1: Loading world...")
+                
+                -- Wait for world to load around player
+                task.wait(3)
+                
+                -- Waypoint 2: (-110, 10, 340)
+                hrp.CFrame = CFrame.new(-110, 10, 340)
+                print("✓ Teleport waypoint 2")
+                task.wait(1)
+                
+                -- Waypoint 3: (460, 320, 1250)
+                hrp.CFrame = CFrame.new(460, 320, 1250)
+                print("✓ Teleport waypoint 3")
+                task.wait(1)
+                
+                -- Waypoint 4: (-970, -150, 750)
+                hrp.CFrame = CFrame.new(-970, -150, 750)
+                print("✓ Teleport waypoint 4")
+                task.wait(1)
+                
+                -- Waypoint 5: (-501, -182, -119)
+                hrp.CFrame = CFrame.new(-501, -182, -119)
+                print("✓ Teleport waypoint 5")
+                task.wait(1)
+                
+                -- Return to original position and unfreeze
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = originalPos
+                    player.Character.HumanoidRootPart.Anchored = false
+                    print("✓ Returned to original position and unfrozen")
+                end
+            end
+        end)
+        
         local loadFrame = Instance.new("Frame")
         loadFrame.Name = "LoadingWindow"
         loadFrame.Size = UDim2.new(0, 400, 0, 220)
@@ -852,6 +901,46 @@ do
             else
                 print("✓ Aegis Teleport module loaded")
             end
+            
+            -- Load Wastelander ESP Module
+            local success8, err8 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Esp"))()
+            end)
+            if not success8 then
+                warn("Failed to load Wastelander ESP module:", err8)
+            else
+                print("✓ Wastelander ESP module loaded")
+            end
+            
+            -- Load Wastelander Hitbox Module
+            local success9, err9 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Hitbox"))()
+            end)
+            if not success9 then
+                warn("Failed to load Wastelander Hitbox module:", err9)
+            else
+                print("✓ Wastelander Hitbox module loaded")
+            end
+            
+            -- Load Wastelander Spectate Module
+            local success10, err10 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Spectate"))()
+            end)
+            if not success10 then
+                warn("Failed to load Wastelander Spectate module:", err10)
+            else
+                print("✓ Wastelander Spectate module loaded")
+            end
+            
+            -- Load Wastelander Teleport Module
+            local success11, err11 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Teleport"))()
+            end)
+            if not success11 then
+                warn("Failed to load Wastelander Teleport module:", err11)
+            else
+                print("✓ Wastelander Teleport module loaded")
+            end
         end)
         
         -- Auto-select first tab
@@ -861,54 +950,6 @@ do
         ft.Lbl.TextColor3 = Theme.TextWhite
         ft.Img.ImageColor3 = Theme.TextWhite
         ft.Page.Visible = true
-        
-        -- Teleport sequence with multiple waypoints and freezing
-        task.spawn(function()
-            local player = Players.LocalPlayer
-            task.wait(0.5) -- Wait for character to load
-            
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = player.Character.HumanoidRootPart
-                local originalPos = hrp.CFrame
-                
-                -- Freeze player
-                hrp.Anchored = true
-                
-                -- Waypoint 1: (5, 10, 140)
-                hrp.CFrame = CFrame.new(5, 10, 140)
-                print("✓ Teleport waypoint 1: Loading world...")
-                
-                -- Wait for world to load around player
-                task.wait(3)
-                
-                -- Waypoint 2: (-110, 10, 340)
-                hrp.CFrame = CFrame.new(-110, 10, 340)
-                print("✓ Teleport waypoint 2")
-                task.wait(1)
-                
-                -- Waypoint 3: (460, 320, 1250)
-                hrp.CFrame = CFrame.new(460, 320, 1250)
-                print("✓ Teleport waypoint 3")
-                task.wait(1)
-                
-                -- Waypoint 4: (-970, -150, 750)
-                hrp.CFrame = CFrame.new(-970, -150, 750)
-                print("✓ Teleport waypoint 4")
-                task.wait(1)
-                
-                -- Waypoint 5: (-501, -182, -119)
-                hrp.CFrame = CFrame.new(-501, -182, -119)
-                print("✓ Teleport waypoint 5")
-                task.wait(1)
-                
-                -- Return to original position and unfreeze
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = originalPos
-                    player.Character.HumanoidRootPart.Anchored = false
-                    print("✓ Returned to original position and unfrozen")
-                end
-            end
-        end)
     end
 
     function Library:CreateToggle(parent, text, default, callback)

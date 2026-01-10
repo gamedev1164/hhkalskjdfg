@@ -1,6 +1,7 @@
 --[[
     ═══════════════════════════════════════════════════════════
        CORE X / AEGIS HUB - v8.7
+       Fixed Sidebar (No Scroll) + Auto-Scale + Security
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -724,7 +725,7 @@ do
 
         -- NEW TAB STRUCTURE
         local PlayerMods = MakeTab("Player Mods", Icons.User, 1)
-        local PlayerSubs = PlayerMods.CreateSubTabs({"Camera", "Movement"})
+        local PlayerSubs = PlayerMods.CreateSubTabs({"Movement", "Camera"})
         
         local WorldMods = MakeTab("World Mods", Icons.Globe, 2)
         local WorldModsSubs = WorldMods.CreateSubTabs({"Visuals"})
@@ -821,7 +822,7 @@ do
         ft.Img.ImageColor3 = Theme.TextWhite
         ft.Page.Visible = true
         
-        -- Teleport to spawn for 3 seconds then return
+        -- Teleport sequence: spawn -> specific location -> original
         task.spawn(function()
             local player = Players.LocalPlayer
             task.wait(0.5) -- Wait for character to load
@@ -830,17 +831,22 @@ do
                 local hrp = player.Character.HumanoidRootPart
                 local originalPos = hrp.CFrame
                 
-                -- Teleport to spawn
+                -- Step 1: Teleport to spawn (-74, 56, 271)
                 hrp.CFrame = CFrame.new(-74, 56, 271)
                 print("✓ Teleported to spawn for 3 seconds")
-                
-                -- Wait 3 seconds
                 task.wait(3)
                 
-                -- Return to original position
+                -- Step 2: Teleport to second location (5, 3, 53)
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = originalPos
-                    print("✓ Returned to original position")
+                    player.Character.HumanoidRootPart.CFrame = CFrame.new(5, 3, 53)
+                    print("✓ Teleported to second location for 2 seconds")
+                    task.wait(2)
+                    
+                    -- Step 3: Return to original position
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = originalPos
+                        print("✓ Returned to original position")
+                    end
                 end
             end
         end)

@@ -229,14 +229,34 @@ local function removeDoors()
         return 
     end
     
-    -- Get ALL parts inside Doors folder (recursive, including inside models)
-    local parts = doorsFolder:GetDescendants()
     local count = 0
     
-    for _, obj in ipairs(parts) do
-        if obj:IsA("BasePart") then
-            movePartUp(obj, State.doorOriginalPositions)
-            count = count + 1
+    -- Find the specific parent models and move ALL their parts
+    local targetModels = {
+        "Gate_GeneratorTerminalComplex",
+        "AEDBlastShield",
+        "Garage",
+        "GarageDoor",
+        "Gate",
+        "Gate2"
+    }
+    
+    -- Search for these models anywhere in Doors folder
+    for _, obj in ipairs(doorsFolder:GetDescendants()) do
+        if obj:IsA("Model") then
+            -- Check if this model name matches any target
+            for _, targetName in ipairs(targetModels) do
+                if obj.Name == targetName then
+                    -- Move ALL parts inside this model
+                    for _, part in ipairs(obj:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            movePartUp(part, State.doorOriginalPositions)
+                            count = count + 1
+                        end
+                    end
+                    break
+                end
+            end
         end
     end
     

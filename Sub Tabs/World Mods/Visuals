@@ -8,12 +8,6 @@ local PRESETS = {
         MIN = 0,
         MAX = 1
     },
-    DOOR_HIGHLIGHT = {
-        FILL_COLOR = Color3.fromRGB(255, 50, 50),  -- Red
-        OUTLINE_COLOR = Color3.fromRGB(255, 255, 255),  -- White
-        FILL_TRANSPARENCY = 0.5,
-        OUTLINE_TRANSPARENCY = 0
-    },
     MOVE_HEIGHT = 1000  -- Height to move doors/walls
 }
 
@@ -156,61 +150,6 @@ local function disableLightingEffects()
 end
 
 -- Door Highlighting System
-local DOOR_NAMES = {
-    "AEDBlastShield",
-    "GarageDoor",
-    "Gate",
-    "Gate2",
-    "Gate_GeneratorTerminalComplex",
-}
-
-local function isDoorModel(model)
-    if not model or not model:IsA("Model") then return false end
-    
-    for _, doorName in ipairs(DOOR_NAMES) do
-        if model.Name:lower():find(doorName:lower()) then
-            return true
-        end
-    end
-    
-    return false
-end
-
-local function getAllDoors()
-    local doors = {}
-    
-    -- Check Doors folder and ALL descendants
-    local doorsFolder = Workspace:FindFirstChild("Doors")
-    if doorsFolder then
-        -- Get all models in the entire hierarchy
-        for _, child in ipairs(doorsFolder:GetDescendants()) do
-            if child:IsA("Model") then
-                -- Check if model name matches any door name
-                local matchesName = false
-                for _, doorName in ipairs(DOOR_NAMES) do
-                    if child.Name:lower():find(doorName:lower()) then
-                        matchesName = true
-                        break
-                    end
-                end
-                
-                if matchesName then
-                    table.insert(doors, child)
-                end
-            end
-        end
-    end
-    
-    -- Also check workspace root for door models
-    for _, child in ipairs(Workspace:GetChildren()) do
-        if child:IsA("Model") and isDoorModel(child) then
-            table.insert(doors, child)
-        end
-    end
-    
-    return doors
-end
-
 local function clearDoorHighlights()
     for _, highlight in pairs(State.doorHighlights) do
         pcall(function() highlight:Destroy() end)
@@ -218,25 +157,46 @@ local function clearDoorHighlights()
     State.doorHighlights = {}
 end
 
+local function getAllDoorParts()
+    local doorParts = {}
+    
+    -- Get Doors folder and ALL descendants
+    local doorsFolder = Workspace:FindFirstChild("Doors")
+    if doorsFolder then
+        -- Get all parts in the entire hierarchy
+        for _, child in ipairs(doorsFolder:GetDescendants()) do
+            -- Look for parts/models named "Door"
+            if child:IsA("BasePart") and child.Name:lower() == "door" then
+                table.insert(doorParts, child)
+            elseif child:IsA("Model") and child.Name:lower() == "door" then
+                -- If it's a model named Door, highlight the model
+                table.insert(doorParts, child)
+            end
+        end
+    end
+    
+    return doorParts
+end
+
 local function highlightDoors()
     clearDoorHighlights()
     
-    local doors = getAllDoors()
+    local doorParts = getAllDoorParts()
     
-    for _, door in ipairs(doors) do
+    for _, door in ipairs(doorParts) do
         local highlight = Instance.new("Highlight")
         highlight.Adornee = door
-        highlight.FillColor = PRESETS.DOOR_HIGHLIGHT.FILL_COLOR
-        highlight.OutlineColor = PRESETS.DOOR_HIGHLIGHT.OUTLINE_COLOR
-        highlight.FillTransparency = PRESETS.DOOR_HIGHLIGHT.FILL_TRANSPARENCY
-        highlight.OutlineTransparency = PRESETS.DOOR_HIGHLIGHT.OUTLINE_TRANSPARENCY
+        highlight.FillColor = Color3.fromRGB(200, 150, 255)  -- Light purple
+        highlight.OutlineColor = Color3.fromRGB(200, 150, 255)  -- Light purple
+        highlight.FillTransparency = 0.9
+        highlight.OutlineTransparency = 0.9
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Parent = door
         
         table.insert(State.doorHighlights, highlight)
     end
     
-    print("✓ Highlighted " .. #doors .. " doors")
+    print("✓ Highlighted " .. #doorParts .. " door parts")
 end
 
 -- Door/Wall Removal System

@@ -45,21 +45,14 @@ local AEGIS_TEAMS = {
 
 -- Get team color based on team name
 local function getTeamColor(teamName)
-    -- Chairman - Blue
+    -- Chairman - Dark Red
     if teamName == "The Chairman" then
-        return Color3.fromRGB(0, 100, 255)
+        return Color3.fromRGB(139, 0, 0)
     end
     
-    -- Conference - Yellow
+    -- Conference - Orange
     if teamName == "Conference" then
-        return Color3.fromRGB(255, 255, 0)
-    end
-    
-    -- Patrol - Yellow
-    for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
-        if teamName == patrol then
-            return Color3.fromRGB(255, 255, 0)
-        end
+        return Color3.fromRGB(255, 165, 0)
     end
     
     -- Training (includes Lesson1, Lesson2, Training) - Yellow
@@ -69,13 +62,13 @@ local function getTeamColor(teamName)
         end
     end
     
-    -- Default color (light red)
+    -- All other Aegis (including Patrol) - Light Red
     return Color3.fromRGB(255, 100, 100)
 end
 
 -- State
 local State = {
-    allAegisEnabled = true,  -- Start enabled (includes all teams)
+    allAegisEnabled = false,  -- Start disabled
     
     showName = false,
     showDistance = false,
@@ -379,8 +372,8 @@ end)
 --                          CREATE UI
 --==============================================================================
 
--- All Aegis Toggle (Main Button) - Starts enabled
-Library:CreateToggle(page, "All Aegis", true, function(enabled)
+-- All Aegis Toggle (Main Button) - Starts disabled
+Library:CreateToggle(page, "All Aegis", false, function(enabled)
     State.allAegisEnabled = enabled
     if enabled then
         startESP()

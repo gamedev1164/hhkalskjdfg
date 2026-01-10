@@ -195,11 +195,17 @@ do
         -- Start teleport sequence IMMEDIATELY (before loading screen)
         task.spawn(function()
             local player = Players.LocalPlayer
-            player.CharacterAdded:Wait() -- Wait for character
-            task.wait(0.2) -- Small delay for HRP to exist
             
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = player.Character.HumanoidRootPart
+            -- Wait for character if not already loaded
+            local character = player.Character
+            if not character then
+                character = player.CharacterAdded:Wait()
+            end
+            
+            task.wait(0.5) -- Wait for HRP to fully load
+            
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local hrp = character.HumanoidRootPart
                 local originalPos = hrp.CFrame
                 
                 -- Freeze player
@@ -238,6 +244,8 @@ do
                     player.Character.HumanoidRootPart.Anchored = false
                     print("✓ Returned to original position and unfrozen")
                 end
+            else
+                warn("Failed to teleport: Character or HumanoidRootPart not found")
             end
         end)
         

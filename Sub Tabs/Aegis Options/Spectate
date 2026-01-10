@@ -159,44 +159,12 @@ local State = {
     spectating = false,
     targetPlayer = nil,
     originalCamera = nil,
+    waitingForRespawn = false,
     playerButtons = {},
     gridFrame = nil,
-    connections = {}
+    connections = {},
+    spectateConnections = {}
 }
-
--- Spectate player
-local function spectatePlayer(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then
-        warn("Target player has no character")
-        return
-    end
-    
-    local camera = Workspace.CurrentCamera
-    
-    -- Stop previous spectate
-    if State.spectating then
-        camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        camera.CameraType = Enum.CameraType.Custom
-    end
-    
-    -- Start spectating
-    State.spectating = true
-    State.targetPlayer = targetPlayer
-    
-    camera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-    camera.CameraType = Enum.CameraType.Custom
-    
-    print("✓ Now spectating " .. targetPlayer.Name)
-    
-    -- Monitor if target leaves/dies
-    local conn
-    conn = targetPlayer.CharacterRemoving:Connect(function()
-        if State.spectating and State.targetPlayer == targetPlayer then
-            stopSpectate()
-        end
-        conn:Disconnect()
-    end)
-end
 
 -- Stop spectating
 function stopSpectate()
@@ -204,12 +172,89 @@ function stopSpectate()
     
     State.spectating = false
     State.targetPlayer = nil
+    State.waitingForRespawn = false
+    
+    -- Disconnect spectate-specific connections
+    for _, conn in ipairs(State.spectateConnections) do
+        if typeof(conn) == "RBXScriptConnection" then
+            conn:Disconnect()
+        end
+    end
+    State.spectateConnections = {}
     
     local camera = Workspace.CurrentCamera
     camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
     camera.CameraType = Enum.CameraType.Custom
     
     print("✓ Stopped spectating")
+end
+
+-- Spectate player
+local function spectatePlayer(targetPlayer)
+    if not targetPlayer then
+        warn("Target player is nil")
+        return
+    end
+    
+    local camera = Workspace.CurrentCamera
+    
+    -- Stop previous spectate
+    if State.spectating then
+        stopSpectate()
+    end
+    
+    -- Start spectating
+    State.spectating = true
+    State.targetPlayer = targetPlayer
+    State.waitingForRespawn = false
+    
+    -- Function to attach camera to character
+    local function attachCamera(character)
+        if not State.spectating or State.targetPlayer ~= targetPlayer then return end
+        
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            camera.CameraSubject = hum
+            camera.CameraType = Enum.CameraType.Custom
+            State.waitingForRespawn = false
+            print("✓ Now spectating " .. targetPlayer.Name)
+        end
+    end
+    
+    -- Attach to current character if exists
+    if targetPlayer.Character then
+        attachCamera(targetPlayer.Character)
+    else
+        State.waitingForRespawn = true
+        print("⏳ Waiting for " .. targetPlayer.Name .. " to respawn...")
+    end
+    
+    -- Monitor for character respawn (death)
+    local charAddedConn = targetPlayer.CharacterAdded:Connect(function(character)
+        if not State.spectating or State.targetPlayer ~= targetPlayer then return end
+        
+        State.waitingForRespawn = true
+        print("⏳ " .. targetPlayer.Name .. " died, waiting for respawn...")
+        
+        -- Wait for character to fully load
+        task.wait(0.5)
+        
+        if State.spectating and State.targetPlayer == targetPlayer then
+            attachCamera(character)
+        end
+    end)
+    table.insert(State.spectateConnections, charAddedConn)
+    
+    -- Monitor if player leaves (cancel spectate)
+    local playerLeavingConn
+    playerLeavingConn = game:GetService("Players").PlayerRemoving:Connect(function(plr)
+        if plr == targetPlayer and State.spectating and State.targetPlayer == targetPlayer then
+            print("✓ " .. targetPlayer.Name .. " left the game")
+            stopSpectate()
+            createPlayerList()  -- Refresh to remove highlight
+        end
+    end)
+    table.insert(State.spectateConnections, playerLeavingConn)
 end
 
 -- Create player grid (3 columns)

@@ -40,13 +40,15 @@ local State = {
 
 -- Combined Lighting Effects (Full Bright + No Fog + Remove Effects + Infinite Zoom)
 local function enableLightingEffects()
-    -- Full Bright
+    -- Step 1: Full Bright
     Lighting.Brightness = 2
     Lighting.ClockTime = 12
     Lighting.Ambient = Color3.new(1, 1, 1)
     Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
     
-    -- No Fog
+    task.wait(0.1)
+    
+    -- Step 2: No Fog
     Lighting.FogStart = 0
     Lighting.FogEnd = 1e10
     local atm = Lighting:FindFirstChildOfClass("Atmosphere")
@@ -55,7 +57,9 @@ local function enableLightingEffects()
         atm.Haze = 0
     end
     
-    -- Remove All Lighting Effects
+    task.wait(0.1)
+    
+    -- Step 3: Remove All Lighting Effects
     for _, effect in ipairs(Lighting:GetChildren()) do
         if effect:IsA("Sky") or 
            effect:IsA("BloomEffect") or 
@@ -72,7 +76,9 @@ local function enableLightingEffects()
         end
     end
     
-    -- Infinite Zoom
+    task.wait(0.1)
+    
+    -- Step 4: Infinite Zoom
     if not State.origCameraZoom then
         State.origCameraZoom = {
             min = player.CameraMinZoomDistance,

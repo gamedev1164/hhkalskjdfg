@@ -272,40 +272,81 @@ local function removeBorderWalls()
         end
     end
     
-    -- 2. Detect and move tall concrete parts (taller than wide)
+    -- 2. Move Divisional folder contents
+    local divisionalFolder = Workspace:FindFirstChild("Divisional")
+    if divisionalFolder then
+        for _, obj in ipairs(divisionalFolder:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                movePartUp(obj, State.wallOriginalPositions)
+                count = count + 1
+            end
+        end
+    end
+    
+    -- 3. Intelligent wall detection - scan all parts in Workspace
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
+        if obj:IsA("BasePart") and not State.wallOriginalPositions[obj] then
             local size = obj.Size
+            local position = obj.Position
             local shouldMove = false
             
-            -- Check if it's concrete and taller than wide
-            if obj.Material == Enum.Material.Concrete then
-                if size.Y > size.X and size.Y > size.Z then
-                    shouldMove = true
-                end
-            end
-            
-            -- Check if it's a wedge (WedgePart)
+            -- Check 1: All WedgeParts (typically used for walls)
             if obj:IsA("WedgePart") then
                 shouldMove = true
             end
             
-            -- Check if it has wall-like rotation (vertical orientation)
-            -- A wall typically has rotation that makes it stand upright
-            if not shouldMove then
-                local rotation = obj.CFrame.Rotation
-                local upVector = rotation * Vector3.new(0, 1, 0)
-                -- If the up vector is mostly horizontal (not pointing up), it's rotated like a wall
-                if math.abs(upVector.Y) < 0.5 then
-                    -- This part is rotated to be vertical/wall-like
-                    if size.Y > 3 or size.X > 3 or size.Z > 3 then
-                        -- Only move if it's reasonably large (potential wall)
-                        shouldMove = true
-                    end
+            -- Check 2: Large flat parts (potential walls)
+            -- Walls are typically thin in one dimension and large in the others
+            local dimensions = {size.X, size.Y, size.Z}
+            table.sort(dimensions)
+            local thinnest = dimensions[1]
+            local largest = dimensions[3]
+            
+            -- If one dimension is very thin compared to the largest (like a wall)
+            if thinnest < 2 and largest > 10 then
+                shouldMove = true
+            end
+            
+            -- Check 3: Concrete material with wall-like proportions
+            if obj.Material == Enum.Material.Concrete then
+                -- Any dimension over 15 studs is likely a wall section
+                if size.X > 15 or size.Y > 15 or size.Z > 15 then
+                    shouldMove = true
                 end
             end
             
-            if shouldMove and not State.wallOriginalPositions[obj] then
+            -- Check 4: Parts at extreme positions (likely border walls)
+            local distanceFromCenter = math.sqrt(position.X^2 + position.Z^2)
+            if distanceFromCenter > 500 then
+                -- Far from center, likely a border wall
+                if size.X > 5 or size.Y > 5 or size.Z > 5 then
+                    shouldMove = true
+                end
+            end
+            
+            -- Check 5: Parts with "Wall", "Border", "Barrier" in name
+            local name = obj.Name:lower()
+            if name:find("wall") or name:find("border") or name:find("barrier") or name:find("fence") then
+                shouldMove = true
+            end
+            
+            -- Check 6: Anchored concrete/brick parts (walls are usually anchored)
+            if obj.Anchored and (obj.Material == Enum.Material.Concrete or obj.Material == Enum.Material.Brick) then
+                if size.X > 8 or size.Y > 8 or size.Z > 8 then
+                    shouldMove = true
+                end
+            end
+            
+            -- Skip if part is inside a character
+            local skipPart = false
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Character and obj:IsDescendantOf(player.Character) then
+                    skipPart = true
+                    break
+                end
+            end
+            
+            if shouldMove and not skipPart then
                 movePartUp(obj, State.wallOriginalPositions)
                 count = count + 1
             end

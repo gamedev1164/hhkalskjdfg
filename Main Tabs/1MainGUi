@@ -725,7 +725,7 @@ do
 
         -- NEW TAB STRUCTURE
         local PlayerMods = MakeTab("Player Mods", Icons.User, 1)
-        local PlayerSubs = PlayerMods.CreateSubTabs({"Movement"})
+        local PlayerSubs = PlayerMods.CreateSubTabs({"Movement", "Camera"})
         
         local WorldMods = MakeTab("World Mods", Icons.Globe, 2)
         local WorldModsSubs = WorldMods.CreateSubTabs({"Visuals"})
@@ -746,6 +746,7 @@ do
         _G.AegisHub = {
             -- Player Mods
             MovementPage = PlayerSubs["Movement"],
+            CameraPage = PlayerSubs["Camera"],
             
             -- World Mods
             VisualsPage = WorldModsSubs["Visuals"],
@@ -792,12 +793,22 @@ do
                 print("✓ Movement module loaded")
             end
             
-            -- Load Visuals Module
+            -- Load Camera Module
             local success2, err2 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Visuals"))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Camera"))()
             end)
             if not success2 then
-                warn("Failed to load Visuals module:", err2)
+                warn("Failed to load Camera module:", err2)
+            else
+                print("✓ Camera module loaded")
+            end
+            
+            -- Load Visuals Module
+            local success3, err3 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Visuals"))()
+            end)
+            if not success3 then
+                warn("Failed to load Visuals module:", err3)
             else
                 print("✓ Visuals module loaded")
             end

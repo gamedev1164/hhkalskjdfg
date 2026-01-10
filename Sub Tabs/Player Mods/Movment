@@ -254,57 +254,79 @@ local function disableCFrameFly()
 end
 
 -- God Mode (Infinite Health + Instant Respawn at Death Location)
+local deathConnection = nil
+local characterAddedConnection = nil
+
 local function enableGodMode()
     local deathPos = nil
     
+    -- Set initial infinite health
     local hum = getHumanoid()
     if hum then
         hum.MaxHealth = math.huge
         hum.Health = math.huge
     end
     
-    -- Infinite health loop
+    -- Infinite health loop (prevents death)
     State.godModeConn = RunService.Heartbeat:Connect(function()
         if not State.godModeEnabled then return end
         
         local hum = getHumanoid()
-        if hum then
+        if hum and hum.Health < hum.MaxHealth then
             hum.Health = math.huge
         end
     end)
     
     table.insert(State.connections, State.godModeConn)
     
-    -- Death handler for instant respawn
+    -- Death handler as backup (instant respawn at death location)
     local function setupDeathHandler(character)
+        if deathConnection then
+            deathConnection:Disconnect()
+        end
+        
         local hum = character:FindFirstChildOfClass("Humanoid")
         if not hum then return end
         
-        hum.Died:Connect(function()
+        -- Store current position constantly
+        task.spawn(function()
+            while State.godModeEnabled and character.Parent do
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    deathPos = hrp.CFrame
+                end
+                task.wait(0.1)
+            end
+        end)
+        
+        deathConnection = hum.Died:Connect(function()
             if not State.godModeEnabled then return end
             
-            -- Store death position
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                deathPos = hrp.CFrame
-            end
+            print("✓ God Mode: Death detected, respawning...")
             
-            -- Instant respawn
-            player:LoadCharacter()
-            
-            -- Wait for new character
-            task.wait(0.1)
-            
-            -- Teleport to death location
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and deathPos then
-                player.Character.HumanoidRootPart.CFrame = deathPos
-                print("✓ God Mode: Respawned at death location")
-            end
-            
-            -- Setup death handler for new character
-            if player.Character then
+            -- Force instant respawn (no cooldown)
+            task.spawn(function()
+                player:LoadCharacter()
+                
+                -- Wait for character to load
+                repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                
+                -- Teleport back to death location
+                if deathPos then
+                    player.Character.HumanoidRootPart.CFrame = deathPos
+                    print("✓ God Mode: Respawned at saved location")
+                end
+                
+                -- Reset infinite health
+                local newHum = player.Character:FindFirstChildOfClass("Humanoid")
+                if newHum then
+                    newHum.MaxHealth = math.huge
+                    newHum.Health = math.huge
+                end
+                
+                -- Setup handler for new character
                 setupDeathHandler(player.Character)
-            end
+            end)
         end)
     end
     
@@ -314,19 +336,42 @@ local function enableGodMode()
     end
     
     -- Setup for future characters
-    player.CharacterAdded:Connect(function(character)
+    if characterAddedConnection then
+        characterAddedConnection:Disconnect()
+    end
+    
+    characterAddedConnection = player.CharacterAdded:Connect(function(character)
         if State.godModeEnabled then
+            -- Set infinite health immediately
+            task.wait(0.1)
+            local hum = character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.MaxHealth = math.huge
+                hum.Health = math.huge
+            end
             setupDeathHandler(character)
         end
     end)
 end
 
 local function disableGodMode()
+    -- Disconnect connections
     if State.godModeConn then
         State.godModeConn:Disconnect()
         State.godModeConn = nil
     end
     
+    if deathConnection then
+        deathConnection:Disconnect()
+        deathConnection = nil
+    end
+    
+    if characterAddedConnection then
+        characterAddedConnection:Disconnect()
+        characterAddedConnection = nil
+    end
+    
+    -- Reset health to normal
     local hum = getHumanoid()
     if hum then
         hum.MaxHealth = 100

@@ -190,16 +190,24 @@ local function createConfirmationPopup()
         State.confirmationFrame:Destroy()
     end
     
+    -- Find the main ScreenGui
+    local screenGui = page:FindFirstAncestorOfClass("ScreenGui")
+    if not screenGui then
+        warn("Could not find ScreenGui")
+        return nil, nil, nil, nil
+    end
+    
     -- Backdrop
     local backdrop = Instance.new("Frame")
     backdrop.Name = "ConfirmBackdrop"
     backdrop.Size = UDim2.new(1, 0, 1, 0)
+    backdrop.Position = UDim2.new(0, 0, 0, 0)
     backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     backdrop.BackgroundTransparency = 0.5
     backdrop.BorderSizePixel = 0
-    backdrop.ZIndex = 100
+    backdrop.ZIndex = 1000
     backdrop.Visible = false
-    backdrop.Parent = page
+    backdrop.Parent = screenGui
     
     -- Popup frame
     local popup = Instance.new("Frame")
@@ -208,7 +216,7 @@ local function createConfirmationPopup()
     popup.Size = UDim2.new(0, 320, 0, 140)
     popup.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
     popup.BorderSizePixel = 0
-    popup.ZIndex = 101
+    popup.ZIndex = 1001
     popup.Parent = backdrop
     
     local popupCorner = Instance.new("UICorner")
@@ -230,7 +238,7 @@ local function createConfirmationPopup()
     title.TextColor3 = Color3.fromRGB(240, 240, 245)
     title.TextSize = 16
     title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 102
+    title.ZIndex = 1002
     title.Parent = popup
     
     -- Message
@@ -245,7 +253,7 @@ local function createConfirmationPopup()
     message.TextSize = 13
     message.TextWrapped = true
     message.TextXAlignment = Enum.TextXAlignment.Left
-    message.ZIndex = 102
+    message.ZIndex = 1002
     message.Parent = popup
     
     -- Cancel button
@@ -259,7 +267,7 @@ local function createConfirmationPopup()
     cancelBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
     cancelBtn.TextSize = 13
     cancelBtn.AutoButtonColor = false
-    cancelBtn.ZIndex = 102
+    cancelBtn.ZIndex = 1002
     cancelBtn.Parent = popup
     
     local cancelCorner = Instance.new("UICorner")
@@ -277,7 +285,7 @@ local function createConfirmationPopup()
     confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     confirmBtn.TextSize = 13
     confirmBtn.AutoButtonColor = false
-    confirmBtn.ZIndex = 102
+    confirmBtn.ZIndex = 1002
     confirmBtn.Parent = popup
     
     local confirmCorner = Instance.new("UICorner")
@@ -317,6 +325,11 @@ end
 local function showConfirmation(targetPlayer, callback)
     local backdrop, message, cancelBtn, confirmBtn = createConfirmationPopup()
     
+    if not backdrop then
+        warn("Failed to create confirmation popup")
+        return
+    end
+    
     message.Text = "Are you sure you want to teleport to " .. targetPlayer.Name .. "?"
     
     cancelBtn.MouseButton1Click:Connect(function()
@@ -335,6 +348,7 @@ local function showConfirmation(targetPlayer, callback)
     end)
     
     backdrop.Visible = true
+    print("✓ Showing teleport confirmation for " .. targetPlayer.Name)
 end
 
 -- Create player grid (3 columns)

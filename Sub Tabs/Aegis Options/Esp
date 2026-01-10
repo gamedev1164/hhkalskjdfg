@@ -45,20 +45,20 @@ local AEGIS_TEAMS = {
 
 -- Get team color based on team name
 local function getTeamColor(teamName)
-    -- Chairman - Green
+    -- Chairman - Blue
     if teamName == "The Chairman" then
-        return Color3.fromRGB(0, 255, 0)
+        return Color3.fromRGB(0, 100, 255)
     end
     
-    -- Conference - Orange
+    -- Conference - Yellow
     if teamName == "Conference" then
-        return Color3.fromRGB(255, 165, 0)
+        return Color3.fromRGB(255, 255, 0)
     end
     
-    -- Patrol - Blue
+    -- Patrol - Yellow
     for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
         if teamName == patrol then
-            return Color3.fromRGB(0, 100, 255)
+            return Color3.fromRGB(255, 255, 0)
         end
     end
     
@@ -76,7 +76,7 @@ end
 -- State
 local State = {
     allAegisEnabled = false,
-    patrolTrainingEnabled = false,
+    patrolTrainingEnabled = true,  -- Start enabled
     
     showName = false,
     showDistance = false,
@@ -441,7 +441,7 @@ do
     switch.Text = ""
     switch.Size = UDim2.new(0, 40, 0, 20)
     switch.Position = UDim2.new(1, -50, 0.5, -10)
-    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    switch.BackgroundColor3 = Color3.fromRGB(138, 43, 226)  -- Start enabled
     switch.AutoButtonColor = false
     switch.ZIndex = 4
     switch.Parent = frame
@@ -449,7 +449,7 @@ do
     
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 16, 0, 16)
-    dot.Position = UDim2.new(0, 2, 0.5, -8)
+    dot.Position = UDim2.new(1, -18, 0.5, -8)  -- Start enabled position
     dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
     dot.BorderSizePixel = 0
     dot.ZIndex = 5

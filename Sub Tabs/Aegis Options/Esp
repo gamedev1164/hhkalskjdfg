@@ -1,1 +1,371 @@
+--==============================================================================
+--                    AEGIS HUB - AEGIS ESP MODULE
+--==============================================================================
 
+local AegisHub = _G.AegisHub
+if not AegisHub or not AegisHub.AegisESP then 
+    warn("Aegis Hub not loaded!") 
+    return 
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local page = AegisHub.AegisESP
+local Library = AegisHub.Library
+
+-- Aegis Team Names (from screenshot)
+local AEGIS_TEAMS = {
+    AllAegis = {
+        "AEGIS Corporation",
+        "Conference",
+        "Experiment1",
+        "Experiment2",
+        "Insurrectionist",
+        "Interrogation",
+        "Interview1",
+        "Interview2",
+        "Lesson1",
+        "Lesson2",
+        "Patrol1",
+        "Patrol2",
+        "Patrol3",
+        "Patrol4",
+        "Rally",
+        "Sewer Dweller",
+        "Subject",
+        "The Chairman",
+        "Training"
+    },
+    Patrol = {"Patrol1", "Patrol2", "Patrol3", "Patrol4"},
+    Lesson = {"Lesson1", "Lesson2"},
+    Training = {"Training"}
+}
+
+-- State
+local State = {
+    allAegisEnabled = false,
+    patrolEnabled = false,
+    lessonEnabled = false,
+    trainingEnabled = false,
+    
+    showName = true,
+    showDistance = true,
+    showHealth = true,
+    
+    espObjects = {},
+    updateConn = nil,
+    
+    connections = {}
+}
+
+-- Check if player is in Aegis teams
+local function isAegisPlayer(plr, teamList)
+    if not plr or not plr.Team then return false end
+    
+    for _, teamName in ipairs(teamList) do
+        if plr.Team.Name == teamName then
+            return true
+        end
+    end
+    return false
+end
+
+-- Create ESP for player
+local function createESP(plr)
+    if plr == player then return end
+    
+    local espData = {
+        player = plr,
+        billboardGui = nil,
+        nameLabel = nil,
+        distanceLabel = nil,
+        healthLabel = nil
+    }
+    
+    -- Create BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "AegisESP_" .. plr.Name
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 200, 0, 100)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = nil
+    
+    -- Container frame
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
+    
+    -- Name label
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.Text = plr.Name
+    nameLabel.Visible = State.showName
+    nameLabel.Parent = container
+    
+    -- Distance label
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 0, 18)
+    distanceLabel.Position = UDim2.new(0, 0, 0, 22)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    distanceLabel.TextStrokeTransparency = 0.5
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextSize = 12
+    distanceLabel.Text = "0 studs"
+    distanceLabel.Visible = State.showDistance
+    distanceLabel.Parent = container
+    
+    -- Health label
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Size = UDim2.new(1, 0, 0, 18)
+    healthLabel.Position = UDim2.new(0, 0, 0, 42)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    healthLabel.TextStrokeTransparency = 0.5
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextSize = 12
+    healthLabel.Text = "100 HP"
+    healthLabel.Visible = State.showHealth
+    healthLabel.Parent = container
+    
+    espData.billboardGui = billboard
+    espData.nameLabel = nameLabel
+    espData.distanceLabel = distanceLabel
+    espData.healthLabel = healthLabel
+    
+    return espData
+end
+
+-- Remove ESP for player
+local function removeESP(plr)
+    if State.espObjects[plr] then
+        if State.espObjects[plr].billboardGui then
+            State.espObjects[plr].billboardGui:Destroy()
+        end
+        State.espObjects[plr] = nil
+    end
+end
+
+-- Update all ESP
+local function updateESP()
+    for plr, espData in pairs(State.espObjects) do
+        if not plr or not plr.Parent or not plr.Character then
+            removeESP(plr)
+            continue
+        end
+        
+        local char = plr.Character
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        
+        if hrp and hum then
+            -- Update adornee
+            if espData.billboardGui.Adornee ~= hrp then
+                espData.billboardGui.Adornee = hrp
+                if not espData.billboardGui.Parent then
+                    espData.billboardGui.Parent = hrp
+                end
+            end
+            
+            -- Update distance
+            if State.showDistance and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local dist = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                espData.distanceLabel.Text = string.format("%.0f studs", dist)
+            end
+            
+            -- Update health
+            if State.showHealth then
+                local healthPercent = (hum.Health / hum.MaxHealth) * 100
+                espData.healthLabel.Text = string.format("%.0f HP", hum.Health)
+                
+                -- Color based on health
+                if healthPercent > 75 then
+                    espData.healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif healthPercent > 50 then
+                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                elseif healthPercent > 25 then
+                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+                else
+                    espData.healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+            
+            -- Update visibility based on settings
+            espData.nameLabel.Visible = State.showName
+            espData.distanceLabel.Visible = State.showDistance
+            espData.healthLabel.Visible = State.showHealth
+        else
+            espData.billboardGui.Adornee = nil
+        end
+    end
+end
+
+-- Refresh ESP based on current settings
+local function refreshESP()
+    -- Remove all existing ESP
+    for plr, _ in pairs(State.espObjects) do
+        removeESP(plr)
+    end
+    
+    -- Check which teams should be shown
+    local teamsToShow = {}
+    
+    if State.allAegisEnabled then
+        for _, teamName in ipairs(AEGIS_TEAMS.AllAegis) do
+            teamsToShow[teamName] = true
+        end
+    end
+    
+    if State.patrolEnabled then
+        for _, teamName in ipairs(AEGIS_TEAMS.Patrol) do
+            teamsToShow[teamName] = true
+        end
+    end
+    
+    if State.lessonEnabled then
+        for _, teamName in ipairs(AEGIS_TEAMS.Lesson) do
+            teamsToShow[teamName] = true
+        end
+    end
+    
+    if State.trainingEnabled then
+        for _, teamName in ipairs(AEGIS_TEAMS.Training) do
+            teamsToShow[teamName] = true
+        end
+    end
+    
+    -- Create ESP for matching players
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Team and teamsToShow[plr.Team.Name] then
+            State.espObjects[plr] = createESP(plr)
+        end
+    end
+end
+
+-- Start ESP
+local function startESP()
+    if State.updateConn then return end
+    
+    refreshESP()
+    
+    State.updateConn = RunService.RenderStepped:Connect(function()
+        updateESP()
+    end)
+    
+    table.insert(State.connections, State.updateConn)
+end
+
+-- Stop ESP
+local function stopESP()
+    if State.updateConn then
+        State.updateConn:Disconnect()
+        State.updateConn = nil
+    end
+    
+    for plr, _ in pairs(State.espObjects) do
+        removeESP(plr)
+    end
+end
+
+-- Player added/removed handlers
+Players.PlayerAdded:Connect(function(plr)
+    task.wait(1)
+    if State.allAegisEnabled or State.patrolEnabled or State.lessonEnabled or State.trainingEnabled then
+        refreshESP()
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    removeESP(plr)
+end)
+
+--==============================================================================
+--                          CREATE UI
+--==============================================================================
+
+-- All Aegis Toggle
+Library:CreateToggle(page, "All Aegis", false, function(enabled)
+    State.allAegisEnabled = enabled
+    if enabled then
+        startESP()
+    else
+        -- Check if any other team is enabled
+        if not (State.patrolEnabled or State.lessonEnabled or State.trainingEnabled) then
+            stopESP()
+        else
+            refreshESP()
+        end
+    end
+end)
+
+-- Patrol Toggle (Patrol1-4)
+Library:CreateToggle(page, "Patrol", false, function(enabled)
+    State.patrolEnabled = enabled
+    if enabled then
+        startESP()
+    else
+        if not (State.allAegisEnabled or State.lessonEnabled or State.trainingEnabled) then
+            stopESP()
+        else
+            refreshESP()
+        end
+    end
+end)
+
+-- Lesson Toggle (Lesson1-2)
+Library:CreateToggle(page, "Lesson", false, function(enabled)
+    State.lessonEnabled = enabled
+    if enabled then
+        startESP()
+    else
+        if not (State.allAegisEnabled or State.patrolEnabled or State.trainingEnabled) then
+            stopESP()
+        else
+            refreshESP()
+        end
+    end
+end)
+
+-- Training Toggle
+Library:CreateToggle(page, "Training", false, function(enabled)
+    State.trainingEnabled = enabled
+    if enabled then
+        startESP()
+    else
+        if not (State.allAegisEnabled or State.patrolEnabled or State.lessonEnabled) then
+            stopESP()
+        else
+            refreshESP()
+        end
+    end
+end)
+
+-- ESP Options
+Library:CreateToggle(page, "Show Name", true, function(enabled)
+    State.showName = enabled
+    updateESP()
+end)
+
+Library:CreateToggle(page, "Show Distance", true, function(enabled)
+    State.showDistance = enabled
+    updateESP()
+end)
+
+Library:CreateToggle(page, "Show Health", true, function(enabled)
+    State.showHealth = enabled
+    updateESP()
+end)
+
+print("✓ Aegis ESP Module Loaded")
+
+return true

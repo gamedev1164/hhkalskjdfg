@@ -197,17 +197,16 @@ local function createConfirmationPopup()
         return nil, nil, nil, nil
     end
     
-    -- Backdrop
-    local backdrop = Instance.new("Frame")
-    backdrop.Name = "ConfirmBackdrop"
-    backdrop.Size = UDim2.new(1, 0, 1, 0)
-    backdrop.Position = UDim2.new(0, 0, 0, 0)
-    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    backdrop.BackgroundTransparency = 0.5
-    backdrop.BorderSizePixel = 0
-    backdrop.ZIndex = 1000
-    backdrop.Visible = false
-    backdrop.Parent = screenGui
+    -- Container (no backdrop, transparent)
+    local container = Instance.new("Frame")
+    container.Name = "ConfirmContainer"
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.Position = UDim2.new(0, 0, 0, 0)
+    container.BackgroundTransparency = 1
+    container.BorderSizePixel = 0
+    container.ZIndex = 1000
+    container.Visible = false
+    container.Parent = screenGui
     
     -- Popup frame
     local popup = Instance.new("Frame")
@@ -217,16 +216,37 @@ local function createConfirmationPopup()
     popup.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
     popup.BorderSizePixel = 0
     popup.ZIndex = 1001
-    popup.Parent = backdrop
+    popup.Parent = container
     
     local popupCorner = Instance.new("UICorner")
     popupCorner.CornerRadius = UDim.new(0, 10)
     popupCorner.Parent = popup
     
+    -- Flashing purple border
     local popupStroke = Instance.new("UIStroke")
     popupStroke.Color = Color3.fromRGB(138, 43, 226)
-    popupStroke.Thickness = 2
+    popupStroke.Thickness = 3
     popupStroke.Parent = popup
+    
+    -- Start flashing animation
+    local flashConnection
+    task.spawn(function()
+        local t = 0
+        flashConnection = game:GetService("RunService").RenderStepped:Connect(function(dt)
+            if not popup.Parent then
+                flashConnection:Disconnect()
+                return
+            end
+            
+            t = t + dt * 3
+            local pulse = (math.sin(t) + 1) / 2
+            local thickness = 2 + (3 * pulse)
+            local transparency = 0.2 + (0.5 * pulse)
+            
+            popupStroke.Thickness = thickness
+            popupStroke.Transparency = transparency
+        end)
+    end)
     
     -- Title
     local title = Instance.new("TextLabel")
@@ -317,37 +337,41 @@ local function createConfirmationPopup()
         }):Play()
     end)
     
-    State.confirmationFrame = backdrop
-    return backdrop, message, cancelBtn, confirmBtn
+    State.confirmationFrame = container
+    return container, message, cancelBtn, confirmBtn, flashConnection
 end
 
 -- Show confirmation popup
 local function showConfirmation(targetPlayer, callback)
-    local backdrop, message, cancelBtn, confirmBtn = createConfirmationPopup()
+    local container, message, cancelBtn, confirmBtn, flashConnection = createConfirmationPopup()
     
-    if not backdrop then
+    if not container then
         warn("Failed to create confirmation popup")
         return
     end
     
     message.Text = "Are you sure you want to teleport to " .. targetPlayer.Name .. "?"
     
-    cancelBtn.MouseButton1Click:Connect(function()
-        backdrop.Visible = false
+    local function cleanup()
+        if flashConnection then
+            flashConnection:Disconnect()
+        end
+        container.Visible = false
         task.wait(0.1)
-        backdrop:Destroy()
+        container:Destroy()
         State.confirmationFrame = nil
+    end
+    
+    cancelBtn.MouseButton1Click:Connect(function()
+        cleanup()
     end)
     
     confirmBtn.MouseButton1Click:Connect(function()
-        backdrop.Visible = false
+        cleanup()
         callback()
-        task.wait(0.1)
-        backdrop:Destroy()
-        State.confirmationFrame = nil
     end)
     
-    backdrop.Visible = true
+    container.Visible = true
     print("✓ Showing teleport confirmation for " .. targetPlayer.Name)
 end
 
@@ -492,6 +516,11 @@ local function createPlayerList()
         -- Click to teleport (with confirmation)
         button.MouseButton1Click:Connect(function()
             showConfirmation(plr, function()
+                -- Stop spectate if active
+                if _G.AegisHub and _G.AegisHub.stopSpectate then
+                    pcall(_G.AegisHub.stopSpectate)
+                end
+                
                 teleportToPlayer(plr)
             end)
         end)

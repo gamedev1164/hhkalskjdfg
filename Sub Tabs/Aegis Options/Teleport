@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - WASTELANDER TELEPORT MODULE
+--                    AEGIS HUB - AEGIS TELEPORT MODULE
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -513,9 +513,12 @@ local function createPlayerList()
         -- Click to teleport (with confirmation)
         button.MouseButton1Click:Connect(function()
             showConfirmation(plr, function()
-                -- Stop spectate if active
-                if _G.AegisHub and _G.AegisHub.stopSpectate then
-                    pcall(_G.AegisHub.stopSpectate)
+                -- Stop spectate if active (check both)
+                if _G.AegisHub and _G.AegisHub.stopAegisSpectate then
+                    pcall(_G.AegisHub.stopAegisSpectate)
+                end
+                if _G.AegisHub and _G.AegisHub.stopWastelanderSpectate then
+                    pcall(_G.AegisHub.stopWastelanderSpectate)
                 end
                 
                 teleportToPlayer(plr)

@@ -73,11 +73,13 @@ end
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 0.5  -- Faster target switching (was 1)
-local SPIN_SPEED = 12000  -- Faster spinning (was 7000)
-local PUSH_SPEED_MIN = 800  -- Higher minimum (was 400)
+local SWITCH_INTERVAL = 2  -- Faster target switching (was 1)
+local SPIN_SPEED = 7000  -- Faster spinning (was 7000)
+local PUSH_SPEED_MIN = 400  -- Higher minimum (was 400)
 local PUSH_SPEED_MAX = 6000  -- Higher maximum (was 4000)
 local VELOCITY_CHANGE_INTERVAL = 0.01  -- 2x faster changes (was 0.02)
+local VELOCITY_PAUSE_INTERVAL = 1.0  -- Pause every 1 second
+local VELOCITY_PAUSE_DURATION = 0.2  -- Pause for 0.2 seconds
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local MOVING_OFFSET = 3  -- Studs in front when target is moving
 
@@ -92,6 +94,8 @@ local State = {
     
     switchElapsed = 0,
     velocityElapsed = 0,
+    pauseElapsed = 0,  -- Track pause timing
+    isPaused = false,  -- Is velocity currently paused
     currentTargetHRP = nil,
     currentVelocity = 700,
     targetVelocity = 700,
@@ -215,6 +219,8 @@ local function startFling()
     
     State.switchElapsed = 0
     State.velocityElapsed = 0
+    State.pauseElapsed = 0
+    State.isPaused = false
     State.currentTargetHRP = nil
     State.currentVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
     State.targetVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
@@ -225,16 +231,40 @@ local function startFling()
     State.flingConnection = RunService.Heartbeat:Connect(function(dt)
         State.switchElapsed = State.switchElapsed + dt
         State.velocityElapsed = State.velocityElapsed + dt
+        State.pauseElapsed = State.pauseElapsed + dt
         
-        -- Change target velocity every 0.01 seconds (even faster!)
-        if State.velocityElapsed >= VELOCITY_CHANGE_INTERVAL then
+        -- Velocity pause system: drop to 0 every 1 second for 0.2 seconds
+        if State.isPaused then
+            -- Currently paused
+            if State.pauseElapsed >= VELOCITY_PAUSE_DURATION then
+                -- End pause, resume normal velocity
+                State.isPaused = false
+                State.pauseElapsed = 0
+            end
+        else
+            -- Not paused, check if it's time to pause
+            if State.pauseElapsed >= VELOCITY_PAUSE_INTERVAL then
+                -- Start pause
+                State.isPaused = true
+                State.pauseElapsed = 0
+            end
+        end
+        
+        -- Change target velocity every 0.01 seconds (only when not paused)
+        if not State.isPaused and State.velocityElapsed >= VELOCITY_CHANGE_INTERVAL then
             State.targetVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
             State.velocityElapsed = 0
         end
         
-        -- Smoothly interpolate current velocity towards target (even faster lerp)
-        local lerpSpeed = 100  -- 2x faster transitions (was 50)
-        State.currentVelocity = State.currentVelocity + (State.targetVelocity - State.currentVelocity) * dt * lerpSpeed
+        -- Smoothly interpolate current velocity towards target
+        local lerpSpeed = 100
+        if State.isPaused then
+            -- When paused, lerp to 0
+            State.currentVelocity = State.currentVelocity + (0 - State.currentVelocity) * dt * lerpSpeed
+        else
+            -- Normal velocity changes
+            State.currentVelocity = State.currentVelocity + (State.targetVelocity - State.currentVelocity) * dt * lerpSpeed
+        end
         
         -- Pick new target every SWITCH_INTERVAL seconds
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then

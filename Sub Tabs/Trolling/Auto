@@ -9,33 +9,116 @@ if not AegisHub or not AegisHub.TrollingAuto then
 end
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
 local player = Players.LocalPlayer
 local page = AegisHub.TrollingAuto
 local Library = AegisHub.Library
 
+-- State
+local State = {
+    autoDoors = false,
+    autoBoothNotif = false,
+    
+    doorConnection = nil,
+    boothConnection = nil
+}
+
 --==============================================================================
---                          LOAD AUTO FEATURES
+--                          AUTO DOORS FEATURE
 --==============================================================================
 
--- Load Auto Open/Close Doors
-local success1, err1 = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Auto%20Open%20Close%20Doors"))()
-end)
-if not success1 then
-    warn("Failed to load Auto Open/Close Doors:", err1)
-else
-    print("✓ Auto Open/Close Doors loaded")
+local function startAutoDoors()
+    if State.doorConnection then return end
+    
+    -- Door auto-open logic
+    State.doorConnection = RunService.Heartbeat:Connect(function()
+        if not State.autoDoors then return end
+        
+        -- Find all doors and open them
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.Name:lower():find("door") then
+                -- Try to trigger door opening
+                local clickDetector = obj:FindFirstChildOfClass("ClickDetector", true)
+                if clickDetector then
+                    fireclickdetector(clickDetector)
+                end
+                
+                -- Try ProximityPrompt
+                local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
+                if proximityPrompt then
+                    fireproximityprompt(proximityPrompt)
+                end
+            end
+        end
+    end)
+    
+    print("✓ Auto Doors started")
 end
 
--- Load Auto Booth Processing Notification
-local success2, err2 = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Auto%20Booth%20Processing%20Activation"))()
-end)
-if not success2 then
-    warn("Failed to load Auto Booth Processing Notification:", err2)
-else
-    print("✓ Auto Booth Processing Notification loaded")
+local function stopAutoDoors()
+    if State.doorConnection then
+        State.doorConnection:Disconnect()
+        State.doorConnection = nil
+    end
+    print("✓ Auto Doors stopped")
 end
+
+--==============================================================================
+--                          AUTO BOOTH NOTIFICATION
+--==============================================================================
+
+local function startAutoBoothNotif()
+    if State.boothConnection then return end
+    
+    -- Booth notification logic
+    State.boothConnection = RunService.Heartbeat:Connect(function()
+        if not State.autoBoothNotif then return end
+        
+        -- Find booth processing prompts and activate
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") then
+                if obj.ObjectText and (obj.ObjectText:lower():find("process") or obj.ObjectText:lower():find("booth")) then
+                    fireproximityprompt(obj)
+                end
+            end
+        end
+    end)
+    
+    print("✓ Auto Booth Notification started")
+end
+
+local function stopAutoBoothNotif()
+    if State.boothConnection then
+        State.boothConnection:Disconnect()
+        State.boothConnection = nil
+    end
+    print("✓ Auto Booth Notification stopped")
+end
+
+--==============================================================================
+--                          CREATE UI
+--==============================================================================
+
+-- Auto Open/Close Doors Toggle
+Library:CreateToggle(page, "Auto Open/Close Doors", false, function(v)
+    State.autoDoors = v
+    if v then
+        startAutoDoors()
+    else
+        stopAutoDoors()
+    end
+end)
+
+-- Auto Booth Processing Notification Toggle
+Library:CreateToggle(page, "Auto Booth Processing Notification", false, function(v)
+    State.autoBoothNotif = v
+    if v then
+        startAutoBoothNotif()
+    else
+        stopAutoBoothNotif()
+    end
+end)
 
 print("✓ Trolling Auto Module Loaded")
 

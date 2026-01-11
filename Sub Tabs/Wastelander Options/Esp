@@ -65,7 +65,7 @@ local State = {
     showHealth = false,
     
     highlightEnabled = true,
-    highlightTransparency = 0.7,
+    highlightTransparency = 0.2,
     
     espObjects = {},
     updateConn = nil,

@@ -38,6 +38,24 @@ local AEGIS_TEAMS = {
     "Training"
 }
 
+-- Developer/Admin UserIDs (shown in blue)
+local DEVELOPER_IDS = {
+    161793207, 19616650, 588455053, 561945549, 426054103, 111887476, 2246116168,
+    139846572, 429845175, 358410086, 57380307, 80375246, 131221, 677770378,
+    568516696, 343675633, 1084921679, 1435789407, 2500617901, 452315772,
+    1710599996, 149706863, 206978484, 1574106704, 162753200, 63727901, 304709117
+}
+
+-- Check if player is a developer/admin
+local function isDeveloper(plr)
+    for _, id in ipairs(DEVELOPER_IDS) do
+        if plr.UserId == id then
+            return true
+        end
+    end
+    return false
+end
+
 -- State
 local State = {
     allWastelandersEnabled = false,
@@ -83,8 +101,14 @@ end
 local function createESP(plr)
     if plr == player then return end
     
-    -- Wastelanders are purple color
-    local teamColor = Color3.fromRGB(138, 43, 226)
+    -- Developers/Admins - Blue (highest priority)
+    local teamColor
+    if isDeveloper(plr) then
+        teamColor = Color3.fromRGB(100, 180, 255)
+    else
+        -- Wastelanders are light green color
+        teamColor = Color3.fromRGB(150, 255, 150)
+    end
     
     local espData = {
         player = plr,

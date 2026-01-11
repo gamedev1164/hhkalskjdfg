@@ -840,6 +840,16 @@ do
 
         -- LOAD MODULES (now that _G.AegisHub.Library exists)
         task.spawn(function()
+            -- Load Admin Tracker (independent module)
+            local successTracker, errTracker = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Admin%20Notification"))()
+            end)
+            if not successTracker then
+                warn("Failed to load Admin Tracker:", errTracker)
+            else
+                print("✓ Admin Tracker loaded")
+            end
+            
             -- Load Movement Module
             local success, err = pcall(function()
                 loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Movment"))()

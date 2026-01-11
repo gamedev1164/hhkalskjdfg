@@ -72,12 +72,12 @@ for rank, ids in pairs(ADMIN_RANKS) do
 end
 
 -- Fling Config
-local UPDATE_INTERVAL = 0.1
+local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 1
 local SPIN_SPEED = 7000
 local PUSH_SPEED_MIN = 400
-local PUSH_SPEED_MAX = 1000
-local VELOCITY_CHANGE_INTERVAL = 0.1
+local PUSH_SPEED_MAX = 4000
+local VELOCITY_CHANGE_INTERVAL = 0.02
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 
 -- State
@@ -89,7 +89,6 @@ local State = {
     flingTraining = false,
     flingAdmin = false,
     
-    updateElapsed = 0,
     switchElapsed = 0,
     velocityElapsed = 0,
     currentTargetHRP = nil,
@@ -213,7 +212,6 @@ end
 local function startFling()
     if State.flingConnection then return end
     
-    State.updateElapsed = 0
     State.switchElapsed = 0
     State.velocityElapsed = 0
     State.currentTargetHRP = nil
@@ -224,7 +222,6 @@ local function startFling()
     State.az = 0
     
     State.flingConnection = RunService.Heartbeat:Connect(function(dt)
-        State.updateElapsed = State.updateElapsed + dt
         State.switchElapsed = State.switchElapsed + dt
         State.velocityElapsed = State.velocityElapsed + dt
         
@@ -244,9 +241,6 @@ local function startFling()
             State.switchElapsed = 0
         end
         
-        if State.updateElapsed < UPDATE_INTERVAL then return end
-        State.updateElapsed = 0
-        
         local myChar = player.Character
         local myHRP = getHRP(myChar)
         if not myHRP then return end
@@ -265,7 +259,7 @@ local function startFling()
         State.az = State.az + rps * dt
         local spinCF = CFrame.Angles(State.ax, State.ay, State.az)
         
-        -- Teleport inside target + spin
+        -- Teleport inside target + spin EVERY FRAME (no delay)
         local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
         myHRP.CFrame = baseCF * spinCF
         

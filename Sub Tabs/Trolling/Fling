@@ -73,12 +73,13 @@ end
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 1
-local SPIN_SPEED = 7000
-local PUSH_SPEED_MIN = 400
-local PUSH_SPEED_MAX = 4000
-local VELOCITY_CHANGE_INTERVAL = 0.02
+local SWITCH_INTERVAL = 0.5  -- Faster target switching (was 1)
+local SPIN_SPEED = 12000  -- Faster spinning (was 7000)
+local PUSH_SPEED_MIN = 800  -- Higher minimum (was 400)
+local PUSH_SPEED_MAX = 6000  -- Higher maximum (was 4000)
+local VELOCITY_CHANGE_INTERVAL = 0.01  -- 2x faster changes (was 0.02)
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
+local MOVING_OFFSET = 3  -- Studs in front when target is moving
 
 -- State
 local State = {
@@ -225,14 +226,14 @@ local function startFling()
         State.switchElapsed = State.switchElapsed + dt
         State.velocityElapsed = State.velocityElapsed + dt
         
-        -- Change target velocity every 0.02 seconds (10x faster)
+        -- Change target velocity every 0.01 seconds (even faster!)
         if State.velocityElapsed >= VELOCITY_CHANGE_INTERVAL then
             State.targetVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
             State.velocityElapsed = 0
         end
         
-        -- Smoothly interpolate current velocity towards target (10x faster lerp)
-        local lerpSpeed = 50  -- 10x faster transitions (was 5)
+        -- Smoothly interpolate current velocity towards target (even faster lerp)
+        local lerpSpeed = 100  -- 2x faster transitions (was 50)
         State.currentVelocity = State.currentVelocity + (State.targetVelocity - State.currentVelocity) * dt * lerpSpeed
         
         -- Pick new target every SWITCH_INTERVAL seconds
@@ -259,8 +260,18 @@ local function startFling()
         State.az = State.az + rps * dt
         local spinCF = CFrame.Angles(State.ax, State.ay, State.az)
         
-        -- Teleport inside target + spin EVERY FRAME (no delay)
-        local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
+        -- Dynamic offset based on target movement
+        local targetVelocity = State.currentTargetHRP.AssemblyLinearVelocity
+        local isMoving = targetVelocity.Magnitude > 3  -- Check if moving faster than 3 studs/sec
+        
+        local offset = INSIDE_OFFSET
+        if isMoving then
+            -- Position 3 studs in front of moving target
+            offset = Vector3.new(0, 0, -MOVING_OFFSET)
+        end
+        
+        -- Teleport inside/in-front of target + spin EVERY FRAME (no delay)
+        local baseCF = State.currentTargetHRP.CFrame * CFrame.new(offset)
         myHRP.CFrame = baseCF * spinCF
         
         -- Speed/push with dynamic velocity

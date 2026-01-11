@@ -21,23 +21,29 @@ local RANK_ORDER = {
     "Administered Specialist",
     "Administered Field Agent",
     "Specialist",
-    "Developer",  -- Added
 }
 
 local RANKS = {
     ["Administered Field Agent"] = {
         3309970495, 226117655, 689247279, 1975838348, 105892068, 463669642, 861989591
     },
-    ["Specialist"] = {37883732, 509426887, 561064343, 1385018628},
+    ["Specialist"] = {
+        37883732, 509426887, 561064343, 1385018628, 568516696, 343675633, 1084921679, 
+        1435789407, 2500617901, 452315772, 1710599996, 149706863, 206978484, 1574106704, 
+        162753200, 63727901, 304709117
+    },
     ["Administered Specialist"] = {937564141, 7335374299, 2761696222, 192254622, 139320432},
     ["Officer"] = {3469222247, 755966848, 728586602, 334713155, 817589023},
     ["Warrant Officer"] = {2522740248, 3276554424, 176149128, 2213826264, 189393},
     ["Veteran Officer"] = {1677921525, 62954014, 1818230195, 1695017283, 727677637},
     ["Unit Captain"] = {1938907604, 1509777239, 409397743, 293671581, 100016418},
     ["Unit Commander"] = {82964247, 355588359, 923213464},
-    ["Table Of Military Leadership"] = {1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803},
+    ["Table Of Military Leadership"] = {
+        1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803,
+        161793207, 19616650, 588455053, 561945549, 426054103, 111887476, 2246116168,
+        139846572, 429845175, 358410086, 57380307, 80375246, 131221, 677770378
+    },
     ["Chairman"] = {17319802},
-    ["Developer"] = {},  -- Will be filled by team check
 }
 
 local RANK_ABBREV = {
@@ -51,7 +57,6 @@ local RANK_ABBREV = {
     ["Unit Commander"] = "UCMD",
     ["Table Of Military Leadership"] = "TML",
     ["Chairman"] = "CHAIR",
-    ["Developer"] = "DEV",
 }
 
 local RANK_COLORS = {
@@ -65,7 +70,6 @@ local RANK_COLORS = {
     Color3.fromRGB(50, 200, 255),    -- Administered Specialist
     Color3.fromRGB(80, 140, 255),    -- Administered Field Agent
     Color3.fromRGB(120, 120, 255),   -- Specialist
-    Color3.fromRGB(138, 43, 226),    -- Developer (Purple)
 }
 
 -- Theme (matches Aegis Hub)
@@ -90,23 +94,6 @@ end
 
 for index, rank in ipairs(RANK_ORDER) do
     rankToIndex[rank] = index
-end
-
--- Check if player is on Developer/DEV team
-local function getPlayerRank(plr)
-    -- Check rank by UserID first
-    local rank = userIdToRank[plr.UserId]
-    if rank then return rank end
-    
-    -- Check if on Developer or DEV team
-    if plr.Team then
-        local teamName = plr.Team.Name
-        if teamName == "Developer" or teamName == "DEV" then
-            return "Developer"
-        end
-    end
-    
-    return nil
 end
 
 -- State
@@ -226,7 +213,7 @@ arrow.BackgroundTransparency = 1
 arrow.Font = Enum.Font.GothamBold
 arrow.Text = "→"  -- Right arrow when expanded (minimize = push right)
 arrow.TextColor3 = Theme.Accent
-arrow.TextSize = 18
+arrow.TextSize = 20
 arrow.Parent = toggleBtn
 
 -- Divider
@@ -372,7 +359,7 @@ local function updateAdminList()
     -- Collect admins
     local admins = {}
     for _, plr in ipairs(Players:GetPlayers()) do
-        local rank = getPlayerRank(plr)  -- Use new function that checks teams
+        local rank = userIdToRank[plr.UserId]
         if rank then
             table.insert(admins, {
                 player = plr,
@@ -436,17 +423,31 @@ local function toggleMinimize()
             Size = UDim2.new(0, 50, 0, 50)
         }):Play()
         
-        -- Center the button
+        -- Expand button to fill frame and center it
         TweenService:Create(toggleBtn, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.5, -15, 0.5, -13)
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            Size = UDim2.new(0, 40, 0, 40)
+        }):Play()
+        
+        -- Increase arrow size
+        TweenService:Create(arrow, TweenInfo.new(0.3), {
+            TextSize = 24
         }):Play()
     else
         -- Expand - restore full size
         arrow.Text = "→"  -- Right arrow when expanded (minimize = push right)
         
-        -- Move button back to top-right
+        -- Restore button to top-right corner
         TweenService:Create(toggleBtn, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, -12, 0, 12)
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -12, 0, 12),
+            Size = UDim2.new(0, 30, 0, 26)
+        }):Play()
+        
+        -- Restore arrow size
+        TweenService:Create(arrow, TweenInfo.new(0.3), {
+            TextSize = 20
         }):Play()
         
         -- Wait for button to move, then show content

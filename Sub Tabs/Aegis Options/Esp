@@ -16,7 +16,7 @@ local player = Players.LocalPlayer
 local page = AegisHub.AegisESP
 local Library = AegisHub.Library
 
--- Aegis Team Names (from screenshot)
+-- Aegis Team Names (from screenshot - updated)
 local AEGIS_TEAMS = {
     AllAegis = {
         "AEGIS Corporation",
@@ -40,37 +40,50 @@ local AEGIS_TEAMS = {
         "Training"
     },
     Patrol = {"Patrol1", "Patrol2", "Patrol3", "Patrol4"},
-    Training = {"Lesson1", "Lesson2", "Training"}
+    Training = {"Lesson1", "Lesson2", "Training"},
+    Conference = {"Conference"},
+    Rally = {"Rally"}
 }
 
+-- Developer/Admin UserIDs (shown in blue)
+local DEVELOPER_IDS = {
+    161793207, 19616650, 588455053, 561945549, 426054103, 111887476, 2246116168,
+    139846572, 429845175, 358410086, 57380307, 80375246, 131221, 677770378,
+    568516696, 343675633, 1084921679, 1435789407, 2500617901, 452315772,
+    1710599996, 149706863, 206978484, 1574106704, 162753200, 63727901, 304709117
+}
+
+-- Check if player is a developer/admin
+local function isDeveloper(plr)
+    for _, id in ipairs(DEVELOPER_IDS) do
+        if plr.UserId == id then
+            return true
+        end
+    end
+    return false
+end
+
 -- Get team color based on team name
-local function getTeamColor(teamName)
-    -- Chairman - Dark Red
+local function getTeamColor(teamName, plr)
+    -- Developers/Admins - Blue (highest priority)
+    if plr and isDeveloper(plr) then
+        return Color3.fromRGB(100, 180, 255)
+    end
+    
+    -- Chairman - Purple
     if teamName == "The Chairman" then
-        return Color3.fromRGB(139, 0, 0)
-    end
+        return Color3.fromRGB(138, 43, 226)
     
-    -- Conference - Light Orange
-    if teamName == "Conference" then
-        return Color3.fromRGB(255, 200, 100)
-    end
-    
-    -- Patrol - Light Blue
-    for _, patrol in ipairs(AEGIS_TEAMS.Patrol) do
-        if teamName == patrol then
-            return Color3.fromRGB(100, 180, 255)
-        end
-    end
-    
-    -- Training (includes Lesson1, Lesson2, Training) - Light Green
-    for _, training in ipairs(AEGIS_TEAMS.Training) do
-        if teamName == training then
-            return Color3.fromRGB(100, 255, 150)
-        end
-    end
+    -- Training/Lesson/Patrol/Rally/Conference - Light Yellow
+    elseif teamName == "Training" or teamName == "Lesson1" or teamName == "Lesson2" or
+           teamName == "Patrol1" or teamName == "Patrol2" or teamName == "Patrol3" or teamName == "Patrol4" or
+           teamName == "Rally" or teamName == "Conference" then
+        return Color3.fromRGB(255, 255, 150)
     
     -- All other Aegis - Light Red
-    return Color3.fromRGB(255, 100, 100)
+    else
+        return Color3.fromRGB(255, 100, 100)
+    end
 end
 
 -- State
@@ -106,7 +119,7 @@ end
 local function createESP(plr)
     if plr == player then return end
     
-    local teamColor = getTeamColor(plr.Team and plr.Team.Name or "")
+    local teamColor = getTeamColor(plr.Team and plr.Team.Name or "", plr)
     
     local espData = {
         player = plr,

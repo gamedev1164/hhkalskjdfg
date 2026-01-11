@@ -41,6 +41,36 @@ local AEGIS_TEAMS = {
 
 local TRAINING_TEAMS = {"Training", "Lesson1", "Lesson2"}
 
+-- Admin/Developer Ranks (for Fling Admin feature)
+local ADMIN_RANKS = {
+    ["Administered Field Agent"] = {
+        3309970495, 226117655, 689247279, 1975838348, 105892068, 463669642, 861989591
+    },
+    ["Specialist"] = {37883732, 509426887, 561064343, 1385018628},
+    ["Administered Specialist"] = {937564141, 7335374299, 2761696222, 192254622, 139320432},
+    ["Officer"] = {3469222247, 755966848, 728586602, 334713155, 817589023},
+    ["Warrant Officer"] = {2522740248, 3276554424, 176149128, 2213826264, 189393},
+    ["Veteran Officer"] = {1677921525, 62954014, 1818230195, 1695017283, 727677637},
+    ["Unit Captain"] = {1938907604, 1509777239, 409397743, 293671581, 100016418},
+    ["Unit Commander"] = {82964247, 355588359, 923213464},
+    ["Table Of Military Leadership"] = {1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803},
+    ["Developer"] = {
+        161793207, 19616650, 588455053, 561945549, 426054103, 111887476, 2246116168,
+        139846572, 429845175, 358410086, 57380307, 80375246, 131221, 677770378,
+        568516696, 343675633, 1084921679, 1435789407, 2500617901, 452315772,
+        1710599996, 149706863, 206978484, 1574106704, 162753200, 63727901, 304709117
+    },
+    ["Chairman"] = {17319802},
+}
+
+-- Build admin UserID lookup
+local adminUserIds = {}
+for rank, ids in pairs(ADMIN_RANKS) do
+    for _, id in ipairs(ids) do
+        adminUserIds[id] = true
+    end
+end
+
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 2
@@ -54,6 +84,7 @@ local State = {
     flingWastelanders = false,
     flingAegis = false,
     flingTraining = false,
+    flingAdmin = false,
     
     updateElapsed = 0,
     switchElapsed = 0,
@@ -64,7 +95,9 @@ local State = {
     
     flingConnection = nil,
     trainingButton = nil,
-    trainingFlashConnection = nil
+    trainingFlashConnection = nil,
+    adminButton = nil,
+    adminFlashConnection = nil
 }
 
 -- Helper: Get HumanoidRootPart
@@ -96,9 +129,19 @@ local function isTrainingPlayer(plr)
     return false
 end
 
+-- Check if player is an admin/developer
+local function isAdminPlayer(plr)
+    return adminUserIds[plr.UserId] == true
+end
+
 -- Check if local player is on Training team
 local function isLocalPlayerTraining()
     return isTrainingPlayer(player)
+end
+
+-- Check if local player is an admin
+local function isLocalPlayerAdmin()
+    return isAdminPlayer(player)
 end
 
 -- Get random target based on active mode
@@ -122,6 +165,8 @@ local function getRandomTargetHRP()
                     shouldTarget = isAegisPlayer(plr)
                 elseif State.flingTraining then
                     shouldTarget = isTrainingPlayer(plr)
+                elseif State.flingAdmin then
+                    shouldTarget = isAdminPlayer(plr)
                 end
                 
                 if shouldTarget then
@@ -198,6 +243,17 @@ local function stopFling()
         State.flingConnection = nil
     end
     
+    -- Keep current velocity to prevent snap-back
+    local myHRP = getHRP(player.Character)
+    if myHRP then
+        -- Preserve the current velocity when stopping
+        local currentVelocity = myHRP.AssemblyLinearVelocity
+        task.wait(0.05)
+        if myHRP then
+            myHRP.AssemblyLinearVelocity = currentVelocity * 0.5  -- Reduce by half for smooth stop
+        end
+    end
+    
     State.currentTargetHRP = nil
     print("✓ Fling stopped")
 end
@@ -209,9 +265,10 @@ local function updateFlingState(mode)
     if mode ~= "wastelanders" then State.flingWastelanders = false end
     if mode ~= "aegis" then State.flingAegis = false end
     if mode ~= "training" then State.flingTraining = false end
+    if mode ~= "admin" then State.flingAdmin = false end
     
     -- Check if any mode is active
-    local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis or State.flingTraining
+    local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis or State.flingTraining or State.flingAdmin
     
     if anyActive then
         startFling()
@@ -230,7 +287,6 @@ local function updateTrainingButton()
     if shouldShow and State.flingTraining then
         -- Start flashing
         if not State.trainingFlashConnection then
-            local flashing = true
             State.trainingFlashConnection = RunService.Heartbeat:Connect(function()
                 local time = tick()
                 local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
@@ -252,6 +308,41 @@ local function updateTrainingButton()
         if State.trainingFlashConnection then
             State.trainingFlashConnection:Disconnect()
             State.trainingFlashConnection = nil
+        end
+    end
+end
+
+-- Update Admin button visibility and flashing
+local function updateAdminButton()
+    if not State.adminButton then return end
+    
+    local shouldShow = isLocalPlayerAdmin()
+    State.adminButton.Visible = shouldShow
+    
+    if shouldShow and State.flingAdmin then
+        -- Start flashing
+        if not State.adminFlashConnection then
+            State.adminFlashConnection = RunService.Heartbeat:Connect(function()
+                local time = tick()
+                local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
+                
+                -- Flash between red and darker red
+                local color = Color3.fromRGB(
+                    255 * (0.7 + 0.3 * alpha),
+                    50 * (0.7 + 0.3 * alpha),
+                    50 * (0.7 + 0.3 * alpha)
+                )
+                
+                if State.adminButton and State.adminButton:FindFirstChild("switch") then
+                    State.adminButton.switch.BackgroundColor3 = color
+                end
+            end)
+        end
+    else
+        -- Stop flashing
+        if State.adminFlashConnection then
+            State.adminFlashConnection:Disconnect()
+            State.adminFlashConnection = nil
         end
     end
 end
@@ -293,6 +384,18 @@ do
     
     State.trainingButton = trainingToggle
     updateTrainingButton()
+end
+
+-- Fling Admin (conditional visibility)
+do
+    local adminToggle = Library:CreateToggle(page, "Fling Admin", false, function(v)
+        State.flingAdmin = v
+        updateFlingState("admin")
+        updateAdminButton()
+    end)
+    
+    State.adminButton = adminToggle
+    updateAdminButton()
 end
 
 print("✓ Trolling Fling Module Loaded")

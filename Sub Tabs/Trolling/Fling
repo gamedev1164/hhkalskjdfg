@@ -72,12 +72,12 @@ for rank, ids in pairs(ADMIN_RANKS) do
 end
 
 -- Fling Config
-local UPDATE_INTERVAL = 0.1
-local SWITCH_INTERVAL = 1
+local UPDATE_INTERVAL = 0.01
+local SWITCH_INTERVAL = 2
 local SPIN_SPEED = 7000
-local PUSH_SPEED_MIN = 4000
-local PUSH_SPEED_MAX = 10000
-local VELOCITY_CHANGE_INTERVAL = 0.1
+local PUSH_SPEED_MIN = 400
+local PUSH_SPEED_MAX = 1000
+local VELOCITY_CHANGE_INTERVAL = 0.02  -- 10x faster (was 0.2)
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 
 -- State

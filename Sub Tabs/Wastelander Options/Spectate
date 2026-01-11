@@ -435,7 +435,7 @@ local function createPlayerList()
     State.playerButtons = {}
     
     -- Collect all Wastelander players (with or without rank)
-    local aegisPlayers = {}
+    local wastelanderPlayers = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and isWastelanderPlayer(plr) then
             local rank = getPlayerRank(plr)
@@ -443,7 +443,7 @@ local function createPlayerList()
             local hoursNum, hoursText = getHoursPlayed(plr)
             
             -- Add all Wastelander players (even without rank)
-            table.insert(aegisPlayers, {
+            table.insert(wastelanderPlayers, {
                 player = plr,
                 rank = rank,
                 rankIndex = rankIndex,
@@ -455,7 +455,7 @@ local function createPlayerList()
     end
     
     -- Sort by rank first (highest first), then by hours (highest first)
-    table.sort(aegisPlayers, function(a, b)
+    table.sort(wastelanderPlayers, function(a, b)
         -- Players with ranks come before players without ranks
         if a.hasRank ~= b.hasRank then
             return a.hasRank
@@ -471,7 +471,7 @@ local function createPlayerList()
     local column = 0
     local row = 0
     
-    for i, data in ipairs(aegisPlayers) do
+    for i, data in ipairs(wastelanderPlayers) do
         local plr = data.player
         local rank = data.rank
         local rankColor = getRankColor(rank)
@@ -593,7 +593,7 @@ local function createPlayerList()
     end
     
     -- Update canvas size
-    local totalRows = math.ceil(#aegisPlayers / 3)
+    local totalRows = math.ceil(#wastelanderPlayers / 3)
     State.gridFrame.CanvasSize = UDim2.new(0, 0, 0, totalRows * 65 + 10)
 end
 
@@ -645,9 +645,9 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
-print("✓ Aegis Spectate Module Loaded")
+print("✓ Wastelander Spectate Module Loaded")
 
 -- Expose stopSpectate globally for teleport module
-_G.AegisHub.stopSpectate = stopSpectate
+_G.AegisHub.stopWastelanderSpectate = stopSpectate
 
 return true

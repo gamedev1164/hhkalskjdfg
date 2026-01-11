@@ -42,6 +42,7 @@ local AEGIS_TEAMS = {
 -- Rank System (from provided script)
 local RANK_ORDER = {
     "Chairman",
+    "Developer",
     "Table Of Military Leadership",
     "Unit Commander",
     "Unit Captain",
@@ -65,29 +66,28 @@ local RANKS = {
     ["Unit Captain"] = {1938907604, 1509777239, 409397743, 293671581, 100016418},
     ["Unit Commander"] = {82964247, 355588359, 923213464},
     ["Table Of Military Leadership"] = {1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803},
+    ["Developer"] = {
+        161793207, 19616650, 588455053, 561945549, 426054103, 111887476, 2246116168,
+        139846572, 429845175, 358410086, 57380307, 80375246, 131221, 677770378,
+        568516696, 343675633, 1084921679, 1435789407, 2500617901, 452315772,
+        1710599996, 149706863, 206978484, 1574106704, 162753200, 63727901, 304709117
+    },
     ["Chairman"] = {17319802},
 }
 
-local RANK_ABBREV = {
-    ["Administered Field Agent"] = "AFA",
-    ["Specialist"] = "SPC",
-    ["Administered Specialist"] = "ASP",
-    ["Officer"] = "OFC",
-    ["Warrant Officer"] = "WO",
-    ["Veteran Officer"] = "VO",
-    ["Unit Captain"] = "UCPT",
-    ["Unit Commander"] = "UCMD",
-    ["Table Of Military Leadership"] = "TML",
-    ["Chairman"] = "CHAIR",
-}
-
 local RANK_COLORS = {
-    Color3.fromRGB(255, 50, 50),     -- Chairman
-    Color3.fromRGB(255, 85, 0),      -- TML
-    Color3.fromRGB(255, 140, 0),     -- Unit Commander
-    Color3.fromRGB(255, 200, 0),     -- Unit Captain
-    Color3.fromRGB(255, 255, 0),     -- Veteran Officer
-    Color3.fromRGB(150, 255, 50),    -- Warrant Officer
+    Color3.fromRGB(255, 50, 50),     -- Chairman (Red)
+    Color3.fromRGB(100, 200, 255),   -- Developer (Light Blue)
+    Color3.fromRGB(255, 100, 0),     -- TML (Dark Orange)
+    Color3.fromRGB(255, 150, 0),     -- Unit Commander (Orange)
+    Color3.fromRGB(255, 200, 0),     -- Unit Captain (Light Orange)
+    Color3.fromRGB(255, 255, 0),     -- Veteran Officer (Yellow)
+    Color3.fromRGB(200, 255, 100),   -- Warrant Officer (Yellow-Green)
+    Color3.fromRGB(150, 255, 150),   -- Officer (Light Green)
+    Color3.fromRGB(150, 200, 255),   -- Administered Specialist (Sky Blue)
+    Color3.fromRGB(180, 180, 255),   -- Administered Field Agent (Light Purple)
+    Color3.fromRGB(200, 200, 200),   -- Specialist (Gray)
+}
     Color3.fromRGB(50, 255, 120),    -- Officer
     Color3.fromRGB(50, 200, 255),    -- Administered Specialist
     Color3.fromRGB(80, 140, 255),    -- Administered Field Agent
@@ -135,8 +135,14 @@ local function getRankColor(rank)
 end
 
 -- Get rank abbreviation
-local function getRankAbbrev(rank)
-    return RANK_ABBREV[rank] or "N/A"
+-- Get rank display (full name)
+local function getRankDisplay(rank)
+    return rank or "No Rank"
+end
+-- Get rank display (full name)
+local function getRankDisplay(rank)
+    return rank or "No Rank"
+end
 end
 
 -- Get hours played
@@ -476,7 +482,7 @@ local function createPlayerList()
         local plr = data.player
         local rank = data.rank
         local rankColor = getRankColor(rank)
-        local rankAbbrev = getRankAbbrev(rank)
+        local rankDisplay = getRankDisplay(rank)
         local hoursText = data.hoursText
         local hasRank = data.hasRank
         
@@ -527,7 +533,7 @@ local function createPlayerList()
             rankLabel.Size = UDim2.new(1, -10, 0, 14)
             rankLabel.BackgroundTransparency = 1
             rankLabel.Font = Enum.Font.GothamBold
-            rankLabel.Text = rankAbbrev
+            rankLabel.Text = rankDisplay
             rankLabel.TextColor3 = rankColor
             rankLabel.TextSize = 10
             rankLabel.ZIndex = 6

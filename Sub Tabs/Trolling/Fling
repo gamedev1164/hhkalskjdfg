@@ -80,6 +80,7 @@ local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 
 -- State
 local State = {
+    flingEnabled = false,  -- Master toggle
     flingAll = false,
     flingWastelanders = false,
     flingAegis = false,
@@ -132,6 +133,26 @@ end
 -- Check if player is an admin/developer
 local function isAdminPlayer(plr)
     return adminUserIds[plr.UserId] == true
+end
+
+-- Check if there are any training players in the server
+local function hasTrainingPlayersInServer()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and isTrainingPlayer(plr) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Check if there are any admin players in the server
+local function hasAdminPlayersInServer()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and isAdminPlayer(plr) then
+            return true
+        end
+    end
+    return false
 end
 
 -- Check if local player is on Training team
@@ -258,7 +279,7 @@ local function stopFling()
     print("✓ Fling stopped")
 end
 
--- Update fling state (ensures only one mode is active)
+-- Update fling state (ensures only one mode is active and master toggle is on)
 local function updateFlingState(mode)
     -- Turn off all other modes
     if mode ~= "all" then State.flingAll = false end
@@ -267,136 +288,216 @@ local function updateFlingState(mode)
     if mode ~= "training" then State.flingTraining = false end
     if mode ~= "admin" then State.flingAdmin = false end
     
-    -- Check if any mode is active
+    -- Check if master toggle is on AND any mode is active
     local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis or State.flingTraining or State.flingAdmin
     
-    if anyActive then
+    if State.flingEnabled and anyActive then
         startFling()
     else
         stopFling()
     end
 end
 
--- Update Training button visibility and flashing
+-- Update Training button flashing (always visible, flash only when targets exist)
 local function updateTrainingButton()
     if not State.trainingButton then return end
     
-    local shouldShow = isLocalPlayerTraining()
-    State.trainingButton.Visible = shouldShow
+    -- Always visible
+    State.trainingButton.Visible = true
     
-    if shouldShow and State.flingTraining then
-        -- Start flashing
+    local shouldFlash = hasTrainingPlayersInServer()
+    
+    if shouldFlash then
+        -- Start flashing text when targets exist
         if not State.trainingFlashConnection then
             State.trainingFlashConnection = RunService.Heartbeat:Connect(function()
                 local time = tick()
                 local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
                 
-                -- Flash between purple and darker purple
+                -- Flash between yellow and white
                 local color = Color3.fromRGB(
-                    138 + (50 - 138) * alpha,
-                    43 + (30 - 43) * alpha,
-                    226 + (80 - 226) * alpha
+                    255,                        -- Keep full red
+                    255,                        -- Keep full green (makes yellow)
+                    255 - (255 - 100) * alpha   -- 255 to 100 (reduce blue)
                 )
                 
-                if State.trainingButton and State.trainingButton:FindFirstChild("switch") then
-                    State.trainingButton.switch.BackgroundColor3 = color
+                -- Find and update the text label
+                for _, child in ipairs(State.trainingButton:GetChildren()) do
+                    if child:IsA("TextLabel") then
+                        child.TextColor3 = color
+                    end
                 end
             end)
         end
     else
-        -- Stop flashing
+        -- Stop flashing when no targets
         if State.trainingFlashConnection then
             State.trainingFlashConnection:Disconnect()
             State.trainingFlashConnection = nil
+            
+            -- Reset text color to white
+            for _, child in ipairs(State.trainingButton:GetChildren()) do
+                if child:IsA("TextLabel") then
+                    child.TextColor3 = Color3.fromRGB(240, 240, 240)
+                end
+            end
         end
     end
 end
 
--- Update Admin button visibility and flashing
+-- Update Admin button flashing (always visible, flash only when targets exist)
 local function updateAdminButton()
     if not State.adminButton then return end
     
-    local shouldShow = isLocalPlayerAdmin()
-    State.adminButton.Visible = shouldShow
+    -- Always visible
+    State.adminButton.Visible = true
     
-    if shouldShow and State.flingAdmin then
-        -- Start flashing
+    local shouldFlash = hasAdminPlayersInServer()
+    
+    if shouldFlash then
+        -- Start flashing text when targets exist
         if not State.adminFlashConnection then
             State.adminFlashConnection = RunService.Heartbeat:Connect(function()
                 local time = tick()
                 local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
                 
-                -- Flash between red and darker red
+                -- Flash between blue and white
                 local color = Color3.fromRGB(
-                    255 * (0.7 + 0.3 * alpha),
-                    50 * (0.7 + 0.3 * alpha),
-                    50 * (0.7 + 0.3 * alpha)
+                    255 - (255 - 100) * alpha,  -- 255 to 100
+                    255 - (255 - 180) * alpha,  -- 255 to 180
+                    255                         -- Keep full blue
                 )
                 
-                if State.adminButton and State.adminButton:FindFirstChild("switch") then
-                    State.adminButton.switch.BackgroundColor3 = color
+                -- Find and update the text label
+                for _, child in ipairs(State.adminButton:GetChildren()) do
+                    if child:IsA("TextLabel") then
+                        child.TextColor3 = color
+                    end
                 end
             end)
         end
     else
-        -- Stop flashing
+        -- Stop flashing when no targets
         if State.adminFlashConnection then
             State.adminFlashConnection:Disconnect()
             State.adminFlashConnection = nil
+            
+            -- Reset text color to white
+            for _, child in ipairs(State.adminButton:GetChildren()) do
+                if child:IsA("TextLabel") then
+                    child.TextColor3 = Color3.fromRGB(240, 240, 240)
+                end
+            end
         end
     end
 end
-
--- Monitor team changes
-player:GetPropertyChangedSignal("Team"):Connect(function()
-    updateTrainingButton()
-end)
 
 --==============================================================================
 --                          CREATE UI
 --==============================================================================
 
--- Fling All
-Library:CreateToggle(page, "Fling All", false, function(v)
-    State.flingAll = v
-    updateFlingState("all")
-end)
+-- MASTER TOGGLE (Bold, controls entire fling system)
+do
+    local startToggle = Library:CreateToggle(page, "Start Fling", false, function(v)
+        State.flingEnabled = v
+        -- Re-evaluate current selection
+        if State.flingAegis then updateFlingState("aegis")
+        elseif State.flingWastelanders then updateFlingState("wastelanders")
+        elseif State.flingTraining then updateFlingState("training")
+        elseif State.flingAdmin then updateFlingState("admin")
+        else stopFling() end
+    end)
+    
+    -- Make text bold
+    for _, child in ipairs(startToggle:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child.Font = Enum.Font.GothamBlack
+            child.TextSize = 15
+        end
+    end
+end
 
--- Fling Wastelanders
-Library:CreateToggle(page, "Fling Wastelanders", false, function(v)
-    State.flingWastelanders = v
-    updateFlingState("wastelanders")
-end)
+-- TEAM SELECTION OPTIONS (All default OFF, smaller, always visible)
 
 -- Fling Aegis
-Library:CreateToggle(page, "Fling Aegis", false, function(v)
-    State.flingAegis = v
-    updateFlingState("aegis")
-end)
-
--- Fling Training (conditional visibility)
 do
-    local trainingToggle = Library:CreateToggle(page, "Fling Training", false, function(v)
+    local toggle = Library:CreateToggle(page, "├─ Aegis Teams", false, function(v)
+        State.flingAegis = v
+        updateFlingState("aegis")
+    end)
+    toggle.Size = UDim2.new(1, 0, 0, 38)
+end
+
+-- Fling Wastelanders
+do
+    local toggle = Library:CreateToggle(page, "├─ Wastelanders", false, function(v)
+        State.flingWastelanders = v
+        updateFlingState("wastelanders")
+    end)
+    toggle.Size = UDim2.new(1, 0, 0, 38)
+end
+
+-- Fling Training (always visible + yellow flash when targets exist)
+do
+    local toggle = Library:CreateToggle(page, "├─ Training/Lessons", false, function(v)
         State.flingTraining = v
         updateFlingState("training")
-        updateTrainingButton()
     end)
+    toggle.Size = UDim2.new(1, 0, 0, 38)
     
-    State.trainingButton = trainingToggle
-    updateTrainingButton()
+    -- Make text smaller
+    for _, child in ipairs(toggle:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child.TextSize = math.floor(child.TextSize / 1.5)
+        end
+    end
+    
+    State.trainingButton = toggle
 end
 
--- Fling Admin (conditional visibility)
+-- Fling Admin (always visible + blue flash when targets exist)
 do
-    local adminToggle = Library:CreateToggle(page, "Fling Admin", false, function(v)
+    local toggle = Library:CreateToggle(page, "└─ Admins/Devs", false, function(v)
         State.flingAdmin = v
         updateFlingState("admin")
-        updateAdminButton()
     end)
+    toggle.Size = UDim2.new(1, 0, 0, 38)
     
-    State.adminButton = adminToggle
-    updateAdminButton()
+    -- Make text smaller
+    for _, child in ipairs(toggle:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child.TextSize = math.floor(child.TextSize / 1.5)
+        end
+    end
+    
+    State.adminButton = toggle
 end
+
+-- Start update loops
+task.wait(0.5)  -- Small delay for buttons to be fully created
+updateTrainingButton()
+updateAdminButton()
+
+-- Monitor player joins/leaves to update button flashing
+Players.PlayerAdded:Connect(function()
+    task.wait(1)  -- Wait for character to load
+    updateTrainingButton()
+    updateAdminButton()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    updateTrainingButton()
+    updateAdminButton()
+end)
+
+-- Check every 5 seconds in case team changes aren't caught
+task.spawn(function()
+    while true do
+        task.wait(5)
+        updateTrainingButton()
+        updateAdminButton()
+    end
+end)
 
 print("✓ Trolling Fling Module Loaded")
 

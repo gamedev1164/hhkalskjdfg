@@ -133,6 +133,14 @@ local function startFling()
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
             State.currentTargetHRP = getRandomTargetHRP()
             State.switchElapsed = 0
+            
+            -- Spectate new target
+            if State.currentTargetHRP then
+                local targetPlayer = Players:GetPlayerFromCharacter(State.currentTargetHRP.Parent)
+                if targetPlayer then
+                    workspace.CurrentCamera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+                end
+            end
         end
         
         if State.updateElapsed < UPDATE_INTERVAL then return end
@@ -182,6 +190,15 @@ local function stopFling()
     if State.flingConnection then
         State.flingConnection:Disconnect()
         State.flingConnection = nil
+    end
+    
+    -- Restore camera to player
+    local myChar = player.Character
+    if myChar then
+        local myHum = myChar:FindFirstChildOfClass("Humanoid")
+        if myHum then
+            workspace.CurrentCamera.CameraSubject = myHum
+        end
     end
     
     -- Keep current velocity to prevent snap-back

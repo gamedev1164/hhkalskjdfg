@@ -68,31 +68,32 @@ end
 --                          AUTO BOOTH NOTIFICATION
 --==============================================================================
 
+-- Load optimized booth processing
+local boothProcessing = nil
+pcall(function()
+    boothProcessing = loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Auto%20Booth%20Processing%20Optimized"))()
+end)
+
 local function startAutoBoothNotif()
     if State.boothConnection then return end
     
-    -- Booth notification logic
-    State.boothConnection = RunService.Heartbeat:Connect(function()
-        if not State.autoBoothNotif then return end
-        
-        -- Find booth processing prompts and activate
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                if obj.ObjectText and (obj.ObjectText:lower():find("process") or obj.ObjectText:lower():find("booth")) then
-                    fireproximityprompt(obj)
-                end
-            end
-        end
-    end)
+    if boothProcessing then
+        boothProcessing.start()
+    end
     
     print("✓ Auto Booth Notification started")
 end
 
 local function stopAutoBoothNotif()
+    if boothProcessing then
+        boothProcessing.stop()
+    end
+    
     if State.boothConnection then
         State.boothConnection:Disconnect()
         State.boothConnection = nil
     end
+    
     print("✓ Auto Booth Notification stopped")
 end
 

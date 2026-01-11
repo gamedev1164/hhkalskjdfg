@@ -72,12 +72,12 @@ for rank, ids in pairs(ADMIN_RANKS) do
 end
 
 -- Fling Config
-local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 2
+local UPDATE_INTERVAL = 0.1
+local SWITCH_INTERVAL = 1
 local SPIN_SPEED = 7000
-local PUSH_SPEED_MIN = 400
-local PUSH_SPEED_MAX = 1000
-local VELOCITY_CHANGE_INTERVAL = 0.2
+local PUSH_SPEED_MIN = 4000
+local PUSH_SPEED_MAX = 10000
+local VELOCITY_CHANGE_INTERVAL = 0.1
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 
 -- State
@@ -228,14 +228,14 @@ local function startFling()
         State.switchElapsed = State.switchElapsed + dt
         State.velocityElapsed = State.velocityElapsed + dt
         
-        -- Change target velocity every 0.2 seconds
+        -- Change target velocity every 0.02 seconds (10x faster)
         if State.velocityElapsed >= VELOCITY_CHANGE_INTERVAL then
             State.targetVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
             State.velocityElapsed = 0
         end
         
-        -- Smoothly interpolate current velocity towards target (lerp)
-        local lerpSpeed = 5  -- How fast it changes (higher = faster)
+        -- Smoothly interpolate current velocity towards target (10x faster lerp)
+        local lerpSpeed = 50  -- 10x faster transitions (was 5)
         State.currentVelocity = State.currentVelocity + (State.targetVelocity - State.currentVelocity) * dt * lerpSpeed
         
         -- Pick new target every SWITCH_INTERVAL seconds

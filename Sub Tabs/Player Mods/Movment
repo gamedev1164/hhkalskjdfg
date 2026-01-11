@@ -1,24 +1,22 @@
 --==============================================================================
---                    AEGIS HUB - MOVEMENT MODULE (COMBINED)
+--                    AEGIS HUB - MOVEMENT MODULE (FIXED)
 --==============================================================================
 -- PRESETS - Customize default values here
 local PRESETS = {
-    CFRAME_FLY = {
+    SPEED = {
         DEFAULT = 200,
         MIN = 1,
         MAX = 500
     },
-    FREECAM = {
-        DEFAULT_SPEED = 200,
-        MIN_SPEED = 1,
-        MAX_SPEED = 500,
-        FOV_BOOST = 1.5,
-        MOUSE_SENSITIVITY_BOOST = 1.5
+    JUMP = {
+        DEFAULT = 200,
+        MIN = 1,
+        MAX = 500
     },
-    FOV = {
-        DEFAULT = 70,
-        MIN = 10,
-        MAX = 120
+    CFRAME_FLY = {
+        DEFAULT = 200,
+        MIN = 1,
+        MAX = 500
     }
 }
 
@@ -32,112 +30,211 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local page = AegisHub.MovementPage
-local Library = AegisHub.Library
-
--- UI Reference (declared before hotkey handler needs it)
-local cframeFlyToggleRef = nil
-local freecamControlRef = nil
+local Library = AegisHub.Library  -- FIX: Get Library from AegisHub
 
 -- State
 local State = {
-    -- CFrame Fly
+    speedEnabled = false,
+    speedValue = PRESETS.SPEED.DEFAULT,
+    origWalkSpeed = nil,
+    speedEnforcementConn = nil,
+    
+    jumpEnabled = false,
+    jumpValue = PRESETS.JUMP.DEFAULT,
+    origJumpHeight = nil,
+    origJumpPower = nil,
+    
+    infJumpEnabled = false,
+    
     cframeFlyEnabled = false,
     cframeFlySpeed = PRESETS.CFRAME_FLY.DEFAULT,
     cframeFlyConn = nil,
     cframeFlyKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
-    cframeFlyHotkey = nil,
+    cframeFlyHotkey = nil,  -- No default hotkey
     
-    -- FreeCam
-    freecamEnabled = false,
-    freecamSpeed = PRESETS.FREECAM.DEFAULT_SPEED,
-    freecamCF = nil,
-    freecamOrig = nil,
-    freecamOrigFOV = nil,
-    freecamOrigMouseSens = nil,
-    freecamKeys = {W = false, A = false, S = false, D = false, Q = false, E = false, Shift = false},
-    freecamHotkey = nil,
-    charOrig = nil,
-    rmbDown = false,
-    yaw = 0,
-    pitch = 0,
-    
-    -- Infinite Jump
-    infJumpEnabled = false,
-    
-    -- FOV
-    fovEnabled = false,
-    fovValue = PRESETS.FOV.DEFAULT,
-    
-    -- God Mode
     godModeEnabled = false,
     godModeConn = nil,
-    deathPosition = nil,  -- Store position when player dies
     
     capturingHotkey = false,
+    
     connections = {}
 }
 
--- Helper: Get Humanoid
-local function getHumanoid()
-    if player.Character then
-        return player.Character:FindFirstChildOfClass("Humanoid")
+-- Helper functions
+local function getChar() return player.Character end
+local function getHumanoid() local c = getChar() return c and c:FindFirstChildOfClass("Humanoid") end
+local function getHRP() local c = getChar() return c and c:FindFirstChild("HumanoidRootPart") end
+
+-- Instant Movement Physics
+local function applyInstantMovement(hum)
+    if not hum then return end
+    pcall(function()
+        local char = hum.Parent
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 100, 0)
+            end
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    pcall(function()
+                        part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 100, 0)
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+local function removeInstantMovement(hum)
+    if not hum then return end
+    pcall(function()
+        local char = hum.Parent
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function()
+                        part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 1, 1)
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+-- Speed
+local function enableSpeed()
+    local hum = getHumanoid()
+    if hum then
+        if not State.origWalkSpeed then 
+            State.origWalkSpeed = hum.WalkSpeed 
+        end
+        hum.WalkSpeed = State.speedValue
+        applyInstantMovement(hum)
+    end
+    
+    -- Start continuous enforcement
+    if State.speedEnforcementConn then State.speedEnforcementConn:Disconnect() end
+    State.speedEnforcementConn = RunService.Heartbeat:Connect(function()
+        if not State.speedEnabled then return end
+        local hum = getHumanoid()
+        if hum and hum.WalkSpeed ~= State.speedValue then
+            hum.WalkSpeed = State.speedValue
+        end
+    end)
+    table.insert(State.connections, State.speedEnforcementConn)
+end
+
+local function disableSpeed()
+    if State.speedEnforcementConn then
+        State.speedEnforcementConn:Disconnect()
+        State.speedEnforcementConn = nil
+    end
+    
+    local hum = getHumanoid()
+    if hum then
+        hum.WalkSpeed = State.origWalkSpeed or 16
+        removeInstantMovement(hum)
     end
 end
 
--- Store current position
-local function storePosition()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        State.deathPosition = player.Character.HumanoidRootPart.CFrame
+-- Jump
+local function enableJump()
+    local hum = getHumanoid()
+    if hum then
+        if hum.UseJumpPower then
+            if not State.origJumpPower then 
+                State.origJumpPower = hum.JumpPower 
+            end
+            hum.JumpPower = State.jumpValue
+        else
+            if not State.origJumpHeight then 
+                State.origJumpHeight = hum.JumpHeight 
+            end
+            hum.JumpHeight = State.jumpValue
+        end
     end
 end
 
--- Teleport to stored position
-local function teleportToDeathPosition()
-    if State.deathPosition and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = State.deathPosition
+local function disableJump()
+    local hum = getHumanoid()
+    if hum then
+        if hum.UseJumpPower then 
+            hum.JumpPower = State.origJumpPower or 50
+        else 
+            hum.JumpHeight = State.origJumpHeight or 7.2 
+        end
     end
 end
 
---==============================================================================
---                          CFRAME FLY
---==============================================================================
+-- Infinite Jump
+table.insert(State.connections, UserInputService.JumpRequest:Connect(function()
+    if State.infJumpEnabled then
+        local hum = getHumanoid()
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.Jumping) 
+        end
+    end
+end))
 
-local function setCFrameFlyKey(key, state)
-    State.cframeFlyKeys[key.Name] = state
+-- CFrame Fly
+local function setCFrameFlyKey(keyCode, isDown)
+    local map = {
+        [Enum.KeyCode.W] = "W", [Enum.KeyCode.A] = "A", 
+        [Enum.KeyCode.S] = "S", [Enum.KeyCode.D] = "D",
+        [Enum.KeyCode.Q] = "Q", [Enum.KeyCode.E] = "E",
+        [Enum.KeyCode.LeftShift] = "Shift", [Enum.KeyCode.RightShift] = "Shift"
+    }
+    if map[keyCode] then 
+        State.cframeFlyKeys[map[keyCode]] = isDown 
+    end
 end
+
+table.insert(State.connections, UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setCFrameFlyKey(input.KeyCode, true)
+    end
+end))
+
+table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        setCFrameFlyKey(input.KeyCode, false)
+    end
+end))
 
 local function enableCFrameFly()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local hrp = getHRP()
+    if hrp then
+        hrp.Anchored = true
+    end
     
-    State.cframeFlyConn = RunService.Heartbeat:Connect(function(dt)
+    State.cframeFlyConn = RunService.RenderStepped:Connect(function(dt)
         if not State.cframeFlyEnabled then return end
         
+        local hrp = getHRP()
+        if not hrp then return end
+        
+        hrp.Anchored = true
+        
         local cam = Workspace.CurrentCamera
-        if not cam then return end
+        local look = cam and cam.CFrame.LookVector or hrp.CFrame.LookVector
+        local right = cam and cam.CFrame.RightVector or hrp.CFrame.RightVector
+        local up = Vector3.new(0, 1, 0)
+        local moveDir = Vector3.zero
         
-        local cf = hrp.CFrame
-        local lookVec = cam.CFrame.LookVector
-        local rightVec = cam.CFrame.RightVector
+        if State.cframeFlyKeys.W then moveDir = moveDir + look end
+        if State.cframeFlyKeys.S then moveDir = moveDir - look end
+        if State.cframeFlyKeys.A then moveDir = moveDir - right end
+        if State.cframeFlyKeys.D then moveDir = moveDir + right end
+        if State.cframeFlyKeys.E then moveDir = moveDir + up end
+        if State.cframeFlyKeys.Q then moveDir = moveDir - up end
         
-        local spd = State.cframeFlySpeed
-        if State.cframeFlyKeys.Shift then spd = spd * 2 end
-        
-        local move = Vector3.new(0, 0, 0)
-        if State.cframeFlyKeys.W then move = move + lookVec end
-        if State.cframeFlyKeys.S then move = move - lookVec end
-        if State.cframeFlyKeys.D then move = move + rightVec end
-        if State.cframeFlyKeys.A then move = move - rightVec end
-        if State.cframeFlyKeys.E then move = move + Vector3.new(0, 1, 0) end
-        if State.cframeFlyKeys.Q then move = move - Vector3.new(0, 1, 0) end
-        
-        if move.Magnitude > 0 then
-            move = move.Unit * spd * dt
-            hrp.CFrame = cf + move
+        if moveDir.Magnitude > 0 then
+            local speed = State.cframeFlySpeed * (State.cframeFlyKeys.Shift and 2 or 1)
+            hrp.CFrame = hrp.CFrame + moveDir.Unit * speed * dt
         end
     end)
     
@@ -149,306 +246,123 @@ local function disableCFrameFly()
         State.cframeFlyConn:Disconnect()
         State.cframeFlyConn = nil
     end
-end
-
---==============================================================================
---                          FREECAM
---==============================================================================
-
-local function setCamKey(key, state)
-    State.freecamKeys[key.Name] = state
-end
-
-local function freezeCharacter(freeze)
-    local char = player.Character
-    if not char then return end
     
-    if freeze then
-        if not State.charOrig then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                State.charOrig = hrp.CFrame
-                hrp.Anchored = true
-            end
-        end
-    else
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp and State.charOrig then
-            hrp.Anchored = false
-            State.charOrig = nil
-        end
+    local hrp = getHRP()
+    if hrp then
+        hrp.Anchored = false
     end
 end
 
-local function enableFreeCam()
-    local cam = Workspace.CurrentCamera
-    if not cam then return end
-    
-    if not State.freecamOrig then
-        State.freecamOrig = {
-            CameraType = cam.CameraType,
-            CFrame = cam.CFrame,
-            Subject = cam.CameraSubject
-        }
-    end
-    
-    -- Store and boost FOV by preset multiplier
-    if not State.freecamOrigFOV then
-        State.freecamOrigFOV = cam.FieldOfView
-    end
-    cam.FieldOfView = State.freecamOrigFOV * PRESETS.FREECAM.FOV_BOOST
-    
-    -- Store original mouse sensitivity (simulated through rotation speed multiplier)
-    State.freecamOrigMouseSens = 1.0
-    
-    State.freecamCF = cam.CFrame
-    cam.CameraType = Enum.CameraType.Scriptable
-    
-    -- Calculate initial yaw/pitch from camera look vector
-    local look = cam.CFrame.LookVector
-    State.yaw = math.atan2(-look.X, -look.Z)
-    State.pitch = math.asin(math.clamp(look.Y, -0.999, 0.999))
-    
-    freezeCharacter(true)
-end
-
-local function disableFreeCam()
-    local cam = Workspace.CurrentCamera
-    if not cam then return end
-    
-    local o = State.freecamOrig
-    if o then
-        cam.CameraType = o.CameraType
-        cam.CFrame = o.CFrame
-        cam.CameraSubject = o.Subject
-    else
-        cam.CameraType = Enum.CameraType.Custom
-    end
-    
-    -- Restore original FOV
-    if State.freecamOrigFOV then
-        cam.FieldOfView = State.freecamOrigFOV
-        State.freecamOrigFOV = nil
-    end
-    
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    State.rmbDown = false
-    State.freecamCF = nil
-    State.freecamOrig = nil
-    State.freecamOrigMouseSens = nil
-    
-    freezeCharacter(false)
-end
-
-local function teleportToCam()
-    if not State.freecamEnabled or not State.freecamCF then return end
-    local char = player.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    hrp.CFrame = State.freecamCF
-end
-
--- FreeCam Render Loop
-table.insert(State.connections, RunService.RenderStepped:Connect(function(dt)
-    if not State.freecamEnabled then return end
-    
-    local cam = Workspace.CurrentCamera
-    if not cam or not State.freecamCF then return end
-    
-    -- Handle right-click rotation with preset sensitivity boost
-    if State.rmbDown then
-        local delta = UserInputService:GetMouseDelta()
-        State.yaw = State.yaw - delta.X * 0.0035 * PRESETS.FREECAM.MOUSE_SENSITIVITY_BOOST
-        State.pitch = math.clamp(State.pitch - delta.Y * 0.0035 * PRESETS.FREECAM.MOUSE_SENSITIVITY_BOOST, math.rad(-80), math.rad(80))
-    end
-    
-    -- Build rotation from yaw/pitch
-    local cy, sy = math.cos(State.yaw), math.sin(State.yaw)
-    local cp, sp = math.cos(State.pitch), math.sin(State.pitch)
-    
-    local forward = Vector3.new(sy * cp, sp, cy * cp)
-    local right = Vector3.new(cy, 0, -sy)
-    local up = Vector3.new(-sy * sp, cp, -cy * sp)
-    
-    -- Movement
-    local spd = State.freecamSpeed
-    if State.freecamKeys.Shift then spd = spd * 2 end
-    
-    local move = Vector3.new(0,0,0)
-    if State.freecamKeys.W then move = move + forward end
-    if State.freecamKeys.S then move = move - forward end
-    if State.freecamKeys.D then move = move + right end
-    if State.freecamKeys.A then move = move - right end
-    if State.freecamKeys.E then move = move + up end
-    if State.freecamKeys.Q then move = move - up end
-    
-    if move.Magnitude > 0 then
-        move = move.Unit * spd * dt
-        State.freecamCF = State.freecamCF + move
-    end
-    
-    -- Apply camera CFrame
-    local rot = CFrame.new(0, 0, 0, right.X, up.X, -forward.X, right.Y, up.Y, -forward.Y, right.Z, up.Z, -forward.Z)
-    cam.CFrame = CFrame.new(State.freecamCF.Position) * rot
-end))
-
--- FreeCam Input
-table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
-    if not State.freecamEnabled then return end
-    
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        State.rmbDown = true
-        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
-    elseif input.UserInputType == Enum.UserInputType.Keyboard then
-        setCamKey(input.KeyCode, true)
-    end
-end))
-
-table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
-    if not State.freecamEnabled then return end
-    
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        State.rmbDown = false
-        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    elseif input.UserInputType == Enum.UserInputType.Keyboard then
-        setCamKey(input.KeyCode, false)
-    end
-end))
-
--- FreeCam Hotkey toggle
-table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-    
-    if not State.capturingHotkey and State.freecamHotkey and input.KeyCode == State.freecamHotkey then
-        State.freecamEnabled = not State.freecamEnabled
-        if State.freecamEnabled then
-            enableFreeCam()
-        else
-            disableFreeCam()
-        end
-        
-        if freecamControlRef then
-            freecamControlRef.setToggle(State.freecamEnabled)
-        end
-    end
-end))
-
--- FreeCam Death Handler
-player.CharacterAdded:Connect(function()
-    if State.freecamEnabled then
-        State.freecamEnabled = false
-        disableFreeCam()
-        if freecamControlRef then
-            freecamControlRef.setToggle(false)
-        end
-    end
-end)
-
-if player.Character then
-    local hum = player.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.Died:Connect(function()
-            if State.freecamEnabled then
-                State.freecamEnabled = false
-                disableFreeCam()
-                if freecamControlRef then
-                    freecamControlRef.setToggle(false)
-                end
-            end
-        end)
-    end
-end
-
---==============================================================================
---                          FOV
---==============================================================================
-
-local function enableFOV()
-    local cam = Workspace.CurrentCamera
-    if cam then cam.FieldOfView = State.fovValue end
-end
-
-local function disableFOV()
-    local cam = Workspace.CurrentCamera
-    if cam then cam.FieldOfView = 70 end
-end
-
---==============================================================================
---                          GOD MODE
---==============================================================================
+-- God Mode (Infinite Health + Instant Respawn at Death Location)
+local deathConnection = nil
+local characterAddedConnection = nil
+local deathPos = nil
 
 local function enableGodMode()
-    -- Set infinite health via Heartbeat
-    State.godModeConn = RunService.Heartbeat:Connect(function()
-        local hum = getHumanoid()
-        if hum then 
-            hum.Health = math.huge  -- Infinite health
-            hum.MaxHealth = math.huge
-        end
-        
-        -- Store position every frame while alive
-        storePosition()
-    end)
-    table.insert(State.connections, State.godModeConn)
-    
-    -- Handle death and instant respawn
-    State.godModeDeathConn = player.CharacterAdded:Connect(function(char)
-        if not State.godModeEnabled then return end
-        
-        -- Wait for character to fully load
-        local hum = char:WaitForChild("Humanoid")
-        local hrp = char:WaitForChild("HumanoidRootPart")
-        
-        -- Set infinite health immediately
-        hum.Health = math.huge
+    -- Set initial infinite health
+    local hum = getHumanoid()
+    if hum then
         hum.MaxHealth = math.huge
-        
-        -- Teleport back to death position
-        task.wait(0.1)  -- Small delay for character to fully load
-        teleportToDeathPosition()
-        
-        print("✓ God Mode: Respawned and teleported back")
-    end)
-    table.insert(State.connections, State.godModeDeathConn)
+        hum.Health = math.huge
+    end
     
-    -- Trigger immediate respawn on death
-    State.godModeHealthConn = player.CharacterAdded:Connect(function(char)
+    -- Infinite health loop (prevents death) + store position every frame
+    State.godModeConn = RunService.Heartbeat:Connect(function()
         if not State.godModeEnabled then return end
         
-        local hum = char:WaitForChild("Humanoid")
-        hum.Died:Connect(function()
-            if State.godModeEnabled then
-                -- Instant respawn
-                player:LoadCharacter()
-            end
-        end)
-    end)
-    table.insert(State.connections, State.godModeHealthConn)
-    
-    -- Apply to current character if exists
-    if player.Character then
         local hum = getHumanoid()
         if hum then
-            hum.Health = math.huge
             hum.MaxHealth = math.huge
+            hum.Health = math.huge
         end
+        
+        -- Store position every frame
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            deathPos = player.Character.HumanoidRootPart.CFrame
+        end
+    end)
+    
+    table.insert(State.connections, State.godModeConn)
+    
+    -- Death handler as backup (instant respawn at death location)
+    local function setupDeathHandler(character)
+        if deathConnection then
+            deathConnection:Disconnect()
+        end
+        
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        
+        deathConnection = hum.Died:Connect(function()
+            if not State.godModeEnabled then return end
+            
+            print("✓ God Mode: Death detected, respawning...")
+            
+            -- Force instant respawn (no cooldown)
+            task.spawn(function()
+                player:LoadCharacter()
+                
+                -- Wait for character to load
+                repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                
+                -- Teleport back to death location
+                if deathPos then
+                    player.Character.HumanoidRootPart.CFrame = deathPos
+                    print("✓ God Mode: Respawned at saved location")
+                end
+                
+                -- Reset infinite health immediately
+                local newHum = player.Character:FindFirstChildOfClass("Humanoid")
+                if newHum then
+                    newHum.MaxHealth = math.huge
+                    newHum.Health = math.huge
+                end
+                
+                -- Setup handler for new character
+                setupDeathHandler(player.Character)
+            end)
+        end)
     end
+    
+    -- Setup for current character
+    if player.Character then
+        setupDeathHandler(player.Character)
+    end
+    
+    -- Setup for future characters
+    if characterAddedConnection then
+        characterAddedConnection:Disconnect()
+    end
+    
+    characterAddedConnection = player.CharacterAdded:Connect(function(character)
+        if State.godModeEnabled then
+            -- Set infinite health immediately
+            task.wait(0.1)
+            local hum = character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.MaxHealth = math.huge
+                hum.Health = math.huge
+            end
+            setupDeathHandler(character)
+        end
+    end)
 end
 
 local function disableGodMode()
+    -- Disconnect connections
     if State.godModeConn then
         State.godModeConn:Disconnect()
         State.godModeConn = nil
     end
-    if State.godModeDeathConn then
-        State.godModeDeathConn:Disconnect()
-        State.godModeDeathConn = nil
+    
+    if deathConnection then
+        deathConnection:Disconnect()
+        deathConnection = nil
     end
-    if State.godModeHealthConn then
-        State.godModeHealthConn:Disconnect()
-        State.godModeHealthConn = nil
+    
+    if characterAddedConnection then
+        characterAddedConnection:Disconnect()
+        characterAddedConnection = nil
     end
     
     -- Reset health to normal
@@ -459,14 +373,27 @@ local function disableGodMode()
     end
 end
 
---==============================================================================
---                          HOTKEY HANDLERS
---==============================================================================
+-- Character respawn handler
+table.insert(State.connections, player.CharacterAdded:Connect(function()
+    task.wait(0.3)
+    
+    if State.speedEnabled then enableSpeed() end
+    if State.jumpEnabled then enableJump() end
+    if State.cframeFlyEnabled then 
+        disableCFrameFly()
+        enableCFrameFly()
+    end
+    if State.godModeEnabled then enableGodMode() end
+end))
 
--- CFrame Fly Hotkey
+-- UI Reference (declared before hotkey handler needs it)
+local cframeFlyToggleRef = nil
+
+-- Hotkey Input Handler
 table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
     
+    -- CFrame Fly Hotkey (only if set)
     if not State.capturingHotkey and State.cframeFlyHotkey and input.KeyCode == State.cframeFlyHotkey then
         State.cframeFlyEnabled = not State.cframeFlyEnabled
         if State.cframeFlyEnabled then
@@ -475,43 +402,56 @@ table.insert(State.connections, UserInputService.InputBegan:Connect(function(inp
             disableCFrameFly()
         end
         
+        -- Update toggle visual immediately
         if cframeFlyToggleRef then
             cframeFlyToggleRef.setToggle(State.cframeFlyEnabled)
         end
     end
 end))
 
--- CFrame Fly Input
-table.insert(State.connections, UserInputService.InputBegan:Connect(function(input, gpe)
-    if not State.cframeFlyEnabled or gpe then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        setCFrameFlyKey(input.KeyCode, true)
+-- Create UI
+-- Speed with Toggle+Slider
+Library:CreateToggleSlider(page, "Speed", PRESETS.SPEED.MIN, PRESETS.SPEED.MAX, PRESETS.SPEED.DEFAULT,
+    function(enabled)
+        State.speedEnabled = enabled
+        if enabled then enableSpeed() else disableSpeed() end
+    end,
+    function(value)
+        State.speedValue = value
+        if State.speedEnabled then
+            local hum = getHumanoid()
+            if hum then hum.WalkSpeed = value end
+        end
     end
-end))
+)
 
-table.insert(State.connections, UserInputService.InputEnded:Connect(function(input)
-    if not State.cframeFlyEnabled then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        setCFrameFlyKey(input.KeyCode, false)
+-- Jump Height with Toggle+Slider
+Library:CreateToggleSlider(page, "Jump Height", PRESETS.JUMP.MIN, PRESETS.JUMP.MAX, PRESETS.JUMP.DEFAULT,
+    function(enabled)
+        State.jumpEnabled = enabled
+        if enabled then enableJump() else disableJump() end
+    end,
+    function(value)
+        State.jumpValue = value
+        if State.jumpEnabled then
+            local hum = getHumanoid()
+            if hum then
+                if hum.UseJumpPower then 
+                    hum.JumpPower = value
+                else 
+                    hum.JumpHeight = value 
+                end
+            end
+        end
     end
-end))
+)
 
--- Infinite Jump
-table.insert(State.connections, UserInputService.JumpRequest:Connect(function()
-    if not State.infJumpEnabled then return end
-    local hum = getHumanoid()
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end))
+-- Infinite Jump (toggle only, no slider needed)
+Library:CreateToggle(page, "Infinite Jump", false, function(v)
+    State.infJumpEnabled = v
+end)
 
---==============================================================================
---                          CREATE UI
---==============================================================================
-
--- ORDER: CFrame Fly, FreeCam, Infinite Jump, FOV, God Mode
-
--- 1. CFRAME FLY
+-- CFrame Fly with Hotkey and Slider
 do
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 60)
@@ -536,7 +476,7 @@ do
     
     -- Slider
     local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 200, 0, 12)
+    barBg.Size = UDim2.new(0, 200, 0, 12)  -- Increased from 140 to 200
     barBg.Position = UDim2.new(0, 140, 0, 24)
     barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     barBg.BorderSizePixel = 0
@@ -545,7 +485,7 @@ do
     Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
     
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.4, 0, 1, 0)
+    fill.Size = UDim2.new(0.4, 0, 1, 0)  -- Updated for 200 default
     fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     fill.BorderSizePixel = 0
     fill.ZIndex = 7
@@ -562,7 +502,7 @@ do
     Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "200"
+    valueLabel.Text = "200"  -- Updated default
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 14
     valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
@@ -573,10 +513,10 @@ do
     valueLabel.ZIndex = 6
     valueLabel.Parent = frame
     
-    -- Hotkey Button
+    -- Hotkey Button (moved next to toggle)
     local hotkeyBtn = Instance.new("TextButton")
     hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
-    hotkeyBtn.Position = UDim2.new(1, -125, 0.5, -13)
+    hotkeyBtn.Position = UDim2.new(1, -125, 0.5, -13)  -- Positioned left of toggle
     hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
     hotkeyBtn.BorderSizePixel = 0
     hotkeyBtn.Font = Enum.Font.GothamBold
@@ -629,6 +569,8 @@ do
     dot.ZIndex = 7
     dot.Parent = switch
     Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    
+    local TweenService = game:GetService("TweenService")
     
     switch.MouseButton1Click:Connect(function()
         State.cframeFlyEnabled = not State.cframeFlyEnabled
@@ -698,250 +640,12 @@ do
     end)
 end
 
--- 2. FREECAM
-do
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 60)
-    frame.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 5
-    frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    
-    -- Label
-    local label = Instance.new("TextLabel")
-    label.Text = "FreeCam"
-    label.Font = Enum.Font.GothamMedium
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(240, 240, 240)
-    label.Size = UDim2.new(0, 120, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.ZIndex = 6
-    label.Parent = frame
-    
-    -- Slider
-    local barBg = Instance.new("Frame")
-    barBg.Size = UDim2.new(0, 200, 0, 12)
-    barBg.Position = UDim2.new(0, 140, 0, 24)
-    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    barBg.BorderSizePixel = 0
-    barBg.ZIndex = 6
-    barBg.Parent = frame
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
-    
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.4, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    fill.BorderSizePixel = 0
-    fill.ZIndex = 7
-    fill.Parent = barBg
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-    
-    local grabber = Instance.new("Frame")
-    grabber.Size = UDim2.new(0, 18, 0, 18)
-    grabber.AnchorPoint = Vector2.new(0.5, 0.5)
-    grabber.Position = UDim2.new(1, 0, 0.5, 0)
-    grabber.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    grabber.ZIndex = 8
-    grabber.Parent = fill
-    Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
-    
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "200"
-    valueLabel.Font = Enum.Font.GothamBold
-    valueLabel.TextSize = 14
-    valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
-    valueLabel.Size = UDim2.new(0, 50, 0, 30)
-    valueLabel.Position = UDim2.new(0, 350, 0, 15)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Left
-    valueLabel.ZIndex = 6
-    valueLabel.Parent = frame
-    
-    -- TP to Cam Button
-    local tpBtn = Instance.new("TextButton")
-    tpBtn.Size = UDim2.new(0, 80, 0, 26)
-    tpBtn.Position = UDim2.new(0, 410, 0.5, -13)
-    tpBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    tpBtn.BorderSizePixel = 0
-    tpBtn.Font = Enum.Font.GothamBold
-    tpBtn.TextSize = 11
-    tpBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-    tpBtn.Text = "TP to Cam"
-    tpBtn.ZIndex = 6
-    tpBtn.Parent = frame
-    Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
-    
-    tpBtn.MouseEnter:Connect(function()
-        tpBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-    end)
-    
-    tpBtn.MouseLeave:Connect(function()
-        tpBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    end)
-    
-    tpBtn.MouseButton1Click:Connect(function()
-        teleportToCam()
-        State.freecamEnabled = false
-        disableFreeCam()
-        if freecamControlRef then
-            freecamControlRef.setToggle(false)
-        end
-    end)
-    
-    -- Hotkey Button
-    local hotkeyBtn = Instance.new("TextButton")
-    hotkeyBtn.Size = UDim2.new(0, 50, 0, 26)
-    hotkeyBtn.Position = UDim2.new(1, -125, 0.5, -13)
-    hotkeyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    hotkeyBtn.BorderSizePixel = 0
-    hotkeyBtn.Font = Enum.Font.GothamBold
-    hotkeyBtn.TextSize = 11
-    hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-    hotkeyBtn.Text = State.freecamHotkey and State.freecamHotkey.Name or "None"
-    hotkeyBtn.ZIndex = 6
-    hotkeyBtn.Parent = frame
-    Instance.new("UICorner", hotkeyBtn).CornerRadius = UDim.new(0, 6)
-    
-    hotkeyBtn.MouseButton1Click:Connect(function()
-        State.capturingHotkey = true
-        hotkeyBtn.Text = "..."
-        hotkeyBtn.TextColor3 = Color3.fromRGB(255, 140, 50)
-    end)
-    
-    local hotkeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
-        if not State.capturingHotkey then return end
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if input.KeyCode == Enum.KeyCode.Escape then
-            State.capturingHotkey = false
-            hotkeyBtn.Text = State.freecamHotkey and State.freecamHotkey.Name or "None"
-            hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-            return
-        end
-        
-        State.freecamHotkey = input.KeyCode
-        hotkeyBtn.Text = input.KeyCode.Name
-        hotkeyBtn.TextColor3 = Color3.fromRGB(138, 43, 226)
-        State.capturingHotkey = false
-    end)
-    table.insert(State.connections, hotkeyConn)
-    
-    -- Toggle Switch
-    local switch = Instance.new("TextButton")
-    switch.Text = ""
-    switch.Size = UDim2.new(0, 50, 0, 26)
-    switch.Position = UDim2.new(1, -65, 0.5, -13)
-    switch.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    switch.AutoButtonColor = false
-    switch.ZIndex = 6
-    switch.Parent = frame
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
-    
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 20, 0, 20)
-    dot.Position = UDim2.new(0, 3, 0.5, -10)
-    dot.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 7
-    dot.Parent = switch
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-    
-    switch.MouseButton1Click:Connect(function()
-        State.freecamEnabled = not State.freecamEnabled
-        if State.freecamEnabled then enableFreeCam() else disableFreeCam() end
-        
-        local newColor = State.freecamEnabled and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-        local newPos = State.freecamEnabled and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-        TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
-        TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
-    end)
-    
-    freecamControlRef = {
-        setToggle = function(on)
-            State.freecamEnabled = on
-            local newColor = on and Color3.fromRGB(138, 43, 226) or Color3.fromRGB(50, 50, 60)
-            local newPos = on and UDim2.new(1, -23, 0.5, -10) or UDim2.new(0, 3, 0.5, -10)
-            TweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = newColor}):Play()
-            TweenService:Create(dot, TweenInfo.new(0.2), {Position = newPos}):Play()
-        end
-    }
-    
-    -- Slider logic
-    local dragging = false
-    local function updateSlider(input)
-        local sizeX = barBg.AbsoluteSize.X
-        local pos = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / sizeX, 0, 1)
-        local value = math.floor(1 + (499 * pos))
-        fill.Size = UDim2.new(pos, 0, 1, 0)
-        valueLabel.Text = tostring(value)
-        State.freecamSpeed = value
-    end
-    
-    barBg.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            updateSlider(input)
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    fill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            updateSlider(input)
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    grabber.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 22, 0, 22)}):Play()
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-            TweenService:Create(grabber, TweenInfo.new(0.15), {Size = UDim2.new(0, 18, 0, 18)}):Play()
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateSlider(input)
-        end
-    end)
-end
-
--- 3. INFINITE JUMP
-Library:CreateToggle(page, "Infinite Jump", false, function(v)
-    State.infJumpEnabled = v
-end)
-
--- 4. FOV
-Library:CreateToggleSlider(page, "FOV", PRESETS.FOV.MIN, PRESETS.FOV.MAX, PRESETS.FOV.DEFAULT, 
-    function(enabled)
-        State.fovEnabled = enabled
-        if enabled then enableFOV() else disableFOV() end
-    end,
-    function(value)
-        State.fovValue = value
-        if State.fovEnabled then
-            local cam = Workspace.CurrentCamera
-            if cam then cam.FieldOfView = value end
-        end
-    end
-)
-
--- 5. GOD MODE
+-- God Mode (toggle only, no slider needed)
 Library:CreateToggle(page, "God Mode", false, function(v)
     State.godModeEnabled = v
     if v then enableGodMode() else disableGodMode() end
 end)
 
-print("✓ Movement Module Loaded (Combined)")
+print("✓ Movement Module Loaded")
 
 return true

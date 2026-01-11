@@ -1,13 +1,18 @@
 --==============================================================================
 --                    OPTIMIZED AUTO BOOTH PROCESSING
 --==============================================================================
--- Reduces lag and works with FreeCam by tracking HRP position
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local ROOT = workspace:WaitForChild("Booths")
+local ROOT = workspace:FindFirstChild("Booths")
+
+if not ROOT then
+    warn("Booths folder not found!")
+    return {start = function() end, stop = function() end}
+end
+
 local TARGET_NAME = "Processing_BoothSystem"
 
 local State = {
@@ -17,7 +22,7 @@ local State = {
     connection = nil
 }
 
--- Get all touch parts (cached for 10 seconds to reduce lag)
+-- Get all touch parts (cached for 10 seconds)
 local function getTouchParts()
     local currentTime = tick()
     
@@ -32,7 +37,7 @@ local function getTouchParts()
     -- Find all Processing_BoothSystem objects
     for _, obj in ipairs(ROOT:GetDescendants()) do
         if obj.Name == TARGET_NAME then
-            -- Find TouchTransmitter parts under this system
+            -- Find TouchTransmitter parts
             for _, descendant in ipairs(obj:GetDescendants()) do
                 if descendant:IsA("TouchTransmitter") then
                     local part = descendant.Parent
@@ -48,10 +53,11 @@ local function getTouchParts()
     State.cachedParts = parts
     State.lastCacheTime = currentTime
     
+    print("✓ Found " .. #parts .. " booth touch parts")
     return parts
 end
 
--- Get current HRP (always tracks body, even in FreeCam)
+-- Get current HRP
 local function getHRP()
     local char = player.Character
     if char then
@@ -60,63 +66,50 @@ local function getHRP()
     return nil
 end
 
--- Start auto booth processing
+-- Start processing
 local function startProcessing()
-    if State.connection then return end
+    if State.running then 
+        print("Already running!")
+        return 
+    end
     
     State.running = true
     
-    -- Use Heartbeat for better performance (runs every frame)
-    local frameCount = 0
-    State.connection = RunService.Heartbeat:Connect(function()
-        frameCount = frameCount + 1
-        
-        -- Only process every 60 frames (~1 second at 60 FPS)
-        if frameCount < 60 then return end
-        frameCount = 0
-        
-        local hrp = getHRP()
-        if not hrp then return end
-        
-        local parts = getTouchParts()
-        
-        -- Fire touch on all parts at once (no wait between)
-        for _, part in ipairs(parts) do
-            if part and part.Parent then
-                pcall(function()
-                    firetouchinterest(hrp, part, 0)
-                    firetouchinterest(hrp, part, 1)
-                end)
+    -- Simple loop - process every second
+    task.spawn(function()
+        while State.running do
+            local hrp = getHRP()
+            if hrp then
+                local parts = getTouchParts()
+                
+                for _, part in ipairs(parts) do
+                    if part and part.Parent then
+                        pcall(function()
+                            firetouchinterest(hrp, part, 0)
+                            firetouchinterest(hrp, part, 1)
+                        end)
+                    end
+                end
             end
+            
+            task.wait(1)
         end
     end)
     
     print("✓ Auto Booth Processing started")
 end
 
--- Stop auto booth processing
+-- Stop processing
 local function stopProcessing()
-    if State.connection then
-        State.connection:Disconnect()
-        State.connection = nil
-    end
-    
     State.running = false
     print("✓ Auto Booth Processing stopped")
 end
 
--- Clear cache when character respawns
+-- Clear cache on respawn
 player.CharacterAdded:Connect(function()
     State.cachedParts = {}
     State.lastCacheTime = 0
 end)
-
--- Expose functions globally
-_G.AutoBoothProcessing = {
-    start = startProcessing,
-    stop = stopProcessing,
-    isRunning = function() return State.running end
-}
 
 return {
     start = startProcessing,

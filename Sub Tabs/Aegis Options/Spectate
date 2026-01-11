@@ -285,9 +285,13 @@ local function startHealthSync(targetPlayer)
             local myHum = myChar:FindFirstChildOfClass("Humanoid")
             
             if targetHum and myHum then
-                -- Sync health
-                if myHum.Health ~= targetHum.Health then
-                    myHum.Health = targetHum.Health
+                -- Sync health (but never go below 1 to prevent death)
+                local targetHealth = targetHum.Health
+                if targetHealth <= 0 then
+                    targetHealth = 1  -- Keep at 1 minimum
+                end
+                if myHum.Health ~= targetHealth then
+                    myHum.Health = targetHealth
                 end
                 
                 -- Sync max health

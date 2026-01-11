@@ -142,13 +142,13 @@ end
 
 -- Get hours played (fixed path)
 local function getHoursPlayed(plr)
-    -- Path: player → stats → MinutesPlayed (NumberValue in seconds)
+    -- Path: player → stats → MinutesPlayed (NumberValue in MINUTES)
     local stats = plr:FindFirstChild("stats")
     if stats then
         local minutesPlayed = stats:FindFirstChild("MinutesPlayed")
         if minutesPlayed and (minutesPlayed:IsA("IntValue") or minutesPlayed:IsA("NumberValue")) then
-            -- Value is in seconds, convert to hours
-            local hours = minutesPlayed.Value / 3600
+            -- Value is in MINUTES, convert to hours
+            local hours = minutesPlayed.Value / 60
             return hours, string.format("%.1fh", hours)
         end
     end

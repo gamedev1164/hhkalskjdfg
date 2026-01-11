@@ -186,10 +186,10 @@ local function highlightDoors()
     for _, door in ipairs(doorParts) do
         local highlight = Instance.new("Highlight")
         highlight.Adornee = door
-        highlight.FillColor = Color3.fromRGB(200, 150, 255)  -- Light purple
-        highlight.OutlineColor = Color3.fromRGB(200, 150, 255)  -- Light purple
-        highlight.FillTransparency = 0.8
-        highlight.OutlineTransparency = 0.8
+        highlight.FillColor = Color3.fromRGB(255, 255, 255)  -- White
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)  -- White
+        highlight.FillTransparency = 1  -- Fully transparent (no fill)
+        highlight.OutlineTransparency = 0  -- Solid outline
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Parent = door
         

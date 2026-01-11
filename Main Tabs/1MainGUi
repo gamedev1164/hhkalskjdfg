@@ -794,7 +794,7 @@ do
         local WasteSubs = WastelanderOptions.CreateSubTabs({"ESP", "Hitbox", "Spectate", "Teleport"})
         
         local Trolling = MakeTab("Trolling", Icons.Troll, 5)
-        local TrollingSubs = Trolling.CreateSubTabs({"Player Trolling", "World Trolling"})
+        local TrollingSubs = Trolling.CreateSubTabs({"Fling", "Auto"})
         
         local WorldTeleports = MakeTab("World Teleports", Icons.Pin, 6)
         local WorldTpSubs = WorldTeleports.CreateSubTabs({"AIA", "Border", "Labs", "Reactor", "Wasteland"})
@@ -821,8 +821,8 @@ do
             WastelanderTeleport = WasteSubs["Teleport"],
             
             -- Trolling
-            PlayerTrolling = TrollingSubs["Player Trolling"],
-            WorldTrolling = TrollingSubs["World Trolling"],
+            TrollingFling = TrollingSubs["Fling"],
+            TrollingAuto = TrollingSubs["Auto"],
             
             -- World Teleports
             TeleportAIA = WorldTpSubs["AIA"],
@@ -965,6 +965,26 @@ do
                 warn("Failed to load Wastelander Teleport module:", err11)
             else
                 print("✓ Wastelander Teleport module loaded")
+            end
+            
+            -- Load Trolling Fling Module
+            local success12, err12 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Trolling/Fling"))()
+            end)
+            if not success12 then
+                warn("Failed to load Trolling Fling module:", err12)
+            else
+                print("✓ Trolling Fling module loaded")
+            end
+            
+            -- Load Trolling Auto Module
+            local success13, err13 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Trolling/Auto"))()
+            end)
+            if not success13 then
+                warn("Failed to load Trolling Auto module:", err13)
+            else
+                print("✓ Trolling Auto module loaded")
             end
         end)
         

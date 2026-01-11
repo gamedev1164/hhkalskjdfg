@@ -305,89 +305,59 @@ local function updateTrainingButton()
     -- Always visible
     State.trainingButton.Visible = true
     
-    local shouldFlash = hasTrainingPlayersInServer()
+    -- Stop any existing flash connection
+    if State.trainingFlashConnection then
+        State.trainingFlashConnection:Disconnect()
+        State.trainingFlashConnection = nil
+    end
     
-    if shouldFlash then
-        -- Start flashing text when targets exist
-        if not State.trainingFlashConnection then
-            State.trainingFlashConnection = RunService.Heartbeat:Connect(function()
-                local time = tick()
-                local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
-                
-                -- Flash between yellow and white
-                local color = Color3.fromRGB(
-                    255,                        -- Keep full red
-                    255,                        -- Keep full green (makes yellow)
-                    255 - (255 - 100) * alpha   -- 255 to 100 (reduce blue)
-                )
-                
-                -- Find and update the text label
-                for _, child in ipairs(State.trainingButton:GetChildren()) do
-                    if child:IsA("TextLabel") then
-                        child.TextColor3 = color
-                    end
-                end
-            end)
+    -- Count training players
+    local count = 0
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and isTrainingPlayer(plr) then
+            count = count + 1
         end
-    else
-        -- Stop flashing when no targets
-        if State.trainingFlashConnection then
-            State.trainingFlashConnection:Disconnect()
-            State.trainingFlashConnection = nil
-            
-            -- Reset text color to white
-            for _, child in ipairs(State.trainingButton:GetChildren()) do
-                if child:IsA("TextLabel") then
-                    child.TextColor3 = Color3.fromRGB(240, 240, 240)
-                end
-            end
+    end
+    
+    -- Update text and color
+    for _, child in ipairs(State.trainingButton:GetChildren()) do
+        if child:IsA("TextLabel") then
+            -- Always yellow
+            child.TextColor3 = Color3.fromRGB(255, 255, 50)
+            -- Update text with player count
+            child.Text = string.format("├─ Training/Lessons (%d players)", count)
         end
     end
 end
 
--- Update Admin button flashing (always visible, flash only when targets exist)
+-- Update Admin button color (always visible, always blue with player count)
 local function updateAdminButton()
     if not State.adminButton then return end
     
     -- Always visible
     State.adminButton.Visible = true
     
-    local shouldFlash = hasAdminPlayersInServer()
+    -- Stop any existing flash connection
+    if State.adminFlashConnection then
+        State.adminFlashConnection:Disconnect()
+        State.adminFlashConnection = nil
+    end
     
-    if shouldFlash then
-        -- Start flashing text when targets exist
-        if not State.adminFlashConnection then
-            State.adminFlashConnection = RunService.Heartbeat:Connect(function()
-                local time = tick()
-                local alpha = (math.sin(time * 2) + 1) / 2  -- Slow sine wave 0-1
-                
-                -- Flash between blue and white
-                local color = Color3.fromRGB(
-                    255 - (255 - 100) * alpha,  -- 255 to 100
-                    255 - (255 - 180) * alpha,  -- 255 to 180
-                    255                         -- Keep full blue
-                )
-                
-                -- Find and update the text label
-                for _, child in ipairs(State.adminButton:GetChildren()) do
-                    if child:IsA("TextLabel") then
-                        child.TextColor3 = color
-                    end
-                end
-            end)
+    -- Count admin players
+    local count = 0
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and isAdminPlayer(plr) then
+            count = count + 1
         end
-    else
-        -- Stop flashing when no targets
-        if State.adminFlashConnection then
-            State.adminFlashConnection:Disconnect()
-            State.adminFlashConnection = nil
-            
-            -- Reset text color to white
-            for _, child in ipairs(State.adminButton:GetChildren()) do
-                if child:IsA("TextLabel") then
-                    child.TextColor3 = Color3.fromRGB(240, 240, 240)
-                end
-            end
+    end
+    
+    -- Update text and color
+    for _, child in ipairs(State.adminButton:GetChildren()) do
+        if child:IsA("TextLabel") then
+            -- Always blue
+            child.TextColor3 = Color3.fromRGB(100, 180, 255)
+            -- Update text with player count
+            child.Text = string.format("└─ Admins/Devs (%d players)", count)
         end
     end
 end

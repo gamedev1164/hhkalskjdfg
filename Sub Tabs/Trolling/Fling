@@ -73,9 +73,9 @@ end
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 2
-local SPIN_SPEED = 7000
-local PUSH_SPEED = 800
+local SWITCH_INTERVAL = 1
+local SPIN_SPEED = 6000
+local PUSH_SPEED = 600
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 
 -- State

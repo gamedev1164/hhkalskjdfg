@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - WASTELANDER SPECTATE MODULE
+--                    AEGIS HUB - AEGIS SPECTATE MODULE
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -646,6 +646,6 @@ end)
 print("✓ Aegis Spectate Module Loaded")
 
 -- Expose stopSpectate globally for teleport module
-_G.AegisHub.stopSpectate = stopSpectate
+_G.AegisHub.stopAegisSpectate = stopSpectate
 
 return true

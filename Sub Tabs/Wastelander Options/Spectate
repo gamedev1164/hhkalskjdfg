@@ -143,13 +143,13 @@ end
 
 -- Get hours played
 local function getHoursPlayed(plr)
-    -- Path: player → stats → MinutesPlayed (NumberValue in seconds)
+    -- Path: player → stats → MinutesPlayed (NumberValue in MINUTES)
     local stats = plr:FindFirstChild("stats")
     if stats then
         local minutesPlayed = stats:FindFirstChild("MinutesPlayed")
         if minutesPlayed and (minutesPlayed:IsA("IntValue") or minutesPlayed:IsA("NumberValue")) then
-            -- Value is in seconds, convert to hours
-            local hours = minutesPlayed.Value / 3600
+            -- Value is in MINUTES, convert to hours
+            local hours = minutesPlayed.Value / 60
             return hours, string.format("%.1fh", hours)
         end
     end
@@ -323,7 +323,7 @@ local function stopHealthSync()
 end
 
 -- Stop spectating
-function stopSpectate()
+local function stopSpectate()
     if not State.spectating then return end
     
     State.spectating = false
@@ -582,10 +582,12 @@ local function createPlayerList()
             if State.spectating and State.targetPlayer == plr then
                 -- Stop spectating if clicking same player
                 stopSpectate()
+                task.wait(0.1)  -- Small delay to let click finish
                 createPlayerList()  -- Refresh to remove highlight
             else
                 -- Spectate this player
                 spectatePlayer(plr)
+                task.wait(0.1)  -- Small delay to let spectate start
                 createPlayerList()  -- Refresh to show highlight
             end
         end)

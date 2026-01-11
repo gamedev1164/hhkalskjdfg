@@ -72,14 +72,16 @@ for rank, ids in pairs(ADMIN_RANKS) do
 end
 
 -- Fling Config
-local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 1  -- Faster target switching (was 1)
-local SPIN_SPEED = 6000  -- Faster spinning (was 7000)
-local PUSH_SPEED_MIN = 400  -- Higher minimum (was 400)
-local PUSH_SPEED_MAX = 4000  -- Higher maximum (was 4000)
-local VELOCITY_CHANGE_INTERVAL = 0.01  -- 2x faster changes (was 0.02)
-local VELOCITY_PAUSE_INTERVAL = 0.5  -- Pause every 1 second
+local SWITCH_INTERVAL = 2  -- Switch target every 2 seconds
+local SPIN_SPEED = 7000  -- Spin speed in degrees/sec
+local PUSH_SPEED_MIN = 400  -- Minimum velocity
+local PUSH_SPEED_MAX = 6000  -- Maximum velocity
+local VELOCITY_CHANGE_INTERVAL = 0.01  -- Change velocity 100x per second
+local VELOCITY_PAUSE_INTERVAL = 1.0  -- Pause every 1 second
 local VELOCITY_PAUSE_DURATION = 0.2  -- Pause for 0.2 seconds
+local SPIKE_DELAY = 0.5  -- Spike after 0.5s of new target
+local SPIKE_DURATION = 0.3  -- Spike lasts 0.3s
+local SPIKE_MULTIPLIER = 5  -- 5x normal velocity
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local MOVING_OFFSET = 3  -- Studs in front when target is moving
 
@@ -94,11 +96,13 @@ local State = {
     
     switchElapsed = 0,
     velocityElapsed = 0,
-    pauseElapsed = 0,  -- Track pause timing
-    isPaused = false,  -- Is velocity currently paused
+    pauseElapsed = 0,
+    targetSwitchElapsed = 0,  -- Time since target switch
+    isPaused = false,
+    isSpiking = false,  -- Is velocity currently spiked
     currentTargetHRP = nil,
-    currentVelocity = 700,
-    targetVelocity = 700,
+    currentVelocity = 3000,
+    targetVelocity = 3000,
     ax = 0,
     ay = 0,
     az = 0,
@@ -164,16 +168,6 @@ local function hasAdminPlayersInServer()
     return false
 end
 
--- Check if local player is on Training team
-local function isLocalPlayerTraining()
-    return isTrainingPlayer(player)
-end
-
--- Check if local player is an admin
-local function isLocalPlayerAdmin()
-    return isAdminPlayer(player)
-end
-
 -- Get random target based on active mode
 local function getRandomTargetHRP()
     local candidates = {}
@@ -220,7 +214,9 @@ local function startFling()
     State.switchElapsed = 0
     State.velocityElapsed = 0
     State.pauseElapsed = 0
+    State.targetSwitchElapsed = 0
     State.isPaused = false
+    State.isSpiking = false
     State.currentTargetHRP = nil
     State.currentVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
     State.targetVelocity = math.random(PUSH_SPEED_MIN, PUSH_SPEED_MAX)
@@ -232,19 +228,29 @@ local function startFling()
         State.switchElapsed = State.switchElapsed + dt
         State.velocityElapsed = State.velocityElapsed + dt
         State.pauseElapsed = State.pauseElapsed + dt
+        State.targetSwitchElapsed = State.targetSwitchElapsed + dt
+        
+        -- Spike system: 5x velocity spike 0.5s after target switch for 0.3s
+        if not State.isSpiking then
+            -- Check if it's time to spike (0.5s after switch)
+            if State.targetSwitchElapsed >= SPIKE_DELAY and State.targetSwitchElapsed < SPIKE_DELAY + SPIKE_DURATION then
+                State.isSpiking = true
+            end
+        else
+            -- Check if spike duration is over
+            if State.targetSwitchElapsed >= SPIKE_DELAY + SPIKE_DURATION then
+                State.isSpiking = false
+            end
+        end
         
         -- Velocity pause system: drop to 0 every 1 second for 0.2 seconds
         if State.isPaused then
-            -- Currently paused
             if State.pauseElapsed >= VELOCITY_PAUSE_DURATION then
-                -- End pause, resume normal velocity
                 State.isPaused = false
                 State.pauseElapsed = 0
             end
         else
-            -- Not paused, check if it's time to pause
             if State.pauseElapsed >= VELOCITY_PAUSE_INTERVAL then
-                -- Start pause
                 State.isPaused = true
                 State.pauseElapsed = 0
             end
@@ -270,6 +276,8 @@ local function startFling()
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
             State.currentTargetHRP = getRandomTargetHRP()
             State.switchElapsed = 0
+            State.targetSwitchElapsed = 0  -- Reset spike timer
+            State.isSpiking = false  -- Reset spike state
         end
         
         local myChar = player.Character
@@ -300,12 +308,18 @@ local function startFling()
             offset = Vector3.new(0, 0, -MOVING_OFFSET)
         end
         
-        -- Teleport inside/in-front of target + spin EVERY FRAME (no delay)
+        -- Teleport inside/in-front of target + spin EVERY FRAME
         local baseCF = State.currentTargetHRP.CFrame * CFrame.new(offset)
         myHRP.CFrame = baseCF * spinCF
         
+        -- Calculate final velocity (apply spike multiplier if active)
+        local finalVelocity = State.currentVelocity
+        if State.isSpiking then
+            finalVelocity = State.currentVelocity * SPIKE_MULTIPLIER
+        end
+        
         -- Speed/push with dynamic velocity
-        myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * State.currentVelocity
+        myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * finalVelocity
     end)
     
     print("✓ Fling started")
@@ -321,11 +335,10 @@ local function stopFling()
     -- Keep current velocity to prevent snap-back
     local myHRP = getHRP(player.Character)
     if myHRP then
-        -- Preserve the current velocity when stopping
         local currentVelocity = myHRP.AssemblyLinearVelocity
         task.wait(0.05)
         if myHRP then
-            myHRP.AssemblyLinearVelocity = currentVelocity * 0.5  -- Reduce by half for smooth stop
+            myHRP.AssemblyLinearVelocity = currentVelocity * 0.5
         end
     end
     
@@ -333,7 +346,7 @@ local function stopFling()
     print("✓ Fling stopped")
 end
 
--- Update fling state (ensures only one mode is active and master toggle is on)
+-- Update fling state
 local function updateFlingState(mode)
     -- Turn off all other modes
     if mode ~= "all" then State.flingAll = false end
@@ -352,20 +365,17 @@ local function updateFlingState(mode)
     end
 end
 
--- Update Training button flashing (always visible, flash only when targets exist)
+-- Update Training button
 local function updateTrainingButton()
     if not State.trainingButton then return end
     
-    -- Always visible
     State.trainingButton.Visible = true
     
-    -- Stop any existing flash connection
     if State.trainingFlashConnection then
         State.trainingFlashConnection:Disconnect()
         State.trainingFlashConnection = nil
     end
     
-    -- Count training players
     local count = 0
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and isTrainingPlayer(plr) then
@@ -373,31 +383,25 @@ local function updateTrainingButton()
         end
     end
     
-    -- Update text and color
     for _, child in ipairs(State.trainingButton:GetChildren()) do
         if child:IsA("TextLabel") then
-            -- Always yellow
             child.TextColor3 = Color3.fromRGB(255, 255, 50)
-            -- Update text with player count
             child.Text = string.format("├─ Training/Lessons (%d players)", count)
         end
     end
 end
 
--- Update Admin button color (always visible, always blue with player count)
+-- Update Admin button
 local function updateAdminButton()
     if not State.adminButton then return end
     
-    -- Always visible
     State.adminButton.Visible = true
     
-    -- Stop any existing flash connection
     if State.adminFlashConnection then
         State.adminFlashConnection:Disconnect()
         State.adminFlashConnection = nil
     end
     
-    -- Count admin players
     local count = 0
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and isAdminPlayer(plr) then
@@ -405,12 +409,9 @@ local function updateAdminButton()
         end
     end
     
-    -- Update text and color
     for _, child in ipairs(State.adminButton:GetChildren()) do
         if child:IsA("TextLabel") then
-            -- Always blue
             child.TextColor3 = Color3.fromRGB(100, 180, 255)
-            -- Update text with player count
             child.Text = string.format("└─ Admins/Devs (%d players)", count)
         end
     end
@@ -420,11 +421,10 @@ end
 --                          CREATE UI
 --==============================================================================
 
--- MASTER TOGGLE (Bold, controls entire fling system)
+-- MASTER TOGGLE
 do
     local startToggle = Library:CreateToggle(page, "Start Fling", false, function(v)
         State.flingEnabled = v
-        -- Re-evaluate current selection
         if State.flingAegis then updateFlingState("aegis")
         elseif State.flingWastelanders then updateFlingState("wastelanders")
         elseif State.flingTraining then updateFlingState("training")
@@ -432,7 +432,6 @@ do
         else stopFling() end
     end)
     
-    -- Make text bold
     for _, child in ipairs(startToggle:GetChildren()) do
         if child:IsA("TextLabel") then
             child.Font = Enum.Font.GothamBlack
@@ -440,8 +439,6 @@ do
         end
     end
 end
-
--- TEAM SELECTION OPTIONS (All default OFF, smaller, always visible)
 
 -- Fling Aegis
 do
@@ -461,7 +458,7 @@ do
     toggle.Size = UDim2.new(1, 0, 0, 38)
 end
 
--- Fling Training (always visible + yellow flash when targets exist)
+-- Fling Training
 do
     local toggle = Library:CreateToggle(page, "├─ Training/Lessons", false, function(v)
         State.flingTraining = v
@@ -469,7 +466,6 @@ do
     end)
     toggle.Size = UDim2.new(1, 0, 0, 38)
     
-    -- Make text smaller
     for _, child in ipairs(toggle:GetChildren()) do
         if child:IsA("TextLabel") then
             child.TextSize = math.floor(child.TextSize / 1.5)
@@ -479,7 +475,7 @@ do
     State.trainingButton = toggle
 end
 
--- Fling Admin (always visible + blue flash when targets exist)
+-- Fling Admin
 do
     local toggle = Library:CreateToggle(page, "└─ Admins/Devs", false, function(v)
         State.flingAdmin = v
@@ -487,7 +483,6 @@ do
     end)
     toggle.Size = UDim2.new(1, 0, 0, 38)
     
-    -- Make text smaller
     for _, child in ipairs(toggle:GetChildren()) do
         if child:IsA("TextLabel") then
             child.TextSize = math.floor(child.TextSize / 1.5)
@@ -498,13 +493,12 @@ do
 end
 
 -- Start update loops
-task.wait(0.5)  -- Small delay for buttons to be fully created
+task.wait(0.5)
 updateTrainingButton()
 updateAdminButton()
 
--- Monitor player joins/leaves to update button flashing
 Players.PlayerAdded:Connect(function()
-    task.wait(1)  -- Wait for character to load
+    task.wait(1)
     updateTrainingButton()
     updateAdminButton()
 end)
@@ -514,7 +508,6 @@ Players.PlayerRemoving:Connect(function()
     updateAdminButton()
 end)
 
--- Check every 5 seconds in case team changes aren't caught
 task.spawn(function()
     while true do
         task.wait(5)

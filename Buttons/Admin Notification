@@ -21,6 +21,7 @@ local RANK_ORDER = {
     "Administered Specialist",
     "Administered Field Agent",
     "Specialist",
+    "Developer",  -- Added
 }
 
 local RANKS = {
@@ -36,6 +37,7 @@ local RANKS = {
     ["Unit Commander"] = {82964247, 355588359, 923213464},
     ["Table Of Military Leadership"] = {1419426348, 631228062, 23030407, 100474014, 671292893, 923214624, 112026803},
     ["Chairman"] = {17319802},
+    ["Developer"] = {},  -- Will be filled by team check
 }
 
 local RANK_ABBREV = {
@@ -49,6 +51,7 @@ local RANK_ABBREV = {
     ["Unit Commander"] = "UCMD",
     ["Table Of Military Leadership"] = "TML",
     ["Chairman"] = "CHAIR",
+    ["Developer"] = "DEV",
 }
 
 local RANK_COLORS = {
@@ -62,6 +65,7 @@ local RANK_COLORS = {
     Color3.fromRGB(50, 200, 255),    -- Administered Specialist
     Color3.fromRGB(80, 140, 255),    -- Administered Field Agent
     Color3.fromRGB(120, 120, 255),   -- Specialist
+    Color3.fromRGB(138, 43, 226),    -- Developer (Purple)
 }
 
 -- Theme (matches Aegis Hub)
@@ -86,6 +90,23 @@ end
 
 for index, rank in ipairs(RANK_ORDER) do
     rankToIndex[rank] = index
+end
+
+-- Check if player is on Developer/DEV team
+local function getPlayerRank(plr)
+    -- Check rank by UserID first
+    local rank = userIdToRank[plr.UserId]
+    if rank then return rank end
+    
+    -- Check if on Developer or DEV team
+    if plr.Team then
+        local teamName = plr.Team.Name
+        if teamName == "Developer" or teamName == "DEV" then
+            return "Developer"
+        end
+    end
+    
+    return nil
 end
 
 -- State
@@ -198,12 +219,12 @@ btnStroke.Transparency = 0.7
 btnStroke.Thickness = 1.5
 btnStroke.Parent = toggleBtn
 
--- Arrow Icon (← when expanded, → when minimized)
+-- Arrow Icon (→ when expanded, ← when minimized)
 local arrow = Instance.new("TextLabel")
 arrow.Size = UDim2.new(1, 0, 1, 0)
 arrow.BackgroundTransparency = 1
 arrow.Font = Enum.Font.GothamBold
-arrow.Text = "←"
+arrow.Text = "→"  -- Right arrow when expanded (minimize = push right)
 arrow.TextColor3 = Theme.Accent
 arrow.TextSize = 18
 arrow.Parent = toggleBtn
@@ -351,7 +372,7 @@ local function updateAdminList()
     -- Collect admins
     local admins = {}
     for _, plr in ipairs(Players:GetPlayers()) do
-        local rank = userIdToRank[plr.UserId]
+        local rank = getPlayerRank(plr)  -- Use new function that checks teams
         if rank then
             table.insert(admins, {
                 player = plr,
@@ -402,38 +423,40 @@ local function toggleMinimize()
     State.minimized = not State.minimized
     
     if State.minimized then
-        -- Minimize
-        arrow.Text = "→"
+        -- Minimize - shrink to 50x50 with only arrow
+        arrow.Text = "←"  -- Left arrow when minimized (expand = pull left)
+        
+        -- Hide text elements immediately
+        headerFrame.Visible = false
+        divider.Visible = false
+        listFrame.Visible = false
+        
+        -- Shrink frame
         TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(0, 50, 0, 50),
-            Position = UDim2.new(1, -15, 0, 60)
+            Size = UDim2.new(0, 50, 0, 50)
         }):Play()
         
-        -- Hide elements
-        TweenService:Create(headerFrame, TweenInfo.new(0.2), {Position = UDim2.new(0, -200, 0, 12)}):Play()
-        TweenService:Create(divider, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(listFrame, TweenInfo.new(0.2), {Position = UDim2.new(0, -200, 0, 55)}):Play()
-        
-        -- Move button
+        -- Center the button
         TweenService:Create(toggleBtn, TweenInfo.new(0.3), {
             Position = UDim2.new(0.5, -15, 0.5, -13)
         }):Play()
     else
-        -- Expand
-        arrow.Text = "←"
+        -- Expand - restore full size
+        arrow.Text = "→"  -- Right arrow when expanded (minimize = push right)
         
-        -- Move button back
+        -- Move button back to top-right
         TweenService:Create(toggleBtn, TweenInfo.new(0.3), {
             Position = UDim2.new(1, -12, 0, 12)
         }):Play()
         
-        -- Show elements
+        -- Wait for button to move, then show content
         task.wait(0.15)
-        TweenService:Create(headerFrame, TweenInfo.new(0.2), {Position = UDim2.new(0, 15, 0, 12)}):Play()
-        TweenService:Create(divider, TweenInfo.new(0.2), {BackgroundTransparency = 0.5}):Play()
-        TweenService:Create(listFrame, TweenInfo.new(0.2), {Position = UDim2.new(0, 15, 0, 55)}):Play()
         
-        -- Restore size
+        headerFrame.Visible = true
+        divider.Visible = true
+        listFrame.Visible = true
+        
+        -- Restore size based on admin count
         updateAdminList()
     end
 end

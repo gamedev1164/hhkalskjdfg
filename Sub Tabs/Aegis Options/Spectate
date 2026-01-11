@@ -321,7 +321,7 @@ local function stopHealthSync()
 end
 
 -- Stop spectating
-function stopSpectate()
+local function stopSpectate()
     if not State.spectating then return end
     
     State.spectating = false
@@ -580,10 +580,12 @@ local function createPlayerList()
             if State.spectating and State.targetPlayer == plr then
                 -- Stop spectating if clicking same player
                 stopSpectate()
+                task.wait(0.1)  -- Small delay to let click finish
                 createPlayerList()  -- Refresh to remove highlight
             else
                 -- Spectate this player
                 spectatePlayer(plr)
+                task.wait(0.1)  -- Small delay to let spectate start
                 createPlayerList()  -- Refresh to show highlight
             end
         end)

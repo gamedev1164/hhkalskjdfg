@@ -74,11 +74,11 @@ end
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 1  -- Faster target switching (was 1)
-local SPIN_SPEED = 7000  -- Faster spinning (was 7000)
+local SPIN_SPEED = 6000  -- Faster spinning (was 7000)
 local PUSH_SPEED_MIN = 400  -- Higher minimum (was 400)
 local PUSH_SPEED_MAX = 4000  -- Higher maximum (was 4000)
 local VELOCITY_CHANGE_INTERVAL = 0.01  -- 2x faster changes (was 0.02)
-local VELOCITY_PAUSE_INTERVAL = 1.0  -- Pause every 1 second
+local VELOCITY_PAUSE_INTERVAL = 0.5  -- Pause every 1 second
 local VELOCITY_PAUSE_DURATION = 0.2  -- Pause for 0.2 seconds
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local MOVING_OFFSET = 3  -- Studs in front when target is moving

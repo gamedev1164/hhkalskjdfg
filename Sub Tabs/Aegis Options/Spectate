@@ -140,9 +140,6 @@ local function getRankDisplay(rank)
     return rank or "No Rank"
 end
 -- Get rank display (full name)
-local function getRankDisplay(rank)
-    return rank or "No Rank"
-end
 end
 
 -- Get hours played

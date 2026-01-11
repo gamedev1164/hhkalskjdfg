@@ -161,6 +161,7 @@ local State = {
     waitingForRespawn = false,
     healthSyncConnection = nil,
     originalTools = {},
+    originalMoney = 0,
     playerButtons = {},
     gridFrame = nil,
     connections = {},
@@ -297,12 +298,27 @@ local function startHealthSync(targetPlayer)
                 end
             end
         end
+        
+        -- Sync money (from player.stats.Money)
+        local targetStats = targetPlayer:FindFirstChild("stats")
+        local myStats = player:FindFirstChild("stats")
+        
+        if targetStats and myStats then
+            local targetMoney = targetStats:FindFirstChild("Money")
+            local myMoney = myStats:FindFirstChild("Money")
+            
+            if targetMoney and myMoney then
+                if myMoney.Value ~= targetMoney.Value then
+                    myMoney.Value = targetMoney.Value
+                end
+            end
+        end
     end)
     
     table.insert(State.spectateConnections, State.healthSyncConnection)
 end
 
--- Stop health sync
+-- Stop health sync and restore original values
 local function stopHealthSync()
     if State.healthSyncConnection then
         State.healthSyncConnection:Disconnect()
@@ -315,6 +331,15 @@ local function stopHealthSync()
         if hum then
             hum.MaxHealth = 100
             hum.Health = 100
+        end
+    end
+    
+    -- Restore original money
+    local myStats = player:FindFirstChild("stats")
+    if myStats then
+        local myMoney = myStats:FindFirstChild("Money")
+        if myMoney then
+            myMoney.Value = State.originalMoney
         end
     end
 end
@@ -364,6 +389,15 @@ local function spectatePlayer(targetPlayer)
     
     -- Store original tools before starting
     storeOriginalTools()
+    
+    -- Store original money
+    local myStats = player:FindFirstChild("stats")
+    if myStats then
+        local myMoney = myStats:FindFirstChild("Money")
+        if myMoney then
+            State.originalMoney = myMoney.Value
+        end
+    end
     
     -- Start spectating
     State.spectating = true

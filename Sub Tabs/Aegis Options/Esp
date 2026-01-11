@@ -439,7 +439,7 @@ do
     Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
     
     local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(0.75, 0, 1, 0)  -- 0.7 = index 7, which is 6/8 = 0.75
+    fill.Size = UDim2.new(0.125, 0, 1, 0)  -- 0.2 = index 2, which is 1/8 = 0.125
     fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     fill.BorderSizePixel = 0
     fill.ZIndex = 7
@@ -456,7 +456,7 @@ do
     Instance.new("UICorner", grabber).CornerRadius = UDim.new(1, 0)
     
     local valueLabel = Instance.new("TextLabel")
-    valueLabel.Text = "0.7"
+    valueLabel.Text = "0.2"
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 14
     valueLabel.TextColor3 = Color3.fromRGB(138, 43, 226)

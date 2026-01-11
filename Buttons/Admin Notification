@@ -60,17 +60,17 @@ local RANK_ABBREV = {
 }
 
 local RANK_COLORS = {
-    Color3.fromRGB(255, 50, 50),     -- Chairman (Red)
-    Color3.fromRGB(138, 43, 226),    -- Developer (Purple)
-    Color3.fromRGB(255, 85, 0),      -- TML
-    Color3.fromRGB(255, 140, 0),     -- Unit Commander
-    Color3.fromRGB(255, 200, 0),     -- Unit Captain
-    Color3.fromRGB(255, 255, 0),     -- Veteran Officer
-    Color3.fromRGB(150, 255, 50),    -- Warrant Officer
-    Color3.fromRGB(50, 255, 120),    -- Officer
-    Color3.fromRGB(50, 200, 255),    -- Administered Specialist
-    Color3.fromRGB(80, 140, 255),    -- Administered Field Agent
-    Color3.fromRGB(120, 120, 255),   -- Specialist
+    Color3.fromRGB(255, 50, 50),     -- Chairman (Red) - Most serious
+    Color3.fromRGB(100, 200, 255),   -- Developer (Light Blue)
+    Color3.fromRGB(255, 100, 0),     -- TML (Dark Orange)
+    Color3.fromRGB(255, 150, 0),     -- Unit Commander (Orange)
+    Color3.fromRGB(255, 200, 0),     -- Unit Captain (Light Orange)
+    Color3.fromRGB(255, 255, 0),     -- Veteran Officer (Yellow)
+    Color3.fromRGB(200, 255, 100),   -- Warrant Officer (Yellow-Green)
+    Color3.fromRGB(150, 255, 150),   -- Officer (Light Green)
+    Color3.fromRGB(150, 200, 255),   -- Administered Specialist (Sky Blue)
+    Color3.fromRGB(180, 180, 255),   -- Administered Field Agent (Light Purple)
+    Color3.fromRGB(200, 200, 200),   -- Specialist (Gray) - Least serious
 }
 
 -- Theme (matches Aegis Hub)

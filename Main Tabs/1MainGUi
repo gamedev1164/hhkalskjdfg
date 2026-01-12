@@ -215,6 +215,47 @@ do
                 hrp.CFrame = CFrame.new(5, 10, 140)
                 print("✓ Teleport waypoint 1: Loading world...")
                 
+                -- START LOADING MODULES DURING WAIT TIME
+                task.spawn(function()
+                    task.wait(0.5) -- Small delay to ensure _G.AegisHub is ready
+                    
+                    if _G.AegisHub and not _G.AegisHub.ModulesLoaded then
+                        _G.AegisHub.ModulesLoaded = true
+                        
+                        -- Load Admin Tracker
+                        pcall(function()
+                            loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Admin%20Notification"))()
+                        end)
+                        print("✓ Admin Tracker loaded")
+                        
+                        -- Load all other modules in background
+                        local moduleUrls = {
+                            "Sub%20Tabs/Player%20Mods/Movement",
+                            "Sub%20Tabs/Player%20Mods/Camera",
+                            "Sub%20Tabs/World%20Mods/Visuals",
+                            "Sub%20Tabs/Aegis%20Options/ESP",
+                            "Sub%20Tabs/Aegis%20Options/Hitbox",
+                            "Sub%20Tabs/Aegis%20Options/Spectate",
+                            "Sub%20Tabs/Aegis%20Options/Teleport",
+                            "Sub%20Tabs/Wastelander%20Options/ESP",
+                            "Sub%20Tabs/Wastelander%20Options/Hitbox",
+                            "Sub%20Tabs/Wastelander%20Options/Spectate",
+                            "Sub%20Tabs/Wastelander%20Options/Teleport",
+                            "Sub%20Tabs/Trolling/Fling",
+                            "Sub%20Tabs/Trolling/Auto",
+                            "Sub%20Tabs/Auto%20Collection/Crates"
+                        }
+                        
+                        for _, url in ipairs(moduleUrls) do
+                            pcall(function()
+                                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/" .. url))()
+                            end)
+                        end
+                        
+                        print("✓ All modules loaded during loading screen")
+                    end
+                end)
+                
                 -- Wait for world to load around player
                 task.wait(3)
                 
@@ -844,165 +885,6 @@ do
             Library = Library
         }
 
-        -- LOAD MODULES (now that _G.AegisHub.Library exists)
-        task.spawn(function()
-            -- Prevent double-loading
-            if _G.AegisHub.ModulesLoaded then
-                warn("Modules already loaded, skipping...")
-                return
-            end
-            _G.AegisHub.ModulesLoaded = true
-            
-            -- Load Admin Tracker (independent module)
-            local successTracker, errTracker = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Admin%20Notification"))()
-            end)
-            if not successTracker then
-                warn("Failed to load Admin Tracker:", errTracker)
-            else
-                print("✓ Admin Tracker loaded")
-            end
-            
-            -- Load Movement Module
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Movment"))()
-            end)
-            if not success then
-                warn("Failed to load Movement module:", err)
-            else
-                print("✓ Movement module loaded")
-            end
-            
-            -- Load Camera Module
-            local success2, err2 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Player%20Mods/Camera"))()
-            end)
-            if not success2 then
-                warn("Failed to load Camera module:", err2)
-            else
-                print("✓ Camera module loaded")
-            end
-            
-            -- Load Visuals Module
-            local success3, err3 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/World%20Mods/Visuals"))()
-            end)
-            if not success3 then
-                warn("Failed to load Visuals module:", err3)
-            else
-                print("✓ Visuals module loaded")
-            end
-            
-            -- Load Aegis ESP Module
-            local success4, err4 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Esp"))()
-            end)
-            if not success4 then
-                warn("Failed to load Aegis ESP module:", err4)
-            else
-                print("✓ Aegis ESP module loaded")
-            end
-            
-            -- Load Aegis Hitbox Module
-            local success5, err5 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Hitbox"))()
-            end)
-            if not success5 then
-                warn("Failed to load Aegis Hitbox module:", err5)
-            else
-                print("✓ Aegis Hitbox module loaded")
-            end
-            
-            -- Load Aegis Spectate Module
-            local success6, err6 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Spectate"))()
-            end)
-            if not success6 then
-                warn("Failed to load Aegis Spectate module:", err6)
-            else
-                print("✓ Aegis Spectate module loaded")
-            end
-            
-            -- Load Aegis Teleport Module
-            local success7, err7 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Aegis%20Options/Teleport"))()
-            end)
-            if not success7 then
-                warn("Failed to load Aegis Teleport module:", err7)
-            else
-                print("✓ Aegis Teleport module loaded")
-            end
-            
-            -- Load Wastelander ESP Module
-            local success8, err8 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Esp"))()
-            end)
-            if not success8 then
-                warn("Failed to load Wastelander ESP module:", err8)
-            else
-                print("✓ Wastelander ESP module loaded")
-            end
-            
-            -- Load Wastelander Hitbox Module
-            local success9, err9 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Hitbox"))()
-            end)
-            if not success9 then
-                warn("Failed to load Wastelander Hitbox module:", err9)
-            else
-                print("✓ Wastelander Hitbox module loaded")
-            end
-            
-            -- Load Wastelander Spectate Module
-            local success10, err10 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Spectate"))()
-            end)
-            if not success10 then
-                warn("Failed to load Wastelander Spectate module:", err10)
-            else
-                print("✓ Wastelander Spectate module loaded")
-            end
-            
-            -- Load Wastelander Teleport Module
-            local success11, err11 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Wastelander%20Options/Teleport"))()
-            end)
-            if not success11 then
-                warn("Failed to load Wastelander Teleport module:", err11)
-            else
-                print("✓ Wastelander Teleport module loaded")
-            end
-            
-            -- Load Trolling Fling Module
-            local success12, err12 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Trolling/Fling"))()
-            end)
-            if not success12 then
-                warn("Failed to load Trolling Fling module:", err12)
-            else
-                print("✓ Trolling Fling module loaded")
-            end
-            
-            -- Load Trolling Auto Module
-            local success13, err13 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Trolling/Auto"))()
-            end)
-            if not success13 then
-                warn("Failed to load Trolling Auto module:", err13)
-            else
-                print("✓ Trolling Auto module loaded")
-            end
-            
-            -- Load Auto Collection Crates Module
-            local success14, err14 = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Auto%20Collection/Crates"))()
-            end)
-            if not success14 then
-                warn("Failed to load Auto Collection Crates module:", err14)
-            else
-                print("✓ Auto Collection Crates module loaded")
-            end
-        end)
         
         -- Auto-select first tab
         local ft = Library.Tabs[1]

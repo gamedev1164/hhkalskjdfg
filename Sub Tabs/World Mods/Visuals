@@ -302,20 +302,24 @@ Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
     if enabled then removeDoors() else restoreDoors() end
 end)
 
--- X-Ray Transparency Slider (0 = off, 0.7 = see-through, 1 = invisible)
+-- X-Ray Toggle
+Library:CreateToggle(page, "X-Ray", false, function(enabled)
+    State.xrayEnabled = enabled
+    if enabled then
+        applyXray()
+    else
+        restoreXray()
+    end
+end)
+
+-- X-Ray Transparency Slider (0 to 1 in 0.1 increments)
 Library:CreateSlider(page, "X-Ray Transparency", 0, 1, 0.7, function(value)
+    -- Round to nearest 0.1
+    value = math.floor(value * 10 + 0.5) / 10
     State.xrayTransparency = value
     
-    -- Turn off if 0, turn on if > 0
-    if value == 0 then
-        if State.xrayEnabled then
-            State.xrayEnabled = false
-            restoreXray()
-        end
-    else
-        if not State.xrayEnabled then
-            State.xrayEnabled = true
-        end
+    -- If XRay is enabled, reapply with new transparency
+    if State.xrayEnabled then
         applyXray()
     end
 end)

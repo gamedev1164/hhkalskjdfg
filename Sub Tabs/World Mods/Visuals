@@ -25,7 +25,6 @@ local Library = AegisHub.Library
 local State = {
     lightingEffectsEnabled = false,  -- Combined: Full Bright, No Fog, Remove Effects, Inf Zoom
     xrayEnabled = false,
-    xrayTransparency = 0.7,  -- Default transparency value
     doorsHighlighted = false,
     doorsRemoved = false,
     
@@ -269,7 +268,7 @@ local function applyXray()
                 if State.xrayOriginal[inst] == nil then
                     State.xrayOriginal[inst] = inst.Transparency
                 end
-                inst.Transparency = State.xrayTransparency  -- Use slider value
+                inst.Transparency = 1  -- Full transparency
             end
         end
     end
@@ -302,26 +301,9 @@ Library:CreateToggle(page, "Remove All Doors", false, function(enabled)
     if enabled then removeDoors() else restoreDoors() end
 end)
 
--- X-Ray Toggle
 Library:CreateToggle(page, "X-Ray", false, function(enabled)
     State.xrayEnabled = enabled
-    if enabled then
-        applyXray()
-    else
-        restoreXray()
-    end
-end)
-
--- X-Ray Transparency Slider (0 to 1 in 0.1 increments)
-Library:CreateSlider(page, "X-Ray Transparency", 0, 1, 0.7, function(value)
-    -- Round to nearest 0.1
-    value = math.floor(value * 10 + 0.5) / 10
-    State.xrayTransparency = value
-    
-    -- If XRay is enabled, reapply with new transparency
-    if State.xrayEnabled then
-        applyXray()
-    end
+    if enabled then applyXray() else restoreXray() end
 end)
 
 print("✓ Visuals Module Loaded")

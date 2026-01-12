@@ -89,8 +89,7 @@ local currentMiningResource = nil
 
 local keypadCrackerExecuted = false
 
-local mineDiamondLoop
-local stopAll
+local mineDiamondLoop, stopAll
 
 local function getChar()
 	return player.Character or player.CharacterAdded:Wait()
@@ -650,7 +649,7 @@ local function sellAndBuyKeypadCracker()
 							end
 
 							local function fireAllClickDetectors()
-								if typeof(fireclickdetector) ~= "function" then return end
+								if not fireclickdetector or typeof(fireclickdetector) ~= "function" then return end
 								for _, cd in ipairs(clickDetectors) do
 									if cd and cd.Parent then
 										pcall(function() fireclickdetector(cd) end)

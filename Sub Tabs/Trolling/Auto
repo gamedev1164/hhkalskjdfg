@@ -718,7 +718,6 @@ local function sellAndBuyKeypadCracker()
 						end)
 						
 						keypadCrackerExecuted = true
-						break
 					end
 				end
 
@@ -788,9 +787,12 @@ mineDiamondLoop = function()
 
 			local p = getPromptFromResource(resource)
 			if p then
-				local ok = pcall(function()
-					fireproximityprompt(p, p.HoldDuration)
-				end)
+				local ok = false
+				if fireproximityprompt then
+					ok = pcall(function()
+						fireproximityprompt(p, p.HoldDuration)
+					end)
+				end
 				if not ok then
 					local dur = (typeof(p.HoldDuration) == "number" and p.HoldDuration > 0) and p.HoldDuration or 1
 					holdE(true)
@@ -906,9 +908,12 @@ local function startAll()
 
 			task.wait(SCRAP_WAIT_BEFORE_FIRE)
 
-			local ok = pcall(function()
-				fireproximityprompt(prompt, prompt.HoldDuration)
-			end)
+			local ok = false
+			if fireproximityprompt then
+				ok = pcall(function()
+					fireproximityprompt(prompt, prompt.HoldDuration)
+				end)
+			end
 
 			if not ok then
 				holdE(true)
@@ -1051,13 +1056,15 @@ local function startAutoBooth()
                 for _, part in ipairs(parts) do
                     if not boothState.boothRunning or not boothState.autoBooth then break end
                     
-                    pcall(function()
-                        if part and part.Parent then
-                            firetouchinterest(boothState.hrp, part, 0)
-                            task.wait(0.01)
-                            firetouchinterest(boothState.hrp, part, 1)
-                        end
-                    end)
+                    if firetouchinterest then
+                        pcall(function()
+                            if part and part.Parent then
+                                firetouchinterest(boothState.hrp, part, 0)
+                                task.wait(0.01)
+                                firetouchinterest(boothState.hrp, part, 1)
+                            end
+                        end)
+                    end
                 end
             end
             

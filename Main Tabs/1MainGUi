@@ -796,7 +796,10 @@ do
         local Trolling = MakeTab("Trolling", Icons.Troll, 5)
         local TrollingSubs = Trolling.CreateSubTabs({"Fling", "Auto"})
         
-        local WorldTeleports = MakeTab("World Teleports", Icons.Pin, 6)
+        local AutoCollection = MakeTab("Auto Collection", Icons.Pin, 6)
+        local AutoCollectionSubs = AutoCollection.CreateSubTabs({"Crates"})
+        
+        local WorldTeleports = MakeTab("World Teleports", Icons.Pin, 7)
         local WorldTpSubs = WorldTeleports.CreateSubTabs({"AIA", "Border", "Labs", "Reactor", "Wasteland"})
 
         -- SET UP AEGIS HUB FIRST (before loading modules)
@@ -823,6 +826,9 @@ do
             -- Trolling
             TrollingFling = TrollingSubs["Fling"],
             TrollingAuto = TrollingSubs["Auto"],
+            
+            -- Auto Collection
+            AutoCollection = AutoCollectionSubs["Crates"],
             
             -- World Teleports
             TeleportAIA = WorldTpSubs["AIA"],
@@ -985,6 +991,16 @@ do
                 warn("Failed to load Trolling Auto module:", err13)
             else
                 print("✓ Trolling Auto module loaded")
+            end
+            
+            -- Load Auto Collection Crates Module
+            local success14, err14 = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Sub%20Tabs/Auto%20Collection/Crates"))()
+            end)
+            if not success14 then
+                warn("Failed to load Auto Collection Crates module:", err14)
+            else
+                print("✓ Auto Collection Crates module loaded")
             end
         end)
         

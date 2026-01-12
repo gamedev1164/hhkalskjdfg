@@ -17,107 +17,264 @@ local Library = AegisHub.Library
 
 -- State
 local State = {
-    autoDoors = false,
-    autoBoothNotif = false,
+    autoOpenClose = false,
+    autoClose = false,
+    closeInterval = 1,  -- Default 1 second
+    autoBooth = false,
     
     doorConnection = nil,
-    boothConnection = nil
+    closeConnection = nil,
+    boothConnection = nil,
+    boothRunning = false,
+    
+    character = nil,
+    hrp = nil,
+    cachedParts = {},
+    lastCacheTime = 0
 }
 
 --==============================================================================
---                          AUTO DOORS FEATURE
+--                          AUTO OPEN/CLOSE DOORS
 --==============================================================================
 
-local function startAutoDoors()
+local function startAutoOpenClose()
     if State.doorConnection then return end
     
-    -- Door auto-open logic
     State.doorConnection = RunService.Heartbeat:Connect(function()
-        if not State.autoDoors then return end
+        if not State.autoOpenClose then return end
         
-        -- Find all doors and open them
+        -- Find all doors in workspace
         for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj.Name:lower():find("door") then
-                -- Try to trigger door opening
-                local clickDetector = obj:FindFirstChildOfClass("ClickDetector", true)
-                if clickDetector then
-                    fireclickdetector(clickDetector)
-                end
-                
-                -- Try ProximityPrompt
-                local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
-                if proximityPrompt then
-                    fireproximityprompt(proximityPrompt)
+            if obj:IsA("Model") or obj:IsA("Part") then
+                -- Check if name contains "door" (case insensitive)
+                if obj.Name:lower():find("door") then
+                    -- Try ClickDetector
+                    local clickDetector = obj:FindFirstChildOfClass("ClickDetector", true)
+                    if clickDetector then
+                        pcall(function()
+                            fireclickdetector(clickDetector)
+                        end)
+                    end
+                    
+                    -- Try ProximityPrompt
+                    local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
+                    if proximityPrompt then
+                        pcall(function()
+                            fireproximityprompt(proximityPrompt)
+                        end)
+                    end
                 end
             end
         end
     end)
     
-    print("✓ Auto Doors started")
+    print("✓ Auto Open/Close Doors started")
 end
 
-local function stopAutoDoors()
+local function stopAutoOpenClose()
     if State.doorConnection then
         State.doorConnection:Disconnect()
         State.doorConnection = nil
     end
-    print("✓ Auto Doors stopped")
+    print("✓ Auto Open/Close Doors stopped")
 end
 
 --==============================================================================
---                          AUTO BOOTH NOTIFICATION
+--                          AUTO CLOSE DOORS (INTERVAL)
 --==============================================================================
 
--- Load optimized booth processing
-local boothProcessing = nil
-pcall(function()
-    boothProcessing = loadstring(game:HttpGet("https://raw.githubusercontent.com/gamedev1164/hhkalskjdfg/refs/heads/main/Buttons/Auto%20Booth%20Processing%20Optimized"))()
+local function startAutoClose()
+    if State.closeConnection then return end
+    
+    State.closeConnection = task.spawn(function()
+        while State.autoClose do
+            -- Find all doors in workspace
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") or obj:IsA("Part") then
+                    -- Check if name contains "door" (case insensitive)
+                    if obj.Name:lower():find("door") then
+                        -- Try ClickDetector
+                        local clickDetector = obj:FindFirstChildOfClass("ClickDetector", true)
+                        if clickDetector then
+                            pcall(function()
+                                fireclickdetector(clickDetector)
+                            end)
+                        end
+                        
+                        -- Try ProximityPrompt
+                        local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
+                        if proximityPrompt then
+                            pcall(function()
+                                fireproximityprompt(proximityPrompt)
+                            end)
+                        end
+                    end
+                end
+            end
+            
+            -- Wait for interval
+            task.wait(State.closeInterval)
+        end
+    end)
+    
+    print("✓ Auto Close Doors started (every " .. State.closeInterval .. "s)")
+end
+
+local function stopAutoClose()
+    State.autoClose = false
+    if State.closeConnection then
+        task.cancel(State.closeConnection)
+        State.closeConnection = nil
+    end
+    print("✓ Auto Close Doors stopped")
+end
+
+--==============================================================================
+--                          AUTO BOOTH PROCESSING
+--==============================================================================
+
+local function getAllProcessingBoothSystems()
+    local ROOT = workspace:FindFirstChild("Booths")
+    if not ROOT then return {} end
+    
+    local systems = {}
+    for _, obj in ipairs(ROOT:GetDescendants()) do
+        if obj.Name == "Processing_BoothSystem" then
+            table.insert(systems, obj)
+        end
+    end
+    return systems
+end
+
+local function getTouchPartsUnderSystems()
+    local currentTime = tick()
+    
+    -- Use cache if less than 5 seconds old
+    if currentTime - State.lastCacheTime < 5 and #State.cachedParts > 0 then
+        return State.cachedParts
+    end
+    
+    local parts = {}
+    local seen = {}
+    
+    for _, sys in ipairs(getAllProcessingBoothSystems()) do
+        for _, d in ipairs(sys:GetDescendants()) do
+            if d:IsA("TouchTransmitter") then
+                local part = d.Parent
+                if part and part:IsA("BasePart") and not seen[part] then
+                    seen[part] = true
+                    table.insert(parts, part)
+                end
+            end
+        end
+    end
+    
+    State.cachedParts = parts
+    State.lastCacheTime = currentTime
+    
+    return parts
+end
+
+local function startAutoBooth()
+    if State.boothRunning then return end
+    
+    State.boothRunning = true
+    
+    -- Get character references
+    State.character = player.Character or player.CharacterAdded:Wait()
+    State.hrp = State.character:WaitForChild("HumanoidRootPart")
+    
+    task.spawn(function()
+        while State.boothRunning and State.autoBooth do
+            if State.character and State.character.Parent and State.hrp then
+                local parts = getTouchPartsUnderSystems()
+                
+                for _, part in ipairs(parts) do
+                    if not State.boothRunning or not State.autoBooth then break end
+                    
+                    pcall(function()
+                        if part and part.Parent then
+                            firetouchinterest(State.hrp, part, 0)
+                            task.wait(0.01)
+                            firetouchinterest(State.hrp, part, 1)
+                        end
+                    end)
+                end
+            end
+            
+            task.wait(1)
+        end
+    end)
+    
+    print("✓ Auto Booth Processing started")
+end
+
+local function stopAutoBooth()
+    State.boothRunning = false
+    State.autoBooth = false
+    print("✓ Auto Booth Processing stopped")
+end
+
+-- Handle character respawn
+player.CharacterAdded:Connect(function(char)
+    State.character = char
+    State.hrp = char:WaitForChild("HumanoidRootPart")
+    State.cachedParts = {}
+    State.lastCacheTime = 0
 end)
-
-local function startAutoBoothNotif()
-    if State.boothConnection then return end
-    
-    if boothProcessing then
-        boothProcessing.start()
-    end
-    
-    print("✓ Auto Booth Notification started")
-end
-
-local function stopAutoBoothNotif()
-    if boothProcessing then
-        boothProcessing.stop()
-    end
-    
-    if State.boothConnection then
-        State.boothConnection:Disconnect()
-        State.boothConnection = nil
-    end
-    
-    print("✓ Auto Booth Notification stopped")
-end
 
 --==============================================================================
 --                          CREATE UI
 --==============================================================================
 
--- Auto Open/Close Doors Toggle
-Library:CreateToggle(page, "Auto Open/Close Doors", false, function(v)
-    State.autoDoors = v
-    if v then
-        startAutoDoors()
+-- Auto Open/Close Doors
+Library:CreateToggle(page, "Auto Open/Close Doors", false, function(enabled)
+    State.autoOpenClose = enabled
+    if enabled then
+        startAutoOpenClose()
     else
-        stopAutoDoors()
+        stopAutoOpenClose()
     end
 end)
 
--- Auto Booth Processing Notification Toggle
-Library:CreateToggle(page, "Auto Booth Processing Notification", false, function(v)
-    State.autoBoothNotif = v
-    if v then
-        startAutoBoothNotif()
+-- Auto Close Doors with Interval Slider
+do
+    local autoCloseToggle, intervalSlider = Library:CreateToggleSlider(
+        page, 
+        "Auto Close Doors", 
+        0.1,  -- Min: 0.1 seconds
+        10,   -- Max: 10 seconds
+        1,    -- Default: 1 second
+        function(enabled)
+            -- Toggle callback
+            if enabled then
+                State.autoClose = true
+                startAutoClose()
+            else
+                stopAutoClose()
+            end
+        end,
+        function(value)
+            -- Slider callback
+            State.closeInterval = value
+            
+            -- Restart if already running
+            if State.autoClose then
+                stopAutoClose()
+                State.autoClose = true
+                startAutoClose()
+            end
+        end
+    )
+end
+
+-- Auto Booth Processing Notification
+Library:CreateToggle(page, "Auto Booth Processing", false, function(enabled)
+    State.autoBooth = enabled
+    if enabled then
+        startAutoBooth()
     else
-        stopAutoBoothNotif()
+        stopAutoBooth()
     end
 end)
 

@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - TROLLING AUTO MODULE (FULL AUTOMATION)
+--                    AEGIS HUB - TROLLING AUTO MODULE (ORIGINAL SCRIPT)
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -8,18 +8,16 @@ if not AegisHub or not AegisHub.TrollingAuto then
     return 
 end
 
+local page = AegisHub.TrollingAuto
+local Library = AegisHub.Library
+
+-- Load the original auto mine script exactly as provided
+local originalScript = [==[
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
-local page = AegisHub.TrollingAuto
-local Library = AegisHub.Library
-
---==============================================================================
---                          AUTO MINING/SCRAP SYSTEM
---==============================================================================
 
 local MONEY_THRESHOLD = 25
 local RESOURCE_SELL_COUNT = 2
@@ -89,7 +87,8 @@ local currentMiningResource = nil
 
 local keypadCrackerExecuted = false
 
-local mineDiamondLoop, stopAll
+local mineDiamondLoop
+local stopAll
 
 local function getChar()
 	return player.Character or player.CharacterAdded:Wait()
@@ -346,125 +345,268 @@ end
 local function waitPromptRemovedOrDisabled(prompt, timeout)
 	local start = os.clock()
 	while os.clock() - start < timeout do
-		if not prompt or not prompt.Parent or not prompt.Enabled then
-			return true
-		end
+		if not prompt:IsDescendantOf(game) then return true end
+		if not prompt.Enabled then return true end
 		task.wait(0.05)
 	end
 	return false
 end
 
 local function teleportToShopAndBuyPickaxe()
-	teleportTo(SHOP_TELEPORT_CFRAME)
+	getHRP().CFrame = SHOP_TELEPORT_CFRAME
 	task.wait(WAIT_AFTER_TELEPORT)
+	holdE(true)
+	task.wait(HOLD_E_TO_OPEN_SHOP)
+	holdE(false)
+	task.wait(0.25)
 
-	holdEFor(HOLD_E_TO_OPEN_SHOP)
-	task.wait(0.2)
-
-	for retry = 1, SHOP_CLICK_RETRY do
-		local lbl = findItemTitleLabel_ByName("Pickaxe")
-		if lbl then
-			clickGuiObject(lbl)
-			task.wait(SHOP_CLICK_GAP)
-			clickConfirmButtonsIfAny()
-			task.wait(SHOP_CLICK_GAP)
+	local holster = getScrollingHolster()
+	if holster then
+		setShopCanvasPosition(Vector2.new(0, 520))
+		task.wait(0.1)
+		
+		for attempt = 1, SHOP_CLICK_RETRY do
+			if not running then return false end
 			if hasPickaxe() then
+				closeDefaultStoreGUI()
+				return true
+			end
+
+			local titleLabel = findItemTitleLabel_ByName("Pickaxe")
+			if titleLabel then
+				clickGuiObject(titleLabel)
+				task.wait(0.1)
+				clickConfirmButtonsIfAny()
+			end
+
+			task.wait(SHOP_CLICK_GAP)
+		end
+	end
+
+	closeDefaultStoreGUI()
+	return hasPickaxe()
+end
+
+local function sellAndBuyKeypadCracker()
+	phase = "sell"
+	
+	teleportTo(SELL_TP_A)
+	task.wait(SELL_WAIT_1)
+	
+	if not running then return end
+	
+	teleportTo(SELL_TP_B)
+	task.wait(SELL_WAIT_2)
+	
+	if not running then return end
+	
+	holdEFor(SELL_HOLD_E)
+	task.wait(0.5)
+	
+	if not running then return end
+	
+	if hasKeypadCracker() then
+		closeDefaultStoreGUI()
+		phase = "mine"
+		return
+	end
+	
+	local holster = getScrollingHolster()
+	if holster then
+		setShopCanvasPosition(KEYPAD_CRACKER_CANVAS_POS)
+		task.wait(0.1)
+		
+		for attempt = 1, SHOP_CLICK_RETRY do
+			if not running then return end
+			if hasKeypadCracker() then
 				break
 			end
-		end
-		task.wait(SHOP_CLICK_GAP)
-	end
-end
 
-local function scanDiamondModels()
-	local found = {}
-	for _, obj in ipairs(ORE_SYSTEMS:GetDescendants()) do
-		if obj:IsA("Model") and obj.Name == ORE_NAME then
-			table.insert(found, obj)
-		end
-	end
-	return found
-end
+			local titleLabel = findItemTitleLabel_ByName(KEYPAD_CRACKER_NAME)
+			if titleLabel then
+				clickGuiObject(titleLabel)
+				task.wait(0.1)
+				clickConfirmButtonsIfAny()
+			end
 
-local function getPromptFromResource(resourceModel)
-	if not resourceModel then return nil end
-	for _, d in ipairs(resourceModel:GetDescendants()) do
-		if d:IsA("ProximityPrompt") then
-			return d
+			task.wait(SHOP_CLICK_GAP)
 		end
 	end
-	return nil
+	
+	local waitStart = os.clock()
+	while running and not hasKeypadCracker() and (os.clock() - waitStart) < 5 do
+		task.wait(0.1)
+	end
+	
+	for i = 1, 5 do
+		closeDefaultStoreGUI()
+		task.wait(0.1)
+	end
+	
+	phase = "mine"
 end
 
-local function resourceIsMined(resourceModel)
-	if not resourceModel or not resourceModel.Parent then return true end
-	local prompt = getPromptFromResource(resourceModel)
-	if not prompt or not prompt.Parent or not prompt.Enabled then
+local function resourceIsMined(resource)
+	if not resource or not resource:IsDescendantOf(game) then return true end
+	if resource:IsA("BasePart") then
+		return resource.Transparency >= 1
+	end
+	if resource:IsA("Model") then
+		for _, d in ipairs(resource:GetDescendants()) do
+			if d:IsA("BasePart") and d.Transparency < 1 then
+				return false
+			end
+		end
 		return true
 	end
 	return false
 end
 
-local function waitForPromptAfterTeleport(resourceModel, timeout)
-	local start = os.clock()
-	while os.clock() - start < timeout do
-		local p = getPromptFromResource(resourceModel)
-		if p and p.Enabled then
-			return p
-		end
-		task.wait(0.05)
+local function getPromptFromResource(resource)
+	local att = resource:FindFirstChild("ProximityAttachment", true)
+	if not att or not att:IsA("Attachment") then return nil end
+	local prompt = att:FindFirstChildOfClass("ProximityPrompt")
+	if prompt and prompt.Enabled then
+		return prompt
 	end
 	return nil
 end
 
-local function startTeleportLock(resourceModel)
-	if not resourceModel then return function() end end
+local function teleportToResourceTop(resource)
+	local hrp = getHRP()
+	local centerPos
+	local heightY
 
-	local topPart = nil
-	for _, d in ipairs(resourceModel:GetDescendants()) do
-		if d:IsA("BasePart") and d.Name == "Top" then
-			topPart = d
-			break
-		end
+	if resource:IsA("Model") then
+		local cf, size = resource:GetBoundingBox()
+		centerPos = cf.Position
+		heightY = size.Y
+	elseif resource:IsA("BasePart") then
+		centerPos = resource.Position
+		heightY = resource.Size.Y
+	else
+		return
 	end
 
-	if not topPart then
-		return function() end
-	end
-
-	local lockThread = task.spawn(function()
-		while true do
-			if not topPart or not topPart.Parent then break end
-			local pos = topPart.Position
-			getHRP().CFrame = CFrame.new(pos.X, pos.Y + TOP_OFFSET, pos.Z)
-			task.wait(TELEPORT_LOCK_INTERVAL)
-		end
-	end)
-
-	return function()
-		task.cancel(lockThread)
-	end
+	local topY = centerPos.Y + (heightY / 2)
+	hrp.CFrame = CFrame.new(centerPos.X, topY + TOP_OFFSET, centerPos.Z)
 end
 
-local function pickNextResourceToMine()
-	if #diamondModels == 0 then
-		return nil
-	end
+local function startTeleportLock(resource)
+	local alive = true
+	task.spawn(function()
+		while alive do
+			if not running then break end
+			if not resource or not resource:IsDescendantOf(game) then break end
+			if phase ~= "mine" then
+				task.wait(0.1)
+			else
+				teleportToResourceTop(resource)
+				task.wait(TELEPORT_LOCK_INTERVAL)
+			end
+		end
+	end)
+	return function() alive = false end
+end
 
-	local now = os.clock()
-	for attempt = 1, #diamondModels do
-		modelIdx = (modelIdx % #diamondModels) + 1
-		local resource = diamondModels[modelIdx]
-		if resource and resource.Parent then
-			local skip = skipUntilByResource[resource]
-			if not skip or now >= skip then
-				if not resourceIsMined(resource) then
-					return resource
+local function scanDiamondModels()
+	local list = {}
+	for _, inst in ipairs(ORE_SYSTEMS:GetDescendants()) do
+		if inst:IsA("Model") and inst.Name == ORE_NAME then
+			table.insert(list, inst)
+		end
+	end
+	return list
+end
+
+local function getUnminedResourcesFromModel(oreModel)
+	local out = {}
+	local resourcesFolder = oreModel:FindFirstChild("Resources")
+	if not resourcesFolder then return out end
+
+	for _, child in ipairs(resourcesFolder:GetChildren()) do
+		if child.Name == "Resource" then
+			if not resourceIsMined(child) then
+				local untilT = skipUntilByResource[child]
+				if not untilT or os.clock() >= untilT then
+					table.insert(out, child)
 				end
 			end
 		end
 	end
+
+	return out
+end
+
+local function waitForPromptAfterTeleport(resource, timeout)
+	local start = os.clock()
+	while os.clock() - start < timeout do
+		if not running then return nil end
+		if not resource or not resource:IsDescendantOf(game) then return nil end
+		if resourceIsMined(resource) then return nil end
+
+		if phase ~= "mine" then
+			task.wait(0.1)
+		else
+			local p = getPromptFromResource(resource)
+			if p then return p end
+			task.wait(0.05)
+		end
+	end
 	return nil
+end
+
+local function pickNextResourceToMine()
+	if #diamondModels == 0 then
+		diamondModels = scanDiamondModels()
+		modelIdx = 0
+		if #diamondModels == 0 then return nil end
+	end
+
+	for _ = 1, #diamondModels do
+		modelIdx += 1
+		if modelIdx > #diamondModels then modelIdx = 1 end
+
+		local oreModel = diamondModels[modelIdx]
+		if oreModel and oreModel:IsDescendantOf(game) then
+			local candidates = getUnminedResourcesFromModel(oreModel)
+			if #candidates > 0 then
+				return candidates[1]
+			end
+		end
+	end
+
+	return nil
+end
+
+local function teleportToDifferentOreNow(reason)
+	local now = os.clock()
+
+	if currentMiningResource and currentMiningResource:IsDescendantOf(game) then
+		skipUntilByResource[currentMiningResource] = math.max(skipUntilByResource[currentMiningResource] or 0, now + SKIP_COOLDOWN)
+	end
+
+	diamondModels = scanDiamondModels()
+	modelIdx = 0
+
+	local newRes = pickNextResourceToMine()
+	if newRes and newRes:IsDescendantOf(game) then
+		currentMiningResource = newRes
+		pcall(function()
+			teleportToResourceTop(newRes)
+		end)
+	end
+end
+
+stopAll = function()
+	running = false
+	phase = "idle"
+	currentMiningResource = nil
+	holdE(false)
+
+	pcall(function()
+		teleportTo(STOP_TELEPORT_CFRAME)
+	end)
 end
 
 local function startSafetyThreadOnce()
@@ -473,263 +615,211 @@ local function startSafetyThreadOnce()
 
 	task.spawn(function()
 		while true do
-			if running and not mineThreadRunning then
-				task.wait(5)
-				if running and not mineThreadRunning then
-					warn("Mining thread stalled. Restarting...")
-					running = false
-					task.wait(1)
-					startAll()
-				end
-			end
-			task.wait(2)
-		end
-	end)
-end
-
-local function sellAndBuyKeypadCracker()
-	teleportTo(SELL_TP_A)
-	task.wait(SELL_WAIT_1)
-	holdEFor(SELL_HOLD_E)
-	task.wait(SELL_WAIT_2)
-
-	if not hasKeypadCracker() and not keypadCrackerExecuted then
-		teleportTo(SHOP_TELEPORT_CFRAME)
-		task.wait(WAIT_AFTER_TELEPORT)
-		holdEFor(HOLD_E_TO_OPEN_SHOP)
-		task.wait(0.2)
-
-		task.spawn(function()
-			local maxWait = 5
-			local start = os.clock()
-			while not hasKeypadCracker() and os.clock() - start < maxWait do
-				setShopCanvasPosition(KEYPAD_CRACKER_CANVAS_POS)
-				task.wait(0.3)
-
-				for retry = 1, 3 do
-					local lbl = findItemTitleLabel_ByName(KEYPAD_CRACKER_NAME)
-					if lbl then
-						clickGuiObject(lbl)
-						task.wait(SHOP_CLICK_GAP)
-						clickConfirmButtonsIfAny()
-						task.wait(SHOP_CLICK_GAP)
-						if hasKeypadCracker() then
-							break
+			if running then
+				if hasKeypadCracker() and not keypadCrackerExecuted then
+					stopAll()
+					task.wait(0.5)
+					
+					local backpack = player:FindFirstChild("Backpack")
+					if backpack then
+						local crackerTool = backpack:FindFirstChild(KEYPAD_CRACKER_NAME)
+						if crackerTool and crackerTool:IsA("Tool") then
+							local hum = getHumanoid()
+							if hum then
+								pcall(function()
+									hum:EquipTool(crackerTool)
+								end)
+								task.wait(0.5)
+							end
 						end
 					end
-					task.wait(SHOP_CLICK_GAP)
-				end
+					
+					pcall(function()
+						local RunService = game:GetService("RunService")
+						local Workspace = game:GetService("Workspace")
 
-				if hasKeypadCracker() then
-					break
-				end
+						local LP = player
 
-				task.wait(0.2)
-			end
-		end)
+						local TARGET_MODEL_NAMES = { DoorTall = true, DoorWide = true }
 
-		task.spawn(function()
-			while not hasKeypadCracker() do
-				task.wait(0.5)
-			end
+						local AMPLITUDE = 1.25
+						local SPEED = 3.0
+						local EXTRA_FORWARD = 2.0
+						local UP_OFFSET = 0
+						local SIDE_OFFSET = 0
 
-			closeDefaultStoreGUI()
-			task.wait(0.3)
+						local TOGGLE_INTERVAL = 0.5
+						local RESCAN_INTERVAL = 1.0
 
-			local humanoid = getHumanoid()
-			if humanoid then
-				local backpack = player:FindFirstChild("Backpack")
-				if backpack then
-					local tool = backpack:FindFirstChild(KEYPAD_CRACKER_NAME)
-					if tool and tool:IsA("Tool") then
-						pcall(function()
-							humanoid:EquipTool(tool)
-						end)
+						local START_TELEPORT_POS = Vector3.new(-17, 53, 231)
 
-						task.wait(0.5)
+						local doorRunning = true
+						local hitboxes = {}
+						local clickDetectors = {}
+						local originalHitboxState = {}
+						local rsConn
 
-						pcall(function()
-							local LP = Players.LocalPlayer
-							local TELEPORT_TO = CFrame.new(207, 22.5, -626)
-							local SPEED = 15
-							local AMPLITUDE = 3.5
-							local TOGGLE_INTERVAL = 0.2
-							local RESCAN_INTERVAL = 3
+						local function isHitboxPart(inst)
+							if not inst:IsA("BasePart") then return false end
+							local n = (inst.Name or ""):lower()
+							return (n == "hitbox") or (n:find("hitbox") ~= nil)
+						end
 
-							local doorRunning = true
-							local rsConn
+						local function getRightArmPart(char)
+							return char:FindFirstChild("RightHand")
+								or char:FindFirstChild("RightLowerArm")
+								or char:FindFirstChild("RightUpperArm")
+								or char:FindFirstChild("Right Arm")
+						end
 
-							local originals = {}
+						local function getHRP(char)
+							return char and char:FindFirstChild("HumanoidRootPart")
+						end
 
-							local function rememberOriginal(hb)
-								if originals[hb] then return end
-								originals[hb] = {
-									cframe = hb.CFrame,
-									anchored = hb.Anchored,
-									canCollide = hb.CanCollide
-								}
+						local function teleportToStart(char)
+							local hrp = getHRP(char)
+							if hrp then
+								hrp.CFrame = CFrame.new(START_TELEPORT_POS + Vector3.new(0, 3, 0))
 							end
+						end
 
-							local function restoreAllHitboxes()
-								for hb, data in pairs(originals) do
-									if hb and hb.Parent then
+						local function makePartsTransparent()
+							for _, inst in ipairs(Workspace:GetDescendants()) do
+								if inst:IsA("BasePart") then
+									local name = inst.Name
+									if name == "Part" or name == "Wedge" then
 										pcall(function()
-											hb.CFrame = data.cframe
-											hb.Anchored = data.anchored
-											hb.CanCollide = data.canCollide
+											inst.Transparency = 0.7
 										end)
 									end
 								end
-								originals = {}
 							end
+						end
 
-							local function teleportToStart(char)
-								local hrp = char:FindFirstChild("HumanoidRootPart")
-								if hrp then
-									hrp.CFrame = TELEPORT_TO
+						local function rememberOriginal(part)
+							if originalHitboxState[part] then return end
+							originalHitboxState[part] = {
+								CFrame = part.CFrame,
+								Anchored = part.Anchored,
+								CanCollide = part.CanCollide,
+								Transparency = part.Transparency,
+								Size = part.Size,
+							}
+						end
+
+						local function restoreAllHitboxes()
+							for part, st in pairs(originalHitboxState) do
+								if part and part.Parent then
+									pcall(function()
+										part.CFrame = st.CFrame
+										part.Anchored = st.Anchored
+										part.CanCollide = st.CanCollide
+										part.Transparency = st.Transparency
+										part.Size = st.Size
+									end)
 								end
 							end
+							table.clear(originalHitboxState)
+						end
 
-							local function makePartsTransparent()
-								local keypadCracker = LP.Character:FindFirstChild("Keypad Cracker")
-								if not keypadCracker then return end
+						local function computeArmTipCF(arm)
+							return arm.CFrame * CFrame.new(SIDE_OFFSET, UP_OFFSET, -(arm.Size.Z * 0.5 + EXTRA_FORWARD))
+						end
 
-								for _, desc in ipairs(keypadCracker:GetDescendants()) do
-									if desc:IsA("BasePart") then
-										desc.Transparency = 1
-									end
-								end
-							end
+						local function scanDoors()
+							table.clear(hitboxes)
+							table.clear(clickDetectors)
 
-							local function getRightArmPart(char)
-								return char:FindFirstChild("RightHand")
-									or char:FindFirstChild("Right Arm")
-							end
-
-							local function computeArmTipCF(arm)
-								local cf = arm.CFrame
-								local size = arm.Size
-								local tipZ = size.Z / 2 + 0.4
-								return cf * CFrame.new(0, 0, -tipZ)
-							end
-
-							local hitboxes = {}
-							local clickDetectors = {}
-
-							local function isHitboxPart(part)
-								if not part:IsA("BasePart") then return false end
-								if part.Name == "Hitbox" then return true end
-								if part.Name:lower():find("hitbox") then return true end
-								local parent = part.Parent
-								if parent and parent.Name == "Hitbox" then return true end
-								return false
-							end
-
-							local function scanDoors()
-								hitboxes = {}
-								clickDetectors = {}
-
-								for _, obj in ipairs(workspace:GetDescendants()) do
-									if obj:IsA("Model") then
-										local isADoor =
-											obj.Name:lower():find("door")
-											or obj:FindFirstChild("Door")
-											or obj:FindFirstChild("door")
-										if isADoor then
-											for _, d in ipairs(obj:GetDescendants()) do
-												if isHitboxPart(d) then
-													table.insert(hitboxes, d)
-												elseif d:IsA("ClickDetector") then
-													table.insert(clickDetectors, d)
-												end
-											end
+							for _, inst in ipairs(Workspace:GetDescendants()) do
+								if inst:IsA("Model") and TARGET_MODEL_NAMES[inst.Name] then
+									for _, d in ipairs(inst:GetDescendants()) do
+										if isHitboxPart(d) then
+											table.insert(hitboxes, d)
+										elseif d:IsA("ClickDetector") then
+											table.insert(clickDetectors, d)
 										end
 									end
 								end
 							end
+						end
 
-							local function fireAllClickDetectors()
-								if not fireclickdetector or typeof(fireclickdetector) ~= "function" then return end
-								for _, cd in ipairs(clickDetectors) do
-									if cd and cd.Parent then
-										pcall(function() fireclickdetector(cd) end)
-									end
+						local function fireAllClickDetectors()
+							if typeof(fireclickdetector) ~= "function" then return end
+							for _, cd in ipairs(clickDetectors) do
+								if cd and cd.Parent then
+									pcall(function() fireclickdetector(cd) end)
 								end
 							end
+						end
 
-							local function startAuto()
-								local char = LP.Character or LP.CharacterAdded:Wait()
-								task.wait(0.1)
+						local function startAuto()
+							local char = LP.Character or LP.CharacterAdded:Wait()
+							task.wait(0.1)
 
-								teleportToStart(char)
-								
-								task.wait(3)
-								
-								makePartsTransparent()
-								
-								scanDoors()
+							teleportToStart(char)
+							
+							task.wait(3)
+							
+							makePartsTransparent()
+							
+							scanDoors()
 
-								task.spawn(function()
-									while doorRunning do
-										task.wait(RESCAN_INTERVAL)
-										if not doorRunning then break end
-										scanDoors()
-									end
-								end)
-
-								task.spawn(function()
-									while doorRunning do
-										task.wait(TOGGLE_INTERVAL)
-										if not doorRunning then break end
-										fireAllClickDetectors()
-									end
-								end)
-
-								rsConn = RunService.RenderStepped:Connect(function()
-									if not doorRunning then return end
-									local c = LP.Character
-									if not c then return end
-
-									local arm = getRightArmPart(c)
-									if not arm then return end
-
-									local baseCF = computeArmTipCF(arm)
-									local z = math.sin(os.clock() * SPEED) * AMPLITUDE
-									local moveCF = baseCF * CFrame.new(0, 0, -z)
-
-									for _, hb in ipairs(hitboxes) do
-										if hb and hb.Parent then
-											rememberOriginal(hb)
-											hb.Anchored = true
-											hb.CanCollide = false
-											hb.CFrame = moveCF
-										end
-									end
-								end)
-							end
-
-							LP.CharacterAdded:Connect(function(char)
-								task.wait(0.2)
-								teleportToStart(char)
+							task.spawn(function()
+								while doorRunning do
+									task.wait(RESCAN_INTERVAL)
+									if not doorRunning then break end
+									scanDoors()
+								end
 							end)
 
-							restoreAllHitboxes()
-							startAuto()
+							task.spawn(function()
+								while doorRunning do
+									task.wait(TOGGLE_INTERVAL)
+									if not doorRunning then break end
+									fireAllClickDetectors()
+								end
+							end)
+
+							rsConn = RunService.RenderStepped:Connect(function()
+								if not doorRunning then return end
+								local c = LP.Character
+								if not c then return end
+
+								local arm = getRightArmPart(c)
+								if not arm then return end
+
+								local baseCF = computeArmTipCF(arm)
+								local z = math.sin(os.clock() * SPEED) * AMPLITUDE
+								local moveCF = baseCF * CFrame.new(0, 0, -z)
+
+								for _, hb in ipairs(hitboxes) do
+									if hb and hb.Parent then
+										rememberOriginal(hb)
+										hb.Anchored = true
+										hb.CanCollide = false
+										hb.CFrame = moveCF
+									end
+								end
+							end)
+						end
+
+						LP.CharacterAdded:Connect(function(char)
+							task.wait(0.2)
+							teleportToStart(char)
 						end)
-						
-						keypadCrackerExecuted = true
-					end
+
+						restoreAllHitboxes()
+						startAuto()
+					end)
+					
+					keypadCrackerExecuted = true
+					break
 				end
-
-				task.wait(0.2)
 			end
-		end)
-	end
 
-	teleportTo(SELL_TP_B)
-	task.wait(SELL_WAIT_1)
-	holdEFor(SELL_HOLD_E)
-	task.wait(SELL_WAIT_2)
+			task.wait(0.2)
+		end
+	end)
 end
 
 mineDiamondLoop = function()
@@ -787,12 +877,9 @@ mineDiamondLoop = function()
 
 			local p = getPromptFromResource(resource)
 			if p then
-				local ok = false
-				if fireproximityprompt then
-					ok = pcall(function()
-						fireproximityprompt(p, p.HoldDuration)
-					end)
-				end
+				local ok = pcall(function()
+					fireproximityprompt(p, p.HoldDuration)
+				end)
 				if not ok then
 					local dur = (typeof(p.HoldDuration) == "number" and p.HoldDuration > 0) and p.HoldDuration or 1
 					holdE(true)
@@ -908,12 +995,9 @@ local function startAll()
 
 			task.wait(SCRAP_WAIT_BEFORE_FIRE)
 
-			local ok = false
-			if fireproximityprompt then
-				ok = pcall(function()
-					fireproximityprompt(prompt, prompt.HoldDuration)
-				end)
-			end
+			local ok = pcall(function()
+				fireproximityprompt(prompt, prompt.HoldDuration)
+			end)
 
 			if not ok then
 				holdE(true)
@@ -967,30 +1051,26 @@ local function startAll()
 	end)
 end
 
-stopAll = function()
-	running = false
-	holdE(false)
-	phase = "idle"
-	mineThreadRunning = false
-	currentMiningResource = nil
-	
-	-- Teleport to stop position
-	pcall(function()
-		getHRP().CFrame = STOP_TELEPORT_CFRAME
-	end)
-	
-	print("✓ Auto Mining/Scrap stopped")
-end
-
 player.CharacterAdded:Connect(function()
 	task.wait(1)
 	holdE(false)
 end)
 
---==============================================================================
---                          AUTO BOOTH PROCESSING
---==============================================================================
+task.wait(0.5)
+startAll()]==]
 
+-- Execute original script in task
+local miningToggled = false
+Library:CreateToggle(page, "Auto Mine & Sell (Full Auto)", false, function(enabled)
+    if enabled and not miningToggled then
+        miningToggled = true
+        task.spawn(function()
+            loadstring(originalScript)()
+        end)
+    end
+end)
+
+-- Booth Processing (separate)
 local boothState = {
     autoBooth = false,
     boothRunning = false,
@@ -999,6 +1079,9 @@ local boothState = {
     cachedParts = {},
     lastCacheTime = 0
 }
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 local function getAllProcessingBoothSystems()
     local ROOT = workspace:FindFirstChild("Booths")
@@ -1056,15 +1139,13 @@ local function startAutoBooth()
                 for _, part in ipairs(parts) do
                     if not boothState.boothRunning or not boothState.autoBooth then break end
                     
-                    if firetouchinterest then
-                        pcall(function()
-                            if part and part.Parent then
-                                firetouchinterest(boothState.hrp, part, 0)
-                                task.wait(0.01)
-                                firetouchinterest(boothState.hrp, part, 1)
-                            end
-                        end)
-                    end
+                    pcall(function()
+                        if part and part.Parent then
+                            firetouchinterest(boothState.hrp, part, 0)
+                            task.wait(0.01)
+                            firetouchinterest(boothState.hrp, part, 1)
+                        end
+                    end)
                 end
             end
             
@@ -1088,20 +1169,6 @@ player.CharacterAdded:Connect(function(char)
     boothState.lastCacheTime = 0
 end)
 
---==============================================================================
---                          CREATE UI
---==============================================================================
-
--- Auto Mine/Scrap/Sell System
-Library:CreateToggle(page, "Auto Mine & Sell (Full Auto)", false, function(enabled)
-    if enabled then
-        startAll()
-    else
-        stopAll()
-    end
-end)
-
--- Auto Booth Processing
 Library:CreateToggle(page, "Auto Booth Processing", false, function(enabled)
     boothState.autoBooth = enabled
     if enabled then
@@ -1111,6 +1178,6 @@ Library:CreateToggle(page, "Auto Booth Processing", false, function(enabled)
     end
 end)
 
-print("✓ Trolling Auto Module Loaded (Full Automation)")
+print("✓ Trolling Auto Module Loaded (Original Script)")
 
 return true

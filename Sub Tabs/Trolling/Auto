@@ -1059,116 +1059,6 @@ end)
 task.wait(0.5)
 startAll()]==]
 
--- Execute original script in task
-local miningToggled = false
-Library:CreateToggle(page, "Auto Mine & Sell (Full Auto)", false, function(enabled)
-    if enabled and not miningToggled then
-        miningToggled = true
-        task.spawn(function()
-            loadstring(originalScript)()
-        end)
-    end
-end)
-
--- Booth Processing (separate)
-local boothState = {
-    autoBooth = false,
-    boothRunning = false,
-    character = nil,
-    hrp = nil,
-    cachedParts = {},
-    lastCacheTime = 0
-}
-
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local function getAllProcessingBoothSystems()
-    local ROOT = workspace:FindFirstChild("Booths")
-    if not ROOT then return {} end
-    
-    local systems = {}
-    for _, obj in ipairs(ROOT:GetDescendants()) do
-        if obj.Name == "Processing_BoothSystem" then
-            table.insert(systems, obj)
-        end
-    end
-    return systems
-end
-
-local function getTouchPartsUnderSystems()
-    local currentTime = tick()
-    
-    if currentTime - boothState.lastCacheTime < 5 and #boothState.cachedParts > 0 then
-        return boothState.cachedParts
-    end
-    
-    local parts = {}
-    local seen = {}
-    
-    for _, sys in ipairs(getAllProcessingBoothSystems()) do
-        for _, d in ipairs(sys:GetDescendants()) do
-            if d:IsA("TouchTransmitter") then
-                local part = d.Parent
-                if part and part:IsA("BasePart") and not seen[part] then
-                    seen[part] = true
-                    table.insert(parts, part)
-                end
-            end
-        end
-    end
-    
-    boothState.cachedParts = parts
-    boothState.lastCacheTime = currentTime
-    
-    return parts
-end
-
-local function startAutoBooth()
-    if boothState.boothRunning then return end
-    
-    boothState.boothRunning = true
-    
-    task.spawn(function()
-        while boothState.boothRunning and boothState.autoBooth do
-            -- Always get fresh character and HRP reference (works with FreeCam/CFrame Fly)
-            local currentChar = player.Character
-            if currentChar and currentChar.Parent then
-                local currentHRP = currentChar:FindFirstChild("HumanoidRootPart")
-                
-                if currentHRP then
-                    local parts = getTouchPartsUnderSystems()
-                    
-                    for _, part in ipairs(parts) do
-                        if not boothState.boothRunning or not boothState.autoBooth then break end
-                        
-                        pcall(function()
-                            if part and part.Parent then
-                                -- Always use current HRP position (tracks your actual body)
-                                firetouchinterest(currentHRP, part, 0)
-                                task.wait(0.01)
-                                firetouchinterest(currentHRP, part, 1)
-                            end
-                        end)
-                    end
-                end
-            end
-            
-            task.wait(1)
-        end
-    end)
-    
-    print("✓ Auto Booth Processing started (FreeCam compatible)")
-end
-
-local function stopAutoBooth()
-    boothState.boothRunning = false
-    boothState.autoBooth = false
-    print("✓ Auto Booth Processing stopped")
-end
-
-player.CharacterAdded:Connect(function(char)
-    boothState.character = char
     boothState.hrp = char:WaitForChild("HumanoidRootPart")
     boothState.cachedParts = {}
     boothState.lastCacheTime = 0
@@ -1179,18 +1069,97 @@ end)
 --                          CREATE UI
 --==============================================================================
 
+-- Door cleanup state (to track door opening from original script)
+local doorCleanupState = {
+    doorRunning = false,
+    originalPosition = nil,
+    rsConn = nil,
+    originals = {},
+    keypadCrackerTransparent = false
+}
+
+-- Function to restore everything when toggling off
+local function cleanupDoors()
+    -- Stop door running
+    doorCleanupState.doorRunning = false
+    
+    -- Disconnect RenderStepped if exists
+    if doorCleanupState.rsConn then
+        pcall(function()
+            doorCleanupState.rsConn:Disconnect()
+        end)
+        doorCleanupState.rsConn = nil
+    end
+    
+    -- Restore all hitboxes
+    for hb, data in pairs(doorCleanupState.originals) do
+        if hb and hb.Parent then
+            pcall(function()
+                hb.CFrame = data.cframe
+                hb.Anchored = data.anchored
+                hb.CanCollide = data.canCollide
+            end)
+        end
+    end
+    doorCleanupState.originals = {}
+    
+    -- Make keypad cracker visible again
+    local char = player.Character
+    if char then
+        local keypadCracker = char:FindFirstChild("Keypad Cracker")
+        if keypadCracker then
+            for _, desc in ipairs(keypadCracker:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                    desc.Transparency = 0
+                end
+            end
+        end
+    end
+    
+    -- Return to original position
+    if doorCleanupState.originalPosition then
+        pcall(function()
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = doorCleanupState.originalPosition
+                    print("✓ Returned to original position")
+                end
+            end
+        end)
+    end
+end
+
 -- Auto Mine & Sell (loads original script)
 local autoMineEnabled = false
 Library:CreateToggle(page, "Auto Mine & Sell (Full Auto)", false, function(enabled)
     autoMineEnabled = enabled
     if enabled then
+        -- Save current position before starting
+        local char = player.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                doorCleanupState.originalPosition = hrp.CFrame
+            end
+        end
+        
         task.wait(0.5)
         loadstring(originalScript)()
     else
-        -- Stop auto mining and cleanup
+        -- Stop auto mining
         pcall(function()
-            stopAll()
+            running = false
+            holdE(false)
+            phase = "idle"
+            mineThreadRunning = false
         end)
+        
+        -- Cleanup doors and return to position
+        cleanupDoors()
+        
+        print("✓ Auto Mine/Sell stopped, returned to original position")
     end
 end)
 

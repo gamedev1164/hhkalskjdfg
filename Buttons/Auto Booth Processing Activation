@@ -1,117 +1,76 @@
---==============================================================================
---                    OPTIMIZED AUTO BOOTH PROCESSING
---==============================================================================
-
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local ROOT = workspace:FindFirstChild("Booths")
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
 
-if not ROOT then
-    warn("Booths folder not found!")
-    return {start = function() end, stop = function() end}
-end
-
+local ROOT = workspace:WaitForChild("Booths")
 local TARGET_NAME = "Processing_BoothSystem"
 
-local State = {
-    running = false,
-    cachedParts = {},
-    lastCacheTime = 0,
-    connection = nil
-}
+local running = true
+local cachedParts = {}
+local lastCacheTime = 0
 
--- Get all touch parts (cached for 10 seconds)
-local function getTouchParts()
-    local currentTime = tick()
-    
-    -- Use cache if less than 10 seconds old
-    if currentTime - State.lastCacheTime < 10 and #State.cachedParts > 0 then
-        return State.cachedParts
-    end
-    
-    local parts = {}
-    local seen = {}
-    
-    -- Find all Processing_BoothSystem objects
-    for _, obj in ipairs(ROOT:GetDescendants()) do
-        if obj.Name == TARGET_NAME then
-            -- Find TouchTransmitter parts
-            for _, descendant in ipairs(obj:GetDescendants()) do
-                if descendant:IsA("TouchTransmitter") then
-                    local part = descendant.Parent
-                    if part and part:IsA("BasePart") and not seen[part] then
-                        seen[part] = true
-                        table.insert(parts, part)
-                    end
-                end
-            end
-        end
-    end
-    
-    State.cachedParts = parts
-    State.lastCacheTime = currentTime
-    
-    print("✓ Found " .. #parts .. " booth touch parts")
-    return parts
+local function getAllProcessingBoothSystems()
+	local systems = {}
+	for _, obj in ipairs(ROOT:GetDescendants()) do
+		if obj.Name == TARGET_NAME then
+			table.insert(systems, obj)
+		end
+	end
+	return systems
 end
 
--- Get current HRP
-local function getHRP()
-    local char = player.Character
-    if char then
-        return char:FindFirstChild("HumanoidRootPart")
-    end
-    return nil
+local function getTouchPartsUnderSystems()
+	local currentTime = tick()
+	if currentTime - lastCacheTime < 5 and #cachedParts > 0 then
+		return cachedParts
+	end
+	
+	local parts = {}
+	local seen = {}
+
+	for _, sys in ipairs(getAllProcessingBoothSystems()) do
+		for _, d in ipairs(sys:GetDescendants()) do
+			if d:IsA("TouchTransmitter") then
+				local part = d.Parent
+				if part and part:IsA("BasePart") and not seen[part] then
+					seen[part] = true
+					table.insert(parts, part)
+				end
+			end
+		end
+	end
+	
+	cachedParts = parts
+	lastCacheTime = currentTime
+	
+	return parts
 end
 
--- Start processing
-local function startProcessing()
-    if State.running then 
-        print("Already running!")
-        return 
-    end
-    
-    State.running = true
-    
-    -- Simple loop - process every second
-    task.spawn(function()
-        while State.running do
-            local hrp = getHRP()
-            if hrp then
-                local parts = getTouchParts()
-                
-                for _, part in ipairs(parts) do
-                    if part and part.Parent then
-                        pcall(function()
-                            firetouchinterest(hrp, part, 0)
-                            firetouchinterest(hrp, part, 1)
-                        end)
-                    end
-                end
-            end
-            
-            task.wait(1)
-        end
-    end)
-    
-    print("✓ Auto Booth Processing started")
-end
-
--- Stop processing
-local function stopProcessing()
-    State.running = false
-    print("✓ Auto Booth Processing stopped")
-end
-
--- Clear cache on respawn
-player.CharacterAdded:Connect(function()
-    State.cachedParts = {}
-    State.lastCacheTime = 0
+task.spawn(function()
+	while running do
+		if character and character.Parent then
+			local parts = getTouchPartsUnderSystems()
+			
+			for _, part in ipairs(parts) do
+				pcall(function()
+					if part and part.Parent then
+						firetouchinterest(hrp, part, 0)
+						task.wait(0.01)
+						firetouchinterest(hrp, part, 1)
+					end
+				end)
+			end
+		end
+		
+		task.wait(1)
+	end
 end)
 
-return {
-    start = startProcessing,
-    stop = stopProcessing
-}
+player.CharacterAdded:Connect(function(char)
+	character = char
+	hrp = char:WaitForChild("HumanoidRootPart")
+	cachedParts = {}
+	lastCacheTime = 0
+end)

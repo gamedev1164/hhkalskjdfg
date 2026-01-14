@@ -32,8 +32,23 @@ local function startOpenDoors()
     if openDoorsState.running then return end
     openDoorsState.running = true
     
-    local character = player.Character or player.CharacterAdded:Wait()
-    local rightArm = character:WaitForChild("RightHand") or character:WaitForChild("Right Arm")
+    -- Auto-equip Keypad Cracker if available
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local backpack = player:FindFirstChild("Backpack")
+        
+        if humanoid and backpack then
+            local keypadCracker = backpack:FindFirstChild("Keypad Cracker")
+            if keypadCracker and keypadCracker:IsA("Tool") then
+                humanoid:EquipTool(keypadCracker)
+                task.wait(0.3)
+                print("✓ Keypad Cracker equipped")
+            end
+        end
+    end
+    
+    -- Initial setup
     local doors = workspace:WaitForChild("Doors")
     
     local doorFolders = {
@@ -64,7 +79,18 @@ local function startOpenDoors()
     local maxOffset = 2
     
     openDoorsState.connection = RunService.RenderStepped:Connect(function()
-        if not rightArm or not openDoorsState.running then return end
+        if not openDoorsState.running then return end
+        
+        -- Get character's SERVER-SIDE position (where body actually is)
+        local character = player.Character
+        if not character or not character.Parent then return end
+        
+        -- Use actual server-side arm position, not local CFrame Fly position
+        local rightArm = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+        if not rightArm then return end
+        
+        -- The arm's actual position on server (not affected by local CFrame Fly)
+        local serverArmCFrame = rightArm.CFrame
         
         openDoorsState.offset = openDoorsState.offset + (openDoorsState.direction * speed)
         
@@ -74,16 +100,18 @@ local function startOpenDoors()
             openDoorsState.direction = 1
         end
         
-        local rightArmTip = rightArm.CFrame * CFrame.new(0, -rightArm.Size.Y/2, 0)
+        -- Use server-side arm position
+        local rightArmTip = serverArmCFrame * CFrame.new(0, -rightArm.Size.Y/2, 0)
         
         for _, hitbox in pairs(openDoorsState.hitboxes) do
             if hitbox and hitbox.Parent then
+                -- Move hitboxes to where your arm ACTUALLY is on server
                 hitbox.CFrame = rightArmTip * CFrame.new(0, openDoorsState.offset, 0)
             end
         end
     end)
     
-    print("✓ Open All Doors started")
+    print("✓ Open All Doors started (FreeCam compatible)")
 end
 
 local function stopOpenDoors()
@@ -167,8 +195,10 @@ local function startAutoBoothProcessing()
     
     task.spawn(function()
         while boothState.running do
+            -- Get character's SERVER-SIDE position (not local CFrame Fly position)
             local character = player.Character
             if character and character.Parent then
+                -- Get HRP from server (actual body position, not local fly position)
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
@@ -179,6 +209,8 @@ local function startAutoBoothProcessing()
                         
                         pcall(function()
                             if part and part.Parent then
+                                -- Fire touch interest using SERVER-SIDE HRP position
+                                -- This works because firetouchinterest uses the part's actual position
                                 firetouchinterest(hrp, part, 0)
                                 task.wait(0.01)
                                 firetouchinterest(hrp, part, 1)
@@ -188,11 +220,12 @@ local function startAutoBoothProcessing()
                 end
             end
             
-            task.wait(1)
+            -- Loop every 0.5 seconds (faster = more responsive)
+            task.wait(0.5)
         end
     end)
     
-    print("✓ Auto Booth Processing started")
+    print("✓ Auto Booth Processing started (works with server-side position)")
 end
 
 local function stopAutoBoothProcessing()
@@ -490,11 +523,14 @@ end)
 
 local crackerRunning = false
 local function startGetKeypadCracker()
-    if crackerRunning then return end
-    crackerRunning = true
-    
     task.spawn(function()
-        loadstring(getKeypadCrackerScript)()
+        local success, err = pcall(function()
+            loadstring(getKeypadCrackerScript)()
+        end)
+        
+        if not success then
+            warn("Get Keypad Cracker error:", err)
+        end
     end)
     
     print("✓ Get Keypad Cracker started (auto farm)")
@@ -508,8 +544,9 @@ end
 do
     local button = Instance.new("TextButton")
     button.Name = "GetKeypadCrackerButton"
+    button.Text = ""  -- Remove default button text
     button.Size = UDim2.new(1, 0, 0, 45)
-    button.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    button.BackgroundColor3 = Color3.fromRGB(138, 43, 226)  -- More purple (BlueViolet)
     button.BorderSizePixel = 0
     button.AutoButtonColor = false
     button.ZIndex = 3
@@ -517,14 +554,9 @@ do
     
     Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
     
-    -- Gradient for hover effect
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new(Color3.fromRGB(30, 30, 35))
-    gradient.Parent = button
-    
     local label = Instance.new("TextLabel")
     label.Text = "Get Keypad Cracker"
-    label.Font = Enum.Font.GothamMedium
+    label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
     label.Size = UDim2.new(1, -80, 1, 0)
@@ -534,60 +566,51 @@ do
     label.ZIndex = 4
     label.Parent = button
     
-    -- Status indicator (like a mini toggle)
-    local statusFrame = Instance.new("Frame")
-    statusFrame.Size = UDim2.new(0, 60, 0, 26)
-    statusFrame.Position = UDim2.new(1, -70, 0.5, -13)
-    statusFrame.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    statusFrame.BorderSizePixel = 0
-    statusFrame.ZIndex = 4
-    statusFrame.Parent = button
-    Instance.new("UICorner", statusFrame).CornerRadius = UDim.new(0, 6)
-    
+    -- Status label (CLICK/RUNNING)
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Text = "CLICK"
     statusLabel.Font = Enum.Font.GothamBold
-    statusLabel.TextSize = 11
+    statusLabel.TextSize = 12
     statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.Size = UDim2.new(1, 0, 1, 0)
+    statusLabel.Size = UDim2.new(0, 70, 1, 0)
+    statusLabel.Position = UDim2.new(1, -80, 0, 0)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.ZIndex = 5
-    statusLabel.Parent = statusFrame
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+    statusLabel.ZIndex = 4
+    statusLabel.Parent = button
     
     local canClick = true
     local TweenService = game:GetService("TweenService")
     
     button.MouseEnter:Connect(function()
         if canClick then
-            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(148, 53, 236)}):Play()
         end
     end)
     
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
+        if canClick then
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play()
+        end
     end)
     
     button.MouseButton1Click:Connect(function()
         if not canClick then return end
         
-        if not crackerRunning then
-            canClick = false
-            crackerRunning = true
-            
-            -- Change to running state
-            statusLabel.Text = "RUNNING"
-            TweenService:Create(statusFrame, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(46, 204, 113)}):Play()
-            
-            startGetKeypadCracker()
-            
-            -- 10 second cooldown
-            task.delay(10, function()
-                canClick = true
-                crackerRunning = false
-                statusLabel.Text = "CLICK"
-                TweenService:Create(statusFrame, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(88, 101, 242)}):Play()
-            end)
-        end
+        canClick = false
+        
+        -- Change to running state (darker green)
+        statusLabel.Text = "RUNNING"
+        TweenService:Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(34, 153, 84)}):Play()
+        
+        startGetKeypadCracker()
+        
+        -- 10 second cooldown
+        task.delay(10, function()
+            canClick = true
+            statusLabel.Text = "CLICK"
+            TweenService:Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play()
+        end)
     end)
 end
 

@@ -1,0 +1,72 @@
+-- Hitbox Arm Animation Script
+-- Place this in StarterPlayer > StarterCharacterScripts or StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local rightArm = character:WaitForChild("RightHand") or character:WaitForChild("Right Arm")
+
+-- Get the Doors folder
+local doors = workspace:WaitForChild("Doors")
+
+-- Table to store all hitboxes
+local hitboxes = {}
+
+-- Door folder names to search
+local doorFolders = {
+    "AED", "ARD", "ARD_Offices", "Armoury", "Central/Processing",
+    "Coolant", "Divisional", "HR/SC", "Hangar", "Jail",
+    "Lab_Wasteland_A", "Processing", "Reactor", "Roof",
+    "SpawnedMisc", "Tower/Posts", "Warehouse"
+}
+
+-- Function to find all hitboxes in door folders
+local function findAllHitboxes()
+    for _, folderName in pairs(doorFolders) do
+        local folder = doors:FindFirstChild(folderName)
+        if folder then
+            -- Search recursively for any object named "Hitbox"
+            for _, descendant in pairs(folder:GetDescendants()) do
+                if descendant.Name == "Hitbox" and descendant:IsA("BasePart") then
+                    table.insert(hitboxes, descendant)
+                end
+            end
+        end
+    end
+end
+
+-- Find all hitboxes
+findAllHitboxes()
+
+-- Animation variables
+local offset = 0
+local direction = 1
+local speed = 2 -- 2 studs per 0.1 seconds = 0.2 seconds for full cycle
+local maxOffset = 2
+
+-- Main animation loop
+RunService.RenderStepped:Connect(function(deltaTime)
+    if not rightArm then return end
+    
+    -- Update offset for up/down motion
+    offset = offset + (direction * speed)
+    
+    -- Reverse direction when reaching limits
+    if offset >= maxOffset then
+        direction = -1
+    elseif offset <= -maxOffset then
+        direction = 1
+    end
+    
+    -- Get right arm tip position
+    local rightArmTip = rightArm.CFrame * CFrame.new(0, -rightArm.Size.Y/2, 0)
+    
+    -- Move all hitboxes to right arm tip with offset
+    for _, hitbox in pairs(hitboxes) do
+        if hitbox and hitbox.Parent then
+            hitbox.CFrame = rightArmTip * CFrame.new(0, offset, 0)
+        end
+    end
+end)

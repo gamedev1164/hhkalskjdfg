@@ -23,6 +23,7 @@ local openDoorsState = {
     running = false,
     connection = nil,
     hitboxes = {},
+    originalPositions = {},
     offset = 0,
     direction = 1
 }
@@ -42,19 +43,23 @@ local function startOpenDoors()
         "SpawnedMisc", "Tower/Posts", "Warehouse"
     }
     
-    -- Find all hitboxes
+    -- Find all hitboxes and save original positions
     openDoorsState.hitboxes = {}
+    openDoorsState.originalPositions = {}
     for _, folderName in pairs(doorFolders) do
         local folder = doors:FindFirstChild(folderName)
         if folder then
             for _, descendant in pairs(folder:GetDescendants()) do
                 if descendant.Name == "Hitbox" and descendant:IsA("BasePart") then
                     table.insert(openDoorsState.hitboxes, descendant)
+                    openDoorsState.originalPositions[descendant] = descendant.CFrame
                 end
             end
         end
     end
     
+    openDoorsState.offset = 0
+    openDoorsState.direction = 1
     local speed = 2
     local maxOffset = 2
     
@@ -78,7 +83,7 @@ local function startOpenDoors()
         end
     end)
     
-    print("✓ Open Doors started")
+    print("✓ Open All Doors started")
 end
 
 local function stopOpenDoors()
@@ -87,7 +92,22 @@ local function stopOpenDoors()
         openDoorsState.connection:Disconnect()
         openDoorsState.connection = nil
     end
-    print("✓ Open Doors stopped")
+    
+    -- Restore all hitboxes to original positions
+    for hitbox, originalCF in pairs(openDoorsState.originalPositions) do
+        if hitbox and hitbox.Parent then
+            pcall(function()
+                hitbox.CFrame = originalCF
+            end)
+        end
+    end
+    
+    openDoorsState.hitboxes = {}
+    openDoorsState.originalPositions = {}
+    openDoorsState.offset = 0
+    openDoorsState.direction = 1
+    
+    print("✓ Open All Doors stopped")
 end
 
 --==============================================================================
@@ -231,7 +251,7 @@ local function startCloseDoors()
         end
     end)
     
-    print("✓ Close Doors started (0.001s interval)")
+    print("✓ Close All Doors started")
 end
 
 local function stopCloseDoors()
@@ -240,7 +260,9 @@ local function stopCloseDoors()
         closeDoorsState.connection:Disconnect()
         closeDoorsState.connection = nil
     end
-    print("✓ Close Doors stopped")
+    closeDoorsState.clickDetectors = {}
+    closeDoorsState.timer = 0
+    print("✓ Close All Doors stopped")
 end
 
 --==============================================================================
@@ -489,40 +511,82 @@ do
     button.Size = UDim2.new(1, 0, 0, 45)
     button.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     button.BorderSizePixel = 0
+    button.AutoButtonColor = false
     button.ZIndex = 3
     button.Parent = page
     
     Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
+    
+    -- Gradient for hover effect
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new(Color3.fromRGB(30, 30, 35))
+    gradient.Parent = button
     
     local label = Instance.new("TextLabel")
     label.Text = "Get Keypad Cracker"
     label.Font = Enum.Font.GothamMedium
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Size = UDim2.new(1, -15, 1, 0)
+    label.Size = UDim2.new(1, -80, 1, 0)
     label.Position = UDim2.new(0, 15, 0, 0)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 4
     label.Parent = button
     
-    local clickLabel = Instance.new("TextLabel")
-    clickLabel.Text = "CLICK"
-    clickLabel.Font = Enum.Font.GothamBold
-    clickLabel.TextSize = 12
-    clickLabel.TextColor3 = Color3.fromRGB(88, 101, 242)
-    clickLabel.Size = UDim2.new(0, 60, 1, 0)
-    clickLabel.Position = UDim2.new(1, -75, 0, 0)
-    clickLabel.BackgroundTransparency = 1
-    clickLabel.TextXAlignment = Enum.TextXAlignment.Center
-    clickLabel.ZIndex = 4
-    clickLabel.Parent = button
+    -- Status indicator (like a mini toggle)
+    local statusFrame = Instance.new("Frame")
+    statusFrame.Size = UDim2.new(0, 60, 0, 26)
+    statusFrame.Position = UDim2.new(1, -70, 0.5, -13)
+    statusFrame.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    statusFrame.BorderSizePixel = 0
+    statusFrame.ZIndex = 4
+    statusFrame.Parent = button
+    Instance.new("UICorner", statusFrame).CornerRadius = UDim.new(0, 6)
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Text = "CLICK"
+    statusLabel.Font = Enum.Font.GothamBold
+    statusLabel.TextSize = 11
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusLabel.Size = UDim2.new(1, 0, 1, 0)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.ZIndex = 5
+    statusLabel.Parent = statusFrame
+    
+    local canClick = true
+    local TweenService = game:GetService("TweenService")
+    
+    button.MouseEnter:Connect(function()
+        if canClick then
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+        end
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
+    end)
     
     button.MouseButton1Click:Connect(function()
+        if not canClick then return end
+        
         if not crackerRunning then
+            canClick = false
+            crackerRunning = true
+            
+            -- Change to running state
+            statusLabel.Text = "RUNNING"
+            TweenService:Create(statusFrame, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(46, 204, 113)}):Play()
+            
             startGetKeypadCracker()
-            clickLabel.Text = "RUNNING"
-            clickLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+            
+            -- 10 second cooldown
+            task.delay(10, function()
+                canClick = true
+                crackerRunning = false
+                statusLabel.Text = "CLICK"
+                TweenService:Create(statusFrame, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(88, 101, 242)}):Play()
+            end)
         end
     end)
 end

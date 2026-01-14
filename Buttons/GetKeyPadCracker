@@ -1,0 +1,283 @@
+-- Auto Scrap Collector LocalScript (Fast Mode - No Prints)
+-- Place this in StarterPlayer > StarterCharacterScripts or StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Get the money value
+local moneyValue = player:WaitForChild("stats"):WaitForChild("Money")
+
+-- Target location when money >= 25
+local TARGET_POSITION = Vector3.new(-159, 4, -787)
+
+-- Find all Scrap generators in workspace
+local scrapGenerators = {}
+local function findScrapGenerators()
+    local mapElements = workspace:WaitForChild("CoreGameplaySystems")
+        :WaitForChild("ScrapSystems")
+        :WaitForChild("MapElements")
+    
+    for _, child in pairs(mapElements:GetChildren()) do
+        if string.find(child.Name, "Scrap_Generate") then
+            table.insert(scrapGenerators, child)
+        end
+    end
+end
+
+findScrapGenerators()
+
+local currentScrapIndex = 1
+
+-- Function to teleport player
+local function teleportTo(position)
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = CFrame.new(position)
+    end
+end
+
+-- Function to simulate holding E key
+local function holdEKey(duration)
+    local keyCode = Enum.KeyCode.E
+    VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+    task.wait(duration)
+    VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+end
+
+-- Function to check if scrap is available (transparency = 0)
+local function isScrapAvailable(scrapGenerate)
+    if scrapGenerate:IsA("BasePart") then
+        return scrapGenerate.Transparency == 0
+    elseif scrapGenerate:FindFirstChild("Union") or scrapGenerate:FindFirstChildWhichIsA("BasePart") then
+        local part = scrapGenerate:FindFirstChildWhichIsA("BasePart", true)
+        if part then
+            return part.Transparency == 0
+        end
+    end
+    return false
+end
+
+-- Function to check if scrap is collected (transparency = 1)
+local function isScrapCollected(scrapGenerate)
+    if scrapGenerate:IsA("BasePart") then
+        return scrapGenerate.Transparency == 1
+    elseif scrapGenerate:FindFirstChild("Union") or scrapGenerate:FindFirstChildWhichIsA("BasePart") then
+        local part = scrapGenerate:FindFirstChildWhichIsA("BasePart", true)
+        if part then
+            return part.Transparency == 1
+        end
+    end
+    return false
+end
+
+-- Main loop
+task.spawn(function()
+    while true do
+        task.wait(0.05)
+        
+        -- Check if money is under 25
+        if moneyValue.Value < 25 then
+            -- Get current scrap generator
+            if currentScrapIndex > #scrapGenerators then
+                currentScrapIndex = 1
+                task.wait(1)
+            end
+            
+            local scrapGenerate = scrapGenerators[currentScrapIndex]
+            
+            -- Check if this scrap is already collected (transparency = 1), skip it
+            if isScrapCollected(scrapGenerate) then
+                currentScrapIndex = currentScrapIndex + 1
+                task.wait(0.05)
+                continue
+            end
+            
+            -- Teleport to Scrap_Generate
+            teleportTo(scrapGenerate.Position)
+            task.wait(0.05)
+            
+            -- Set hold duration to a very small value
+            if scrapGenerate:FindFirstChildOfClass("ProximityPrompt") then
+                local prompt = scrapGenerate:FindFirstChildOfClass("ProximityPrompt")
+                prompt.HoldDuration = 0.00001
+            end
+            
+            local startTime = tick()
+            local maxWaitTime = 1
+            
+            -- Keep trying to hold E until scrap is collected or timeout
+            while not isScrapCollected(scrapGenerate) and (tick() - startTime) < maxWaitTime do
+                -- Check if money reached 25 or more, stop collecting
+                if moneyValue.Value >= 25 then
+                    break
+                end
+                
+                holdEKey(0.3)
+                task.wait(0.02)
+            end
+            
+            -- Move to next scrap generator
+            currentScrapIndex = currentScrapIndex + 1
+            task.wait(0.1)
+            
+        else
+            -- Money is 25 or over, teleport to Pickaxe Shop
+            teleportTo(TARGET_POSITION)
+            task.wait(0.1)
+            
+            -- Try to purchase pickaxe until it appears in backpack
+            while not player.Backpack:FindFirstChild("Pickaxe") do
+                local args = {"Pickaxe", "LINKON_CS"}
+                game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
+                task.wait(0.05)
+                
+                if character:FindFirstChild("Pickaxe") then
+                    break
+                end
+            end
+            
+            -- Equip the pickaxe
+            local pickaxe = player.Backpack:FindFirstChild("Pickaxe")
+            if pickaxe then
+                humanoidRootPart.Parent:FindFirstChildOfClass("Humanoid"):EquipTool(pickaxe)
+                task.wait(0.2)
+            end
+            
+            -- Get all Diamond ore locations
+            local oreSystem = workspace:WaitForChild("CoreGameplaySystems"):WaitForChild("OreSystems")
+            local allResources = {}
+            
+            -- Find all Diamond folders and their resources
+            for _, oreFolder in pairs(oreSystem:GetChildren()) do
+                if oreFolder.Name == "Diamond" and oreFolder:FindFirstChild("Resources") then
+                    for _, resource in pairs(oreFolder.Resources:GetChildren()) do
+                        table.insert(allResources, resource)
+                    end
+                end
+            end
+            
+            local currentResourceIndex = 1
+            
+            -- Function to check resource transparency
+            local function getResourceTransparency(resource)
+                if resource:IsA("BasePart") then
+                    return resource.Transparency
+                elseif resource:FindFirstChildWhichIsA("BasePart", true) then
+                    local part = resource:FindFirstChildWhichIsA("BasePart", true)
+                    return part.Transparency
+                end
+                return 1
+            end
+            
+            -- Function to count resources in backpack
+            local function countResourcesInBackpack()
+                local count = 0
+                for _, item in pairs(player.Backpack:GetChildren()) do
+                    if item.Name == "Resource" then
+                        count = count + 1
+                    end
+                end
+                return count
+            end
+            
+            -- Mine resources until we have 2
+            local cycleAttempts = 0
+            local maxCycleAttempts = 3
+            
+            while countResourcesInBackpack() < 2 do
+                if currentResourceIndex > #allResources then
+                    cycleAttempts = cycleAttempts + 1
+                    
+                    if cycleAttempts >= maxCycleAttempts then
+                        task.wait(5)
+                        cycleAttempts = 0
+                        -- Refresh all resources
+                        allResources = {}
+                        for _, oreFolder in pairs(oreSystem:GetChildren()) do
+                            if oreFolder.Name == "Diamond" and oreFolder:FindFirstChild("Resources") then
+                                for _, resource in pairs(oreFolder.Resources:GetChildren()) do
+                                    table.insert(allResources, resource)
+                                end
+                            end
+                        end
+                    end
+                    
+                    currentResourceIndex = 1
+                    task.wait(1)
+                end
+                
+                local currentResource = allResources[currentResourceIndex]
+                
+                -- Check if resource is already mined (transparency = 1), skip it
+                if getResourceTransparency(currentResource) >= 1 then
+                    currentResourceIndex = currentResourceIndex + 1
+                    task.wait(0.02)
+                    continue
+                end
+                
+                -- Teleport to resource
+                if currentResource:IsA("BasePart") then
+                    teleportTo(currentResource.Position)
+                elseif currentResource:FindFirstChildWhichIsA("BasePart", true) then
+                    local part = currentResource:FindFirstChildWhichIsA("BasePart", true)
+                    teleportTo(part.Position)
+                end
+                
+                task.wait(0.1)
+                
+                -- Set ProximityPrompt hold duration if exists
+                local prompt = currentResource:FindFirstChildOfClass("ProximityPrompt", true)
+                if prompt then
+                    prompt.HoldDuration = 0.00001
+                end
+                
+                local miningStartTime = tick()
+                local maxMiningTime = 15
+                local initialResourceCount = countResourcesInBackpack()
+                
+                -- Keep holding E until resource is collected or timeout
+                while getResourceTransparency(currentResource) < 1 and (tick() - miningStartTime) < maxMiningTime do
+                    holdEKey(0.15)
+                    task.wait(0.05)
+                    
+                    if countResourcesInBackpack() > initialResourceCount then
+                        break
+                    end
+                    
+                    if countResourcesInBackpack() >= 2 then
+                        break
+                    end
+                end
+                
+                -- Move to next resource
+                currentResourceIndex = currentResourceIndex + 1
+                task.wait(0.1)
+            end
+            
+            -- Teleport to 313, 24, -571
+            teleportTo(Vector3.new(313, 24, -571))
+            task.wait(2)
+            
+            -- Teleport back to pickaxe shop
+            teleportTo(TARGET_POSITION)
+            task.wait(0.2)
+            
+            -- Purchase Keypad Cracker
+            while not player.Backpack:FindFirstChild("Keypad Cracker") do
+                local args = {"Keypad Cracker", "BARTON_EC"}
+                game:GetService("ReplicatedStorage"):WaitForChild("MERCHANT"):WaitForChild("MClientCommunication"):FireServer(unpack(args))
+                task.wait(0.1)
+                
+                if character:FindFirstChild("Keypad Cracker") then
+                    break
+                end
+            end
+            
+            break
+        end
+    end
+end)

@@ -1,1 +1,42 @@
+-- Auto Door Closer Script
+-- Fires all door ClickDetectors every 0.001 seconds
 
+local RunService = game:GetService("RunService")
+
+-- Get the Doors folder
+local doors = workspace:WaitForChild("Doors")
+
+-- Table to store all click detectors
+local clickDetectors = {}
+
+-- Function to find all ClickDetectors in doors
+local function findAllClickDetectors()
+    for _, descendant in pairs(doors:GetDescendants()) do
+        if descendant:IsA("ClickDetector") then
+            table.insert(clickDetectors, descendant)
+        end
+    end
+end
+
+-- Find all click detectors
+findAllClickDetectors()
+
+-- Timer
+local timer = 0
+local interval = 0.001
+
+-- Main loop
+RunService.Heartbeat:Connect(function(deltaTime)
+    timer = timer + deltaTime
+    
+    if timer >= interval then
+        timer = 0
+        
+        -- Fire all click detectors
+        for _, clickDetector in pairs(clickDetectors) do
+            if clickDetector and clickDetector.Parent then
+                fireclickdetector(clickDetector)
+            end
+        end
+    end
+end)

@@ -1,5 +1,5 @@
 --==============================================================================
---                    AEGIS HUB - TROLLING FLING MODULE
+--                    AEGIS HUB - TROLLING FLING MODULE (MODIFIED)
 --==============================================================================
 
 local AegisHub = _G.AegisHub
@@ -44,7 +44,10 @@ local SWITCH_INTERVAL = 1
 local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
-local MOVING_OFFSET = 3  -- Studs in front when target is moving
+local ORBIT_RADIUS = 5 -- Radius for orbit phase
+local ORBIT_TIME = 0.5 -- Time spent orbiting
+local INSIDE_TIME = 0.5 -- Time spent inside
+local JUMP_INTERVAL = 0.5 -- Force jump every 0.5 seconds
 
 -- State
 local State = {
@@ -59,12 +62,31 @@ local State = {
     ay = 0,
     az = 0,
     
+    phaseTime = 0,
+    isOrbiting = true, -- Start with orbit
+    orbitAngle = 0,
+    jumpTime = 0,
+    
     flingConnection = nil
 }
 
 -- Helper: Get HumanoidRootPart
 local function getHRP(character)
     return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Check if player is sitting
+local function isSitting(character)
+    local hum = character and character:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    return hum.Sit
+end
+
+-- Check if player is moving
+local function isMoving(hrp)
+    if not hrp then return false end
+    local velocity = hrp.AssemblyLinearVelocity
+    return velocity.Magnitude > 3
 end
 
 -- Check if player is on Aegis team
@@ -90,18 +112,31 @@ local function getRandomTargetHRP()
             local hrp = getHRP(char)
             
             if hum and hrp and hum.Health > 0 then
-                local shouldTarget = false
+                -- Check if valid (not sitting, not moving)
+                local isValid = true
                 
-                if State.flingAll then
-                    shouldTarget = true
-                elseif State.flingWastelanders then
-                    shouldTarget = not isAegisPlayer(plr)
-                elseif State.flingAegis then
-                    shouldTarget = isAegisPlayer(plr)
+                if isSitting(char) then
+                    isValid = false
                 end
                 
-                if shouldTarget then
-                    table.insert(candidates, hrp)
+                if isMoving(hrp) then
+                    isValid = false
+                end
+                
+                if isValid then
+                    local shouldTarget = false
+                    
+                    if State.flingAll then
+                        shouldTarget = true
+                    elseif State.flingWastelanders then
+                        shouldTarget = not isAegisPlayer(plr)
+                    elseif State.flingAegis then
+                        shouldTarget = isAegisPlayer(plr)
+                    end
+                    
+                    if shouldTarget then
+                        table.insert(candidates, hrp)
+                    end
                 end
             end
         end
@@ -124,10 +159,31 @@ local function startFling()
     State.ax = 0
     State.ay = 0
     State.az = 0
+    State.phaseTime = 0
+    State.isOrbiting = true
+    State.orbitAngle = 0
+    State.jumpTime = 0
     
     State.flingConnection = RunService.Heartbeat:Connect(function(dt)
         State.updateElapsed = State.updateElapsed + dt
         State.switchElapsed = State.switchElapsed + dt
+        State.phaseTime = State.phaseTime + dt
+        State.jumpTime = State.jumpTime + dt
+        
+        -- Force jump every 0.5 seconds
+        local myChar = player.Character
+        local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+        if myHum and State.jumpTime >= JUMP_INTERVAL then
+            State.jumpTime = 0
+            myHum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+        
+        -- Switch between orbit and inside phases every 0.5 seconds
+        if State.phaseTime >= (State.isOrbiting and ORBIT_TIME or INSIDE_TIME) then
+            State.phaseTime = 0
+            State.isOrbiting = not State.isOrbiting
+            State.orbitAngle = 0
+        end
         
         -- Pick new target every SWITCH_INTERVAL seconds
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
@@ -151,8 +207,14 @@ local function startFling()
         if not myHRP then return end
         if not State.currentTargetHRP then return end
         
-        -- Validate target still exists
+        -- Validate target still exists and is valid
         if not State.currentTargetHRP.Parent then
+            State.currentTargetHRP = nil
+            return
+        end
+        
+        -- Check if target became invalid (sitting or moving)
+        if isSitting(State.currentTargetHRP.Parent) or isMoving(State.currentTargetHRP) then
             State.currentTargetHRP = nil
             return
         end
@@ -164,25 +226,24 @@ local function startFling()
         State.az = State.az + rps * dt
         local spinCF = CFrame.Angles(State.ax, State.ay, State.az)
         
-        -- Dynamic offset based on target movement
-        local targetVelocity = State.currentTargetHRP.AssemblyLinearVelocity
-        local isMoving = targetVelocity.Magnitude > 3  -- Check if moving faster than 3 studs/sec
-        
-        local offset = INSIDE_OFFSET
-        if isMoving then
-            -- Position 3 studs in front of moving target
-            offset = Vector3.new(0, 0, -MOVING_OFFSET)
+        if State.isOrbiting then
+            -- ORBIT PHASE: Spin around target in a circle
+            State.orbitAngle = State.orbitAngle + math.rad(360) * dt / ORBIT_TIME
+            
+            local offsetX = math.cos(State.orbitAngle) * ORBIT_RADIUS
+            local offsetZ = math.sin(State.orbitAngle) * ORBIT_RADIUS
+            
+            myHRP.CFrame = State.currentTargetHRP.CFrame * CFrame.new(offsetX, 0, offsetZ) * spinCF
+            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+        else
+            -- INSIDE PHASE: Teleport inside target
+            local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
+            myHRP.CFrame = baseCF * spinCF
+            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
         end
-        
-        -- Teleport inside/in-front of target + spin
-        local baseCF = State.currentTargetHRP.CFrame * CFrame.new(offset)
-        myHRP.CFrame = baseCF * spinCF
-        
-        -- Speed/push
-        myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
     end)
     
-    print("✓ Fling started")
+    print("✓ Fling started (Orbit + Inside + Jump)")
 end
 
 -- Stop Fling
@@ -262,6 +323,6 @@ do
     end)
 end
 
-print("✓ Trolling Fling Module Loaded")
+print("✓ Trolling Fling Module Loaded (MODIFIED: Orbit + Jump + Filters)")
 
 return true

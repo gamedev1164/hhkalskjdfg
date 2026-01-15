@@ -320,41 +320,7 @@ local function startGetKeypadCracker()
 end
 
 --==============================================================================
---                          5. HIGHLIGHT DOORS
---==============================================================================
-
-local highlightDoorsState = { enabled = false, highlights = {} }
-
-local function highlightDoors()
-    local doors = workspace:WaitForChild("Doors")
-    for _, obj in ipairs(doors:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            local parent = obj.Parent
-            if parent and (parent.Name:lower():find("door") or obj.Name:lower():find("door")) then
-                local highlight = Instance.new("Highlight")
-                highlight.Adornee = obj
-                highlight.FillColor = Color3.fromRGB(255, 255, 255)
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.FillTransparency = 1
-                highlight.OutlineTransparency = 0
-                highlight.Parent = obj
-                table.insert(highlightDoorsState.highlights, highlight)
-            end
-        end
-    end
-    print("✓ Highlighted doors")
-end
-
-local function clearDoorHighlights()
-    for _, highlight in ipairs(highlightDoorsState.highlights) do
-        if highlight and highlight.Parent then pcall(function() highlight:Destroy() end) end
-    end
-    highlightDoorsState.highlights = {}
-    print("✓ Door highlights cleared")
-end
-
---==============================================================================
---                          6. X-RAY WALLS
+--                          5. X-RAY WALLS
 --==============================================================================
 
 local xrayState = { enabled = false, originalTransparency = {} }
@@ -391,7 +357,7 @@ local function disableXray()
 end
 
 --==============================================================================
---                          7. TELEPORT TO BORDER
+--                          6. TELEPORT TO BORDER
 --==============================================================================
 
 local teleportBorderState = { lastTeleport = 0 }
@@ -493,56 +459,68 @@ Library:CreateToggle(page, "Booth Processing Notification", false, function(enab
     if enabled then startAutoBoothProcessing() else stopAutoBoothProcessing() end
 end)
 
--- 5. Highlight Doors
-Library:CreateToggle(page, "Highlight Doors", false, function(enabled)
-    if enabled then highlightDoors() else clearDoorHighlights() end
-end)
-
--- 6. X-Ray Walls
-Library:CreateToggle(page, "X-Ray Walls", false, function(enabled)
-    if enabled then enableXray() else disableXray() end
-end)
-
--- 7. Teleport To Border
+-- Spacer
 do
-    local button = Instance.new("TextButton")
-    button.Text = ""
-    button.Size = UDim2.new(1, 0, 0, 45)
-    button.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    button.BorderSizePixel = 0
-    button.AutoButtonColor = false
-    button.ZIndex = 3
-    button.Parent = page
-    Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
-    
-    local label = Instance.new("TextLabel")
-    label.Text = "Teleport To Border"
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Size = UDim2.new(1, -80, 1, 0)
-    label.Position = UDim2.new(0, 15, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.ZIndex = 4
-    label.Parent = button
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Text = "CLICK"
-    statusLabel.Font = Enum.Font.GothamBold
-    statusLabel.TextSize = 12
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.Size = UDim2.new(0, 70, 1, 0)
-    statusLabel.Position = UDim2.new(1, -80, 0, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Center
-    statusLabel.ZIndex = 4
-    statusLabel.Parent = button
+    local spacer = Instance.new("Frame")
+    spacer.Size = UDim2.new(1, 0, 0, 15)
+    spacer.BackgroundTransparency = 1
+    spacer.Parent = page
+end
+
+-- Small buttons container at bottom
+do
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, 0, 0, 30)
+    container.BackgroundTransparency = 1
+    container.Parent = page
     
     local TweenService = game:GetService("TweenService")
-    button.MouseEnter:Connect(function() TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(148, 53, 236)}):Play() end)
-    button.MouseLeave:Connect(function() TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play() end)
-    button.MouseButton1Click:Connect(function() teleportToBorder() end)
+    
+    -- X-Ray Walls (small button)
+    local xrayButton = Instance.new("TextButton")
+    xrayButton.Text = "X-Ray"
+    xrayButton.Font = Enum.Font.GothamBold
+    xrayButton.TextSize = 10
+    xrayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    xrayButton.Size = UDim2.new(0.48, 0, 1, 0)
+    xrayButton.Position = UDim2.new(0, 0, 0, 0)
+    xrayButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    xrayButton.BorderSizePixel = 0
+    xrayButton.AutoButtonColor = false
+    xrayButton.ZIndex = 3
+    xrayButton.Parent = container
+    Instance.new("UICorner", xrayButton).CornerRadius = UDim.new(0, 6)
+    
+    local xrayEnabled = false
+    xrayButton.MouseButton1Click:Connect(function()
+        xrayEnabled = not xrayEnabled
+        if xrayEnabled then
+            enableXray()
+            TweenService:Create(xrayButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play()
+        else
+            disableXray()
+            TweenService:Create(xrayButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}):Play()
+        end
+    end)
+    
+    -- Teleport To Border (small button)
+    local tpButton = Instance.new("TextButton")
+    tpButton.Text = "TP Border"
+    tpButton.Font = Enum.Font.GothamBold
+    tpButton.TextSize = 10
+    tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpButton.Size = UDim2.new(0.48, 0, 1, 0)
+    tpButton.Position = UDim2.new(0.52, 0, 0, 0)
+    tpButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    tpButton.BorderSizePixel = 0
+    tpButton.AutoButtonColor = false
+    tpButton.ZIndex = 3
+    tpButton.Parent = container
+    Instance.new("UICorner", tpButton).CornerRadius = UDim.new(0, 6)
+    
+    tpButton.MouseButton1Click:Connect(function()
+        teleportToBorder()
+    end)
 end
 
 print("✓ Trolling Auto Module Loaded")

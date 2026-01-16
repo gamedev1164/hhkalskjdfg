@@ -43,7 +43,7 @@ local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
 local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
-local VELOCITY_FLING = 1000 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
+local VELOCITY_FLING = 300 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local ORBIT_RADIUS = 1 -- Orbit radius
 local ORBIT_TIME = 1.0 -- Time spent orbiting

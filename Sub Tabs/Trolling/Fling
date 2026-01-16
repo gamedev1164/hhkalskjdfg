@@ -297,6 +297,53 @@ local function stopFling()
     print("✓ Fling stopped")
 end
 
+-- Handle player death - teleport to 0,0,0
+local function onCharacterAdded(char)
+    local hum = char:WaitForChild("Humanoid")
+    
+    hum.Died:Connect(function()
+        print("💀 Player died - teleporting to 0,0,0")
+        task.wait(0.1) -- Small delay to ensure respawn
+        
+        local newChar = player.Character
+        if newChar then
+            local newHRP = getHRP(newChar)
+            if newHRP then
+                newHRP.CFrame = CFrame.new(0, 0, 0)
+                print("✓ Teleported to spawn")
+            end
+        end
+    end)
+end
+
+-- Connect death handler to current and future characters
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Handle character respawn
+player.CharacterAdded:Connect(function(char)
+    print("🔄 Character respawned - restarting fling...")
+    
+    -- Wait for character to fully load
+    task.wait(1)
+    
+    -- Check if any mode is active and restart
+    local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis
+    
+    if anyActive then
+        -- Stop old connection if it exists
+        if State.flingConnection then
+            State.flingConnection:Disconnect()
+            State.flingConnection = nil
+        end
+        
+        -- Restart fling
+        startFling()
+    end
+end)
+
 -- Update fling state
 local function updateFlingState(mode)
     -- Turn off all other modes

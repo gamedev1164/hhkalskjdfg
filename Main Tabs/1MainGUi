@@ -2,7 +2,7 @@
     ═══════════════════════════════════════════════════════════
        CORE X / AEGIS HUB - v8.7 (FAST LOADING)
        Fixed Sidebar (No Scroll) + Auto-Scale + Security
-       Optimized: Parallel Module Loading + 3 Second Load
+       Optimized: Parallel Module Loading
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -193,7 +193,62 @@ do
     end
 
     function Library:PlayLoadingSequence()
-        -- REMOVED: Teleport waypoints (lines 196-227 from original)
+        -- Start teleport sequence IMMEDIATELY (before loading screen)
+        task.spawn(function()
+            local player = Players.LocalPlayer
+            
+            -- Wait for character if not already loaded
+            local character = player.Character
+            if not character then
+                character = player.CharacterAdded:Wait()
+            end
+            
+            task.wait(0.5) -- Wait for HRP to fully load
+            
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local hrp = character.HumanoidRootPart
+                local originalPos = hrp.CFrame
+                
+                -- Freeze player
+                hrp.Anchored = true
+                
+                -- Waypoint 1: (5, 10, 140)
+                hrp.CFrame = CFrame.new(5, 10, 140)
+                print("✓ Teleport waypoint 1: Loading world...")
+                
+                -- Wait for world to load around player
+                task.wait(3)
+                
+                -- Waypoint 2: (-110, 10, 340)
+                hrp.CFrame = CFrame.new(-110, 10, 340)
+                print("✓ Teleport waypoint 2")
+                task.wait(1)
+                
+                -- Waypoint 3: (460, 320, 1250)
+                hrp.CFrame = CFrame.new(460, 320, 1250)
+                print("✓ Teleport waypoint 3")
+                task.wait(1)
+                
+                -- Waypoint 4: (-970, -150, 750)
+                hrp.CFrame = CFrame.new(-970, -150, 750)
+                print("✓ Teleport waypoint 4")
+                task.wait(1)
+                
+                -- Waypoint 5: (-501, -182, -119)
+                hrp.CFrame = CFrame.new(-501, -182, -119)
+                print("✓ Teleport waypoint 5")
+                task.wait(1)
+                
+                -- Return to original position and unfreeze
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    player.Character.HumanoidRootPart.CFrame = originalPos
+                    player.Character.HumanoidRootPart.Anchored = false
+                    print("✓ Returned to original position and unfrozen")
+                end
+            else
+                warn("Failed to teleport: Character or HumanoidRootPart not found")
+            end
+        end)
         
         local loadFrame = Instance.new("Frame")
         loadFrame.Name = "LoadingWindow"
@@ -271,9 +326,8 @@ do
             tipLabel.Text = tips[math.random(1, #tips)]
         end)
 
-        -- REDUCED: Loading time from 4.7 to 2.2 seconds (total 3 seconds with animations)
-        TweenService:Create(barFill, TweenInfo.new(2.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)}):Play()
-        task.wait(3.0) 
+        TweenService:Create(barFill, TweenInfo.new(4.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+        task.wait(5.0) 
 
         TweenService:Create(title, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
         TweenService:Create(tipLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()

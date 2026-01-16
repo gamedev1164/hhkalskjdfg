@@ -58,6 +58,7 @@ local State = {
     currentTargetIndex = 1,
     targetList = {}, -- Sequential list of targets
     jumpTime = 0,
+    hasTeleported = false, -- Track if we've teleported to current target
     
     flingConnection = nil
 }
@@ -165,6 +166,7 @@ local function startFling()
     State.currentTargetIndex = 1
     State.targetList = {}
     State.jumpTime = 0
+    State.hasTeleported = false
     
     State.flingConnection = RunService.Heartbeat:Connect(function(dt)
         State.updateElapsed = State.updateElapsed + dt
@@ -183,6 +185,7 @@ local function startFling()
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
             State.currentTargetHRP = getNextTargetHRP()
             State.switchElapsed = 0
+            State.hasTeleported = false -- Reset teleport flag for new target
             
             -- Spectate new target
             if State.currentTargetHRP then
@@ -213,12 +216,16 @@ local function startFling()
             return
         end
         
-        -- TELEPORT behind target first (instant positioning)
         local targetCF = State.currentTargetHRP.CFrame
-        local behindPosition = targetCF * CFrame.new(0, 0, PUSH_DISTANCE) -- Behind target
-        myHRP.CFrame = behindPosition
         
-        -- THEN push forward into target with velocity
+        -- TELEPORT behind target ONCE per target
+        if not State.hasTeleported then
+            local behindPosition = targetCF * CFrame.new(0, 0, PUSH_DISTANCE) -- Behind target
+            myHRP.CFrame = behindPosition
+            State.hasTeleported = true
+        end
+        
+        -- CONTINUOUSLY push forward into target with velocity
         local pushDirection = (targetCF.Position - myHRP.Position).Unit
         local totalVelocity = PUSH_SPEED + VELOCITY_FLING
         

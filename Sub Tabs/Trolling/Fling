@@ -40,9 +40,10 @@ local AEGIS_TEAMS = {
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 2.0 -- Switch players every 1.5 seconds
+local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
 local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
+local VELOCITY_FLING = 1000 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local ORBIT_RADIUS = 1 -- Orbit radius
 local ORBIT_TIME = 1.0 -- Time spent orbiting
@@ -188,7 +189,7 @@ local function startFling()
         State.phaseTime = State.phaseTime + dt
         State.jumpTime = State.jumpTime + dt
         
-        -- Force jump every 0.5 seconds
+        -- Force jump every 1 second
         local myChar = player.Character
         local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
         if myHum and State.jumpTime >= JUMP_INTERVAL then
@@ -213,7 +214,6 @@ local function startFling()
                 local targetPlayer = Players:GetPlayerFromCharacter(State.currentTargetHRP.Parent)
                 if targetPlayer then
                     workspace.CurrentCamera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    print("🎯 Targeting: " .. targetPlayer.Name .. " (" .. State.currentTargetIndex - 1 .. "/" .. #State.targetList .. ")")
                 end
             end
         end
@@ -253,16 +253,26 @@ local function startFling()
             local offsetZ = math.sin(State.orbitAngle) * ORBIT_RADIUS
             
             myHRP.CFrame = State.currentTargetHRP.CFrame * CFrame.new(offsetX, 0, offsetZ) * spinCF
-            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+            
+            -- ⚡ VELOCITY FLING: Add velocity boost if enabled
+            if VELOCITY_FLING > 0 then
+                myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * (PUSH_SPEED + VELOCITY_FLING)
+            else
+                myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+            end
         else
             -- INSIDE PHASE: Teleport inside target (or if orbit disabled)
             local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
             myHRP.CFrame = baseCF * spinCF
-            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+            
+            -- ⚡ VELOCITY FLING: Add velocity boost if enabled
+            if VELOCITY_FLING > 0 then
+                myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * (PUSH_SPEED + VELOCITY_FLING)
+            else
+                myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+            end
         end
     end)
-    
-    print("✓ Fling started (Sequential targets, 1.5s inside, orbit radius: " .. ORBIT_RADIUS .. ")")
 end
 
 -- Stop Fling
@@ -294,7 +304,6 @@ local function stopFling()
     State.currentTargetHRP = nil
     State.targetList = {}
     State.currentTargetIndex = 1
-    print("✓ Fling stopped")
 end
 
 -- Handle player death - teleport to 0,0,0
@@ -302,7 +311,6 @@ local function onCharacterAdded(char)
     local hum = char:WaitForChild("Humanoid")
     
     hum.Died:Connect(function()
-        print("💀 Player died - teleporting to 0,0,0")
         task.wait(0.1) -- Small delay to ensure respawn
         
         local newChar = player.Character
@@ -310,7 +318,6 @@ local function onCharacterAdded(char)
             local newHRP = getHRP(newChar)
             if newHRP then
                 newHRP.CFrame = CFrame.new(0, 0, 0)
-                print("✓ Teleported to spawn")
             end
         end
     end)
@@ -324,8 +331,6 @@ player.CharacterAdded:Connect(onCharacterAdded)
 
 -- Handle character respawn
 player.CharacterAdded:Connect(function(char)
-    print("🔄 Character respawned - restarting fling...")
-    
     -- Wait for character to fully load
     task.wait(1)
     
@@ -390,7 +395,5 @@ do
         updateFlingState("wastelanders")
     end)
 end
-
-print("✓ Trolling Fling Module Loaded (Sequential List, 1.5s Inside, Orbit: " .. ORBIT_RADIUS .. ")")
 
 return true

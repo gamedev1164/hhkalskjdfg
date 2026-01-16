@@ -41,7 +41,7 @@ local AEGIS_TEAMS = {
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
-local PUSH_HEIGHT = 5 -- Height above target to position (in studs)
+local PUSH_DISTANCE = 10 -- Distance behind target to start push (in studs)
 local PUSH_SPEED = 800
 local VELOCITY_FLING = 100 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
 local JUMP_INTERVAL = 1 -- Force jump 
@@ -218,19 +218,19 @@ local function startFling()
         
         local targetCF = State.currentTargetHRP.CFrame
         
-        -- TELEPORT above target ONCE per target
+        -- TELEPORT behind target ONCE per target
         if not State.hasTeleported then
-            local abovePosition = targetCF * CFrame.new(0, PUSH_HEIGHT, 0) -- Above target
-            myHRP.CFrame = abovePosition
+            local behindPosition = targetCF * CFrame.new(0, 0, PUSH_DISTANCE) -- Behind target
+            myHRP.CFrame = behindPosition
             State.hasTeleported = true
         end
         
-        -- CONTINUOUSLY push DOWNWARD into target with velocity (into void)
-        local downDirection = Vector3.new(0, -1, 0) -- Straight down
+        -- CONTINUOUSLY push forward into target with velocity
+        local pushDirection = (targetCF.Position - myHRP.Position).Unit
         local totalVelocity = PUSH_SPEED + VELOCITY_FLING
         
-        -- Apply downward velocity to push them into the void
-        myHRP.AssemblyLinearVelocity = downDirection * totalVelocity
+        -- Apply velocity to ram into them
+        myHRP.AssemblyLinearVelocity = pushDirection * totalVelocity
     end)
 end
 

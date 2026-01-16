@@ -44,10 +44,10 @@ local SWITCH_INTERVAL = 1.5 -- Switch players every 1.5 seconds
 local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
-local ORBIT_RADIUS = 2 -- Radius for orbit phase
-local ORBIT_TIME = 0.5 -- Time spent orbiting (0.5 secondS)
-local INSIDE_TIME = 1 -- Time spent inside (1 second)
-local JUMP_INTERVAL = 0.5 -- Force jump every 0.5 seconds
+local ORBIT_RADIUS = 0 -- Set to 0 (can change back to 2+ to enable orbit)
+local ORBIT_TIME = 0.0 -- Time spent orbiting
+local INSIDE_TIME = 1.5 -- Time spent inside (1.5 seconds)
+local JUMP_INTERVAL = 1 -- Force jump every 1 second
 
 -- State
 local State = {
@@ -58,6 +58,8 @@ local State = {
     updateElapsed = 0,
     switchElapsed = 0,
     currentTargetHRP = nil,
+    currentTargetIndex = 1,
+    targetList = {}, -- Sequential list of targets
     ax = 0,
     ay = 0,
     az = 0,
@@ -101,8 +103,8 @@ local function isAegisPlayer(plr)
     return false
 end
 
--- Get random target based on active mode
-local function getRandomTargetHRP()
+-- Build sequential target list (no repeats until list restarts)
+local function buildTargetList()
     local candidates = {}
     
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -142,11 +144,25 @@ local function getRandomTargetHRP()
         end
     end
     
-    if #candidates == 0 then
-        return nil
+    return candidates
+end
+
+-- Get next target from sequential list
+local function getNextTargetHRP()
+    -- Rebuild list if empty or index out of bounds
+    if #State.targetList == 0 or State.currentTargetIndex > #State.targetList then
+        State.targetList = buildTargetList()
+        State.currentTargetIndex = 1
+        
+        if #State.targetList == 0 then
+            return nil
+        end
     end
     
-    return candidates[math.random(1, #candidates)]
+    local target = State.targetList[State.currentTargetIndex]
+    State.currentTargetIndex = State.currentTargetIndex + 1
+    
+    return target
 end
 
 -- Start Fling
@@ -156,6 +172,8 @@ local function startFling()
     State.updateElapsed = 0
     State.switchElapsed = 0
     State.currentTargetHRP = nil
+    State.currentTargetIndex = 1
+    State.targetList = {}
     State.ax = 0
     State.ay = 0
     State.az = 0
@@ -178,16 +196,16 @@ local function startFling()
             myHum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
         
-        -- Switch between orbit and inside phases every 0.5 seconds
+        -- Switch between orbit and inside phases
         if State.phaseTime >= (State.isOrbiting and ORBIT_TIME or INSIDE_TIME) then
             State.phaseTime = 0
             State.isOrbiting = not State.isOrbiting
             State.orbitAngle = 0
         end
         
-        -- Pick new target every SWITCH_INTERVAL seconds
+        -- Pick next target from sequential list every SWITCH_INTERVAL seconds
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
-            State.currentTargetHRP = getRandomTargetHRP()
+            State.currentTargetHRP = getNextTargetHRP()
             State.switchElapsed = 0
             
             -- Spectate new target
@@ -195,6 +213,7 @@ local function startFling()
                 local targetPlayer = Players:GetPlayerFromCharacter(State.currentTargetHRP.Parent)
                 if targetPlayer then
                     workspace.CurrentCamera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    print("🎯 Targeting: " .. targetPlayer.Name .. " (" .. State.currentTargetIndex - 1 .. "/" .. #State.targetList .. ")")
                 end
             end
         end
@@ -226,8 +245,8 @@ local function startFling()
         State.az = State.az + rps * dt
         local spinCF = CFrame.Angles(State.ax, State.ay, State.az)
         
-        if State.isOrbiting then
-            -- ORBIT PHASE: Spin around target in a circle
+        if State.isOrbiting and ORBIT_RADIUS > 0 then
+            -- ORBIT PHASE: Spin around target in a circle (only if radius > 0)
             State.orbitAngle = State.orbitAngle + math.rad(360) * dt / ORBIT_TIME
             
             local offsetX = math.cos(State.orbitAngle) * ORBIT_RADIUS
@@ -236,14 +255,14 @@ local function startFling()
             myHRP.CFrame = State.currentTargetHRP.CFrame * CFrame.new(offsetX, 0, offsetZ) * spinCF
             myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
         else
-            -- INSIDE PHASE: Teleport inside target
+            -- INSIDE PHASE: Teleport inside target (or if orbit disabled)
             local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
             myHRP.CFrame = baseCF * spinCF
             myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
         end
     end)
     
-    print("✓ Fling started (Orbit + Inside + Jump)")
+    print("✓ Fling started (Sequential targets, 1.5s inside, orbit radius: " .. ORBIT_RADIUS .. ")")
 end
 
 -- Stop Fling
@@ -273,6 +292,8 @@ local function stopFling()
     end
     
     State.currentTargetHRP = nil
+    State.targetList = {}
+    State.currentTargetIndex = 1
     print("✓ Fling stopped")
 end
 
@@ -323,6 +344,6 @@ do
     end)
 end
 
-print("✓ Trolling Fling Module Loaded (MODIFIED: Orbit + Jump + Filters)")
+print("✓ Trolling Fling Module Loaded (Sequential List, 1.5s Inside, Orbit: " .. ORBIT_RADIUS .. ")")
 
 return true

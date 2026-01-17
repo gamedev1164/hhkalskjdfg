@@ -42,7 +42,7 @@ local AEGIS_TEAMS = {
 local UPDATE_INTERVAL = 0.01
 local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
 local PUSH_DISTANCE = 10 -- Distance behind target to start push (in studs)
-local PUSH_SPEED = 600
+local PUSH_SPEED = 800
 local VELOCITY_FLING = 100 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
 local JUMP_INTERVAL = 1 -- Force jump 
 
@@ -60,8 +60,7 @@ local State = {
     jumpTime = 0,
     hasTeleported = false, -- Track if we've teleported to current target
     
-    flingConnection = nil,
-    noclipConnection = nil
+    flingConnection = nil
 }
 
 -- Helper: Get HumanoidRootPart
@@ -157,46 +156,9 @@ local function getNextTargetHRP()
     return target
 end
 
--- Enable Noclip
-local function enableNoclip()
-    if State.noclipConnection then return end
-    
-    State.noclipConnection = RunService.Stepped:Connect(function()
-        local myChar = player.Character
-        if myChar then
-            for _, part in pairs(myChar:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end)
-end
-
--- Disable Noclip
-local function disableNoclip()
-    if State.noclipConnection then
-        State.noclipConnection:Disconnect()
-        State.noclipConnection = nil
-    end
-    
-    -- Restore collisions
-    local myChar = player.Character
-    if myChar then
-        for _, part in pairs(myChar:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                part.CanCollide = true
-            end
-        end
-    end
-end
-
 -- Start Fling
 local function startFling()
     if State.flingConnection then return end
-    
-    -- Enable noclip when fling starts
-    enableNoclip()
     
     State.updateElapsed = 0
     State.switchElapsed = 0
@@ -279,9 +241,6 @@ local function stopFling()
         State.flingConnection = nil
     end
     
-    -- Disable noclip when fling stops
-    disableNoclip()
-    
     -- Restore camera to player
     local myChar = player.Character
     if myChar then
@@ -316,9 +275,6 @@ local function onCharacterAdded(char)
             State.flingConnection:Disconnect()
             State.flingConnection = nil
         end
-        
-        -- Stop noclip
-        disableNoclip()
         
         -- Restore camera to player
         workspace.CurrentCamera.CameraSubject = hum

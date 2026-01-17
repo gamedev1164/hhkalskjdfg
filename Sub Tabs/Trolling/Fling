@@ -40,11 +40,14 @@ local AEGIS_TEAMS = {
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
-local PUSH_DISTANCE = 10 -- Distance behind target to start push (in studs)
+local SWITCH_INTERVAL = 1.5 -- Switch players every 1.5 seconds
+local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
-local VELOCITY_FLING = 100 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)
-local JUMP_INTERVAL = 1 -- Force jump 
+local INSIDE_OFFSET = Vector3.new(0, 0, 0)
+local ORBIT_RADIUS = 0 -- Set to 0 (can change back to 2+ to enable orbit)
+local ORBIT_TIME = 0.0 -- Time spent orbiting
+local INSIDE_TIME = 1.5 -- Time spent inside (1.5 seconds)
+local JUMP_INTERVAL = 1 -- Force jump every 1 second
 
 -- State
 local State = {
@@ -57,8 +60,14 @@ local State = {
     currentTargetHRP = nil,
     currentTargetIndex = 1,
     targetList = {}, -- Sequential list of targets
+    ax = 0,
+    ay = 0,
+    az = 0,
+    
+    phaseTime = 0,
+    isOrbiting = true, -- Start with orbit
+    orbitAngle = 0,
     jumpTime = 0,
-    hasTeleported = false, -- Track if we've teleported to current target
     
     flingConnection = nil
 }
@@ -165,15 +174,21 @@ local function startFling()
     State.currentTargetHRP = nil
     State.currentTargetIndex = 1
     State.targetList = {}
+    State.ax = 0
+    State.ay = 0
+    State.az = 0
+    State.phaseTime = 0
+    State.isOrbiting = true
+    State.orbitAngle = 0
     State.jumpTime = 0
-    State.hasTeleported = false
     
     State.flingConnection = RunService.Heartbeat:Connect(function(dt)
         State.updateElapsed = State.updateElapsed + dt
         State.switchElapsed = State.switchElapsed + dt
+        State.phaseTime = State.phaseTime + dt
         State.jumpTime = State.jumpTime + dt
         
-        -- Force jump every 1 second
+        -- Force jump every 0.5 seconds
         local myChar = player.Character
         local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
         if myHum and State.jumpTime >= JUMP_INTERVAL then
@@ -181,17 +196,24 @@ local function startFling()
             myHum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
         
+        -- Switch between orbit and inside phases
+        if State.phaseTime >= (State.isOrbiting and ORBIT_TIME or INSIDE_TIME) then
+            State.phaseTime = 0
+            State.isOrbiting = not State.isOrbiting
+            State.orbitAngle = 0
+        end
+        
         -- Pick next target from sequential list every SWITCH_INTERVAL seconds
         if not State.currentTargetHRP or State.switchElapsed >= SWITCH_INTERVAL then
             State.currentTargetHRP = getNextTargetHRP()
             State.switchElapsed = 0
-            State.hasTeleported = false -- Reset teleport flag for new target
             
             -- Spectate new target
             if State.currentTargetHRP then
                 local targetPlayer = Players:GetPlayerFromCharacter(State.currentTargetHRP.Parent)
                 if targetPlayer then
                     workspace.CurrentCamera.CameraSubject = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    print("🎯 Targeting: " .. targetPlayer.Name .. " (" .. State.currentTargetIndex - 1 .. "/" .. #State.targetList .. ")")
                 end
             end
         end
@@ -216,22 +238,31 @@ local function startFling()
             return
         end
         
-        local targetCF = State.currentTargetHRP.CFrame
+        -- Spin math
+        local rps = math.rad(SPIN_SPEED)
+        State.ax = State.ax + rps * dt
+        State.ay = State.ay + rps * dt
+        State.az = State.az + rps * dt
+        local spinCF = CFrame.Angles(State.ax, State.ay, State.az)
         
-        -- TELEPORT behind target ONCE per target
-        if not State.hasTeleported then
-            local behindPosition = targetCF * CFrame.new(0, 0, PUSH_DISTANCE) -- Behind target
-            myHRP.CFrame = behindPosition
-            State.hasTeleported = true
+        if State.isOrbiting and ORBIT_RADIUS > 0 then
+            -- ORBIT PHASE: Spin around target in a circle (only if radius > 0)
+            State.orbitAngle = State.orbitAngle + math.rad(360) * dt / ORBIT_TIME
+            
+            local offsetX = math.cos(State.orbitAngle) * ORBIT_RADIUS
+            local offsetZ = math.sin(State.orbitAngle) * ORBIT_RADIUS
+            
+            myHRP.CFrame = State.currentTargetHRP.CFrame * CFrame.new(offsetX, 0, offsetZ) * spinCF
+            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
+        else
+            -- INSIDE PHASE: Teleport inside target (or if orbit disabled)
+            local baseCF = State.currentTargetHRP.CFrame * CFrame.new(INSIDE_OFFSET)
+            myHRP.CFrame = baseCF * spinCF
+            myHRP.AssemblyLinearVelocity = State.currentTargetHRP.CFrame.LookVector * PUSH_SPEED
         end
-        
-        -- CONTINUOUSLY push forward into target with velocity
-        local pushDirection = (targetCF.Position - myHRP.Position).Unit
-        local totalVelocity = PUSH_SPEED + VELOCITY_FLING
-        
-        -- Apply velocity to ram into them
-        myHRP.AssemblyLinearVelocity = pushDirection * totalVelocity
     end)
+    
+    print("✓ Fling started (Sequential targets, 1.5s inside, orbit radius: " .. ORBIT_RADIUS .. ")")
 end
 
 -- Stop Fling
@@ -263,43 +294,24 @@ local function stopFling()
     State.currentTargetHRP = nil
     State.targetList = {}
     State.currentTargetIndex = 1
+    print("✓ Fling stopped")
 end
 
--- Handle player death - stop fling, teleport, and restart when alive
+-- Handle player death - teleport to 0,0,0
 local function onCharacterAdded(char)
     local hum = char:WaitForChild("Humanoid")
     
     hum.Died:Connect(function()
-        -- Stop fling immediately
-        if State.flingConnection then
-            State.flingConnection:Disconnect()
-            State.flingConnection = nil
-        end
-        
-        -- Restore camera to player
-        workspace.CurrentCamera.CameraSubject = hum
-        
+        print("💀 Player died - teleporting to 0,0,0")
         task.wait(0.1) -- Small delay to ensure respawn
         
-        -- Teleport to 0,0,0
-        local newChar = player.Character or player.CharacterAdded:Wait()
-        local newHRP = getHRP(newChar)
-        if newHRP then
-            newHRP.CFrame = CFrame.new(0, 0, 0)
-        end
-        
-        -- Wait until fully alive
-        local newHum = newChar:WaitForChild("Humanoid")
-        while newHum.Health <= 0 do
-            task.wait(0.1)
-        end
-        
-        task.wait(1) -- Extra delay for character to fully load
-        
-        -- Check if any mode was active and restart
-        local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis
-        if anyActive then
-            startFling()
+        local newChar = player.Character
+        if newChar then
+            local newHRP = getHRP(newChar)
+            if newHRP then
+                newHRP.CFrame = CFrame.new(0, 0, 0)
+                print("✓ Teleported to spawn")
+            end
         end
     end)
 end
@@ -309,6 +321,28 @@ if player.Character then
     onCharacterAdded(player.Character)
 end
 player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Handle character respawn
+player.CharacterAdded:Connect(function(char)
+    print("🔄 Character respawned - restarting fling...")
+    
+    -- Wait for character to fully load
+    task.wait(1)
+    
+    -- Check if any mode is active and restart
+    local anyActive = State.flingAll or State.flingWastelanders or State.flingAegis
+    
+    if anyActive then
+        -- Stop old connection if it exists
+        if State.flingConnection then
+            State.flingConnection:Disconnect()
+            State.flingConnection = nil
+        end
+        
+        -- Restart fling
+        startFling()
+    end
+end)
 
 -- Update fling state
 local function updateFlingState(mode)
@@ -356,5 +390,7 @@ do
         updateFlingState("wastelanders")
     end)
 end
+
+print("✓ Trolling Fling Module Loaded (Sequential List, 1.5s Inside, Orbit: " .. ORBIT_RADIUS .. ")")
 
 return true

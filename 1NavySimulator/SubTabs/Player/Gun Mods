@@ -1,1 +1,256 @@
+--[[
+    ═══════════════════════════════════════════════════════════
+       GUN MODS MODULE - Navy Simulator
+       For NavyX Hub
+    ═══════════════════════════════════════════════════════════
+]]
 
+-- Wait for hub to load
+repeat task.wait() until _G.NavyHub and _G.NavyHub.Library
+
+local Library = _G.NavyHub.Library
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- Create Gun Mods page
+local GunModsPage = Instance.new("ScrollingFrame")
+GunModsPage.Size = UDim2.new(1, -40, 1, 0)
+GunModsPage.Position = UDim2.new(0, 20, 0, 0)
+GunModsPage.BackgroundTransparency = 1
+GunModsPage.ScrollBarThickness = 2
+GunModsPage.AutomaticCanvasSize = Enum.AutomaticSize.Y
+GunModsPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+GunModsPage.Parent = _G.NavyHub.Content
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 10)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = GunModsPage
+
+-- SETTINGS (All start OFF)
+local Settings = {
+    Enabled = false,
+    Firing = false,
+    NoRecoil = false,
+    InfiniteAmmo = false,
+    FireRate = 100
+}
+
+-- Get M9
+local function getM9()
+    return player.Character and player.Character:FindFirstChild("M9")
+end
+
+-- NO RECOIL
+local function removeRecoil()
+    if not Settings.NoRecoil then return end
+    
+    local m9 = getM9() or player.Backpack:FindFirstChild("M9")
+    if not m9 then return end
+    
+    local data = m9:FindFirstChild("Data")
+    if data then
+        local s, mod = pcall(require, data)
+        if s and mod then
+            if mod.Hipfiring then
+                mod.Hipfiring.RecoilShove = Vector3.new(0, 0, 0)
+                mod.Hipfiring.RecoilSpin = Vector3.new(0, 0, 0)
+                mod.Hipfiring.RecoilCamera = Vector3.new(0, 0, 0)
+            end
+            
+            if mod.AimDownSight then
+                mod.AimDownSight.RecoilShove = Vector3.new(0, 0, 0)
+                mod.AimDownSight.RecoilSpin = Vector3.new(0, 0, 0)
+                mod.AimDownSight.RecoilCamera = Vector3.new(0, 0, 0)
+            end
+            
+            mod.GunStability = 999999
+            mod.StabilityRecoveredPerSecond = 999999
+            mod.StabilityLostPerShot = 0
+        end
+    end
+    
+    local bounceRecoil = m9:FindFirstChild("BounceRecoil")
+    if bounceRecoil and bounceRecoil:IsA("RemoteEvent") then
+        bounceRecoil.FireServer = function() end
+    end
+end
+
+-- INFINITE AMMO
+local function setInfiniteAmmo()
+    if not Settings.InfiniteAmmo then return end
+    
+    local m9 = getM9() or player.Backpack:FindFirstChild("M9")
+    if not m9 then return end
+    
+    local data = m9:FindFirstChild("Data")
+    if data then
+        local s, mod = pcall(require, data)
+        if s and mod then
+            mod.Ammo = 999999999
+            mod.MagazineSize = 999999999
+            mod.MaxAmmo = 999999999
+            mod.FiringModes = {"Auto"}
+            mod.FiringMode = "Auto"
+            mod.Reloading = false
+        end
+    end
+    
+    local ammoVal = m9:FindFirstChild("AmmoWhenSelected")
+    if ammoVal then
+        ammoVal.Value = 999999999
+    end
+end
+
+-- Background loop
+task.spawn(function()
+    while task.wait(0.5) do
+        if Settings.NoRecoil then
+            removeRecoil()
+        end
+        
+        if Settings.InfiniteAmmo then
+            setInfiniteAmmo()
+        end
+    end
+end)
+
+-- Get shooting remote
+local function getShootRemote()
+    local s, remote = pcall(function()
+        return ReplicatedStorage:WaitForChild("SharedModules", 2)
+            :WaitForChild("Classes", 2)
+            :WaitForChild("Blink", 2)
+            :WaitForChild("RemoteEvent", 2)
+    end)
+    return s and remote or nil
+end
+
+-- CREATE UI
+
+-- Title
+local titleFrame = Instance.new("Frame")
+titleFrame.Size = UDim2.new(1, 0, 0, 40)
+titleFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+titleFrame.BorderSizePixel = 0
+titleFrame.Parent = GunModsPage
+
+Instance.new("UICorner", titleFrame).CornerRadius = UDim.new(0, 8)
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Text = "🔫 M9 GUN MODS"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 16
+titleLabel.TextColor3 = Color3.fromRGB(0, 191, 255)
+titleLabel.Size = UDim2.new(1, -20, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleFrame
+
+-- Auto Fire Toggle
+Library:CreateToggle(GunModsPage, "🖱️ Auto Fire (Hold Left Click)", false, function(state)
+    Settings.Enabled = state
+    print("🔘 Auto Fire: " .. (state and "ON" or "OFF"))
+end)
+
+-- No Recoil Toggle
+Library:CreateToggle(GunModsPage, "🎯 No Recoil", false, function(state)
+    Settings.NoRecoil = state
+    print("🔘 No Recoil: " .. (state and "ON" or "OFF"))
+end)
+
+-- Infinite Ammo Toggle
+Library:CreateToggle(GunModsPage, "♾️ Infinite Ammo", false, function(state)
+    Settings.InfiniteAmmo = state
+    print("🔘 Infinite Ammo: " .. (state and "ON" or "OFF"))
+end)
+
+-- Fire Rate Slider
+Library:CreateSlider(GunModsPage, "Fire Rate (BPS)", 1, 10000, 100, function(value)
+    Settings.FireRate = value
+    print("🎚️ Fire Rate: " .. value .. " BPS")
+end)
+
+-- Info
+local infoFrame = Instance.new("Frame")
+infoFrame.Size = UDim2.new(1, 0, 0, 60)
+infoFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+infoFrame.BorderSizePixel = 0
+infoFrame.Parent = GunModsPage
+
+Instance.new("UICorner", infoFrame).CornerRadius = UDim.new(0, 8)
+
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Text = "📖 How to use:\n1. Enable Auto Fire\n2. Set fire rate with slider\n3. Equip M9\n4. Hold LEFT CLICK to spray!"
+infoLabel.Font = Enum.Font.Gotham
+infoLabel.TextSize = 12
+infoLabel.TextColor3 = Color3.fromRGB(160, 160, 170)
+infoLabel.Size = UDim2.new(1, -20, 1, 0)
+infoLabel.Position = UDim2.new(0, 10, 0, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+infoLabel.TextWrapped = true
+infoLabel.Parent = infoFrame
+
+-- AUTO FIRE SYSTEM
+mouse.Button1Down:Connect(function()
+    if not Settings.Enabled then return end
+    
+    Settings.Firing = true
+    
+    task.spawn(function()
+        print("🔥 FIRING! Rate: " .. Settings.FireRate .. " BPS")
+        
+        local shootRemote = getShootRemote()
+        local shots = 0
+        local startTime = tick()
+        
+        while Settings.Firing and Settings.Enabled do
+            local m9 = getM9()
+            
+            if not m9 then
+                warn("⚠️ Equip M9!")
+                Settings.Firing = false
+                break
+            end
+            
+            if Settings.NoRecoil then removeRecoil() end
+            if Settings.InfiniteAmmo then setInfiniteAmmo() end
+            
+            if mouse1press and mouse1release then
+                mouse1press()
+                task.wait(0.0001)
+                mouse1release()
+            end
+            
+            if shootRemote then
+                pcall(function() shootRemote:FireServer() end)
+            end
+            
+            shots = shots + 1
+            task.wait(1 / Settings.FireRate)
+        end
+        
+        local elapsed = tick() - startTime
+        print(string.format("🛑 Stopped | Shots: %d | Avg: %.0f BPS", shots, shots/elapsed))
+    end)
+end)
+
+mouse.Button1Up:Connect(function()
+    Settings.Firing = false
+end)
+
+player.Character.ChildAdded:Connect(function(child)
+    if child.Name == "M9" then
+        task.wait(0.1)
+        if Settings.InfiniteAmmo then setInfiniteAmmo() end
+        if Settings.NoRecoil then removeRecoil() end
+    end
+end)
+
+print("✓ Gun Mods loaded!")

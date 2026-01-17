@@ -1,1 +1,325 @@
+--[[
+    ═══════════════════════════════════════════════════════════
+       TEAM CHANGER GUI - Navy Simulator
+       Uses RemoteEvent to change teams
+    ═══════════════════════════════════════════════════════════
+]]
 
+local Players = game:GetService("Players")
+local Teams = game:GetService("Teams")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+-- Theme (Light Blue)
+local Theme = {
+    Main = Color3.fromRGB(18, 18, 22),
+    Content = Color3.fromRGB(28, 28, 34),
+    ElementBg = Color3.fromRGB(34, 34, 40),
+    Accent = Color3.fromRGB(0, 191, 255),
+    TextWhite = Color3.fromRGB(240, 240, 240),
+    TextGray = Color3.fromRGB(160, 160, 170),
+    Stroke = Color3.fromRGB(55, 55, 65)
+}
+
+-- Teams list
+local teamsList = {
+    "Pirates",
+    "Prisoners",
+    "Rebels",
+    "SEA Military",
+    "visitors"
+}
+
+-- Cleanup old GUI
+for _, gui in pairs(CoreGui:GetChildren()) do
+    if gui.Name == "TeamChangerGUI" then
+        gui:Destroy()
+    end
+end
+
+-- Create GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeamChangerGUI"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+if gethui then 
+    gui.Parent = gethui()
+else 
+    gui.Parent = CoreGui 
+end
+
+-- Main Frame
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Size = UDim2.new(0, 350, 0, 420)
+main.Position = UDim2.new(0.5, -175, 0.5, -210)
+main.BackgroundColor3 = Theme.Main
+main.BorderSizePixel = 0
+main.Parent = gui
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Theme.Stroke
+stroke.Thickness = 1
+stroke.Parent = main
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 45)
+titleBar.BackgroundColor3 = Theme.Content
+titleBar.BorderSizePixel = 0
+titleBar.Parent = main
+
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 12)
+
+local titlePatch = Instance.new("Frame")
+titlePatch.Size = UDim2.new(1, 0, 0, 20)
+titlePatch.Position = UDim2.new(0, 0, 1, -20)
+titlePatch.BackgroundColor3 = Theme.Content
+titlePatch.BorderSizePixel = 0
+titlePatch.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Text = "⚓ Team Changer"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextColor3 = Theme.TextWhite
+title.Size = UDim2.new(1, -50, 1, 0)
+title.Position = UDim2.new(0, 15, 0, 0)
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+-- Close Button
+local closeBtn = Instance.new("TextButton")
+closeBtn.Text = "×"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 24
+closeBtn.TextColor3 = Theme.TextGray
+closeBtn.Size = UDim2.new(0, 40, 1, 0)
+closeBtn.Position = UDim2.new(1, -40, 0, 0)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Parent = titleBar
+
+closeBtn.MouseEnter:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(255, 80, 80)}):Play()
+end)
+
+closeBtn.MouseLeave:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {TextColor3 = Theme.TextGray}):Play()
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+-- Current Team Display
+local currentTeamFrame = Instance.new("Frame")
+currentTeamFrame.Size = UDim2.new(1, -30, 0, 60)
+currentTeamFrame.Position = UDim2.new(0, 15, 0, 60)
+currentTeamFrame.BackgroundColor3 = Theme.ElementBg
+currentTeamFrame.BorderSizePixel = 0
+currentTeamFrame.Parent = main
+
+Instance.new("UICorner", currentTeamFrame).CornerRadius = UDim.new(0, 8)
+
+local currentLabel = Instance.new("TextLabel")
+currentLabel.Text = "Current Team:"
+currentLabel.Font = Enum.Font.GothamBold
+currentLabel.TextSize = 13
+currentLabel.TextColor3 = Theme.TextGray
+currentLabel.Size = UDim2.new(1, -20, 0, 20)
+currentLabel.Position = UDim2.new(0, 10, 0, 8)
+currentLabel.BackgroundTransparency = 1
+currentLabel.TextXAlignment = Enum.TextXAlignment.Left
+currentLabel.Parent = currentTeamFrame
+
+local currentTeamLabel = Instance.new("TextLabel")
+currentTeamLabel.Text = player.Team and player.Team.Name or "No Team"
+currentTeamLabel.Font = Enum.Font.GothamBold
+currentTeamLabel.TextSize = 18
+currentTeamLabel.TextColor3 = Theme.Accent
+currentTeamLabel.Size = UDim2.new(1, -20, 0, 25)
+currentTeamLabel.Position = UDim2.new(0, 10, 0, 30)
+currentTeamLabel.BackgroundTransparency = 1
+currentTeamLabel.TextXAlignment = Enum.TextXAlignment.Left
+currentTeamLabel.Parent = currentTeamFrame
+
+-- Teams Label
+local teamsLabel = Instance.new("TextLabel")
+teamsLabel.Text = "Select Team:"
+teamsLabel.Font = Enum.Font.GothamBold
+teamsLabel.TextSize = 14
+teamsLabel.TextColor3 = Theme.TextWhite
+teamsLabel.Size = UDim2.new(1, -30, 0, 20)
+teamsLabel.Position = UDim2.new(0, 15, 0, 135)
+teamsLabel.BackgroundTransparency = 1
+teamsLabel.TextXAlignment = Enum.TextXAlignment.Left
+teamsLabel.Parent = main
+
+-- Team Buttons Container
+local buttonsFrame = Instance.new("Frame")
+buttonsFrame.Size = UDim2.new(1, -30, 1, -175)
+buttonsFrame.Position = UDim2.new(0, 15, 0, 165)
+buttonsFrame.BackgroundTransparency = 1
+buttonsFrame.Parent = main
+
+local buttonLayout = Instance.new("UIListLayout")
+buttonLayout.Padding = UDim.new(0, 10)
+buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+buttonLayout.Parent = buttonsFrame
+
+-- Function to change team
+local function changeTeam(teamName)
+    local teamObj = Teams:FindFirstChild(teamName)
+    if not teamObj then
+        warn("Team not found: " .. teamName)
+        return
+    end
+    
+    local remote = ReplicatedStorage:WaitForChild("TeamChanged")
+    
+    local args = {
+        teamObj,
+        "7563"
+    }
+    
+    remote:FireServer(unpack(args))
+    
+    -- Update display
+    currentTeamLabel.Text = teamName
+    
+    -- Visual feedback
+    TweenService:Create(currentTeamFrame, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Accent}):Play()
+    task.wait(0.2)
+    TweenService:Create(currentTeamFrame, TweenInfo.new(0.3), {BackgroundColor3 = Theme.ElementBg}):Play()
+    
+    print("✓ Changed to team: " .. teamName)
+end
+
+-- Team icons/emojis
+local teamIcons = {
+    ["Pirates"] = "☠️",
+    ["Prisoners"] = "⛓️",
+    ["Rebels"] = "⚔️",
+    ["SEA Military"] = "🎖️",
+    ["visitors"] = "👤"
+}
+
+-- Create buttons for each team
+for i, teamName in ipairs(teamsList) do
+    local btn = Instance.new("TextButton")
+    btn.Name = teamName
+    btn.Size = UDim2.new(1, 0, 0, 45)
+    btn.BackgroundColor3 = Theme.ElementBg
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Text = ""
+    btn.LayoutOrder = i
+    btn.Parent = buttonsFrame
+    
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    
+    -- Icon
+    local icon = Instance.new("TextLabel")
+    icon.Text = teamIcons[teamName] or "👥"
+    icon.Font = Enum.Font.GothamBold
+    icon.TextSize = 20
+    icon.Size = UDim2.new(0, 35, 1, 0)
+    icon.Position = UDim2.new(0, 5, 0, 0)
+    icon.BackgroundTransparency = 1
+    icon.Parent = btn
+    
+    -- Team Name
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Text = teamName
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 15
+    nameLabel.TextColor3 = Theme.TextWhite
+    nameLabel.Size = UDim2.new(1, -80, 1, 0)
+    nameLabel.Position = UDim2.new(0, 45, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = btn
+    
+    -- Join Arrow
+    local arrow = Instance.new("TextLabel")
+    arrow.Text = "→"
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 24
+    arrow.TextColor3 = Theme.Accent
+    arrow.Size = UDim2.new(0, 30, 1, 0)
+    arrow.Position = UDim2.new(1, -40, 0, 0)
+    arrow.BackgroundTransparency = 1
+    arrow.Parent = btn
+    
+    -- Hover effects
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(45, 45, 50)}):Play()
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Position = UDim2.new(1, -35, 0, 0)}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Theme.ElementBg}):Play()
+        TweenService:Create(arrow, TweenInfo.new(0.15), {Position = UDim2.new(1, -40, 0, 0)}):Play()
+    end)
+    
+    -- Click to change team
+    btn.MouseButton1Click:Connect(function()
+        changeTeam(teamName)
+    end)
+end
+
+-- Update current team display
+player:GetPropertyChangedSignal("Team"):Connect(function()
+    if player.Team then
+        currentTeamLabel.Text = player.Team.Name
+    else
+        currentTeamLabel.Text = "No Team"
+    end
+end)
+
+-- Drag functionality
+local dragging, dragInput, dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+print("\n⚓ Team Changer GUI loaded!")
+print("   Teams: Pirates, Prisoners, Rebels, SEA Military, visitors")
+print("   Current team: " .. (player.Team and player.Team.Name or "None"))
+print("   Click any button to change teams!\n")

@@ -40,7 +40,7 @@ local AEGIS_TEAMS = {
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 1.0 -- Switch players every 2 seconds
+local SWITCH_INTERVAL = 2.0 -- Switch players every 2 seconds
 local PUSH_DISTANCE = 7 -- Distance behind target to start push (in studs)
 local PUSH_SPEED = 800
 local VELOCITY_FLING = 100 -- 🔧 Velocity boost (0 = disabled, 100 = recommended, 200+ = more power)

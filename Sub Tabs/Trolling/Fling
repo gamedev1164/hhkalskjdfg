@@ -40,12 +40,12 @@ local AEGIS_TEAMS = {
 
 -- Fling Config
 local UPDATE_INTERVAL = 0.01
-local SWITCH_INTERVAL = 2 -- Switch players 
+local SWITCH_INTERVAL = 1.5 -- Switch players 
 local SPIN_SPEED = 7000
 local PUSH_SPEED = 800
 local INSIDE_OFFSET = Vector3.new(0, 0, 0)
 local ORBIT_RADIUS = 4 -- Set to 0 (can change back to 2+ to enable orbit)
-local ORBIT_TIME = 1 -- Time spent orbiting
+local ORBIT_TIME = 0.5 -- Time spent orbiting
 local INSIDE_TIME = 1 -- Time spent inside 
 local JUMP_INTERVAL = 1 -- Force jump every 1 second
 
